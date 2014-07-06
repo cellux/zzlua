@@ -4,7 +4,7 @@ JACK_LIBS = $(shell pkg-config --libs jack)
 ZMQ_CFLAGS := $(shell pkg-config --cflags libzmq)
 ZMQ_LIBS := $(shell pkg-config --libs libzmq)
 
-CFLAGS := $(ZMQ_CFLAGS) $(JACK_CFLAGS) $(LUAJIT_CFLAGS)
+CFLAGS := -std=c++11 $(ZMQ_CFLAGS) $(JACK_CFLAGS) $(LUAJIT_CFLAGS)
 LDFLAGS := $(ZMQ_LIBS) $(JACK_LIBS) $(LUAJIT_LIBS)
 
 showtime: showtime.cc
