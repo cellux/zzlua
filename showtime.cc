@@ -7,10 +7,12 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <pthread.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #include <zmq.hpp>
 #include <jack/jack.h>
@@ -30,7 +32,7 @@
 
 #define CHECK(expr, ...) if (!(expr)) DIE(__VA_ARGS__)
 
-/*** typedefs ***/
+/*** typedefs for client/port names ***/
 
 typedef std::string ClientLocalName;   /* instrument */
 typedef std::string ClientGlobalName;  /* orchestra.part.instrument */
@@ -67,43 +69,43 @@ public:
   Patch(const char *path)
     : path_(path)
   {
-    reload();
+    parse_config();
   }
 
-  void reload() {
+  void parse_config() {
     connections_.clear();
     std::ifstream in(path_);
     if (! in.good()) {
       DIE("cannot open patch file: %s", path_);
     }
-    std::string src, dst;
-    std::string item;
+    PortLocalName src, dst;
+    std::string word;
     State st = START;
     while (in) {
-      in >> item;
-      if (item.empty()) {
+      in >> word;
+      if (word.empty()) {
         break; // eof
       }
-      int colon_pos = item.find(':');
+      int colon_pos = word.find(':');
       if (colon_pos != std::string::npos) {
         if (st == START) {
-          src = item;
+          src = word;
           st = LHS_ASSIGNED;
         }
         else if (st == RIGHT_ARROW) {
-          dst = item;
+          dst = word;
           st = RHS_ASSIGNED;
         }
         else if (st == LEFT_ARROW) {
           dst = src;
-          src = item;
+          src = word;
           st = RHS_ASSIGNED;
         }
       }
-      else if (item == "->") {
+      else if (word == "->") {
         st = RIGHT_ARROW;
       }
-      else if (item == "<-") {
+      else if (word == "<-") {
         st = LEFT_ARROW;
       }
       else {
@@ -190,7 +192,7 @@ public:
     return jack_port_by_name(jack_client_, port_name);
   }
 
-  jack_port_t *port_by_name(const std::string& port_name) {
+  jack_port_t *port_by_name(const PortGlobalName& port_name) {
     return jack_port_by_name(jack_client_, port_name.c_str());
   }
 
@@ -220,7 +222,7 @@ public:
     }
   }
 
-  jack_port_t *port_register(std::string &port_name,
+  jack_port_t *port_register(const PortGlobalName &port_name,
                              const char* port_type,
                              unsigned long flags) {
     return jack_port_register(jack_client_,
@@ -350,7 +352,7 @@ private:
 
 class Child {
 public:
-  Child(const std::string &prefix, const std::string &client_local_name)
+  Child(const std::string &prefix, const ClientLocalName &client_local_name)
     : prefix_(prefix),
       client_local_name_(client_local_name),
       pid_(0)
@@ -369,9 +371,23 @@ public:
     LOG("starting child: %s", client_local_name_.c_str());
     pid_t pid = fork();
     if (pid==0) {
-      // child
-      std::string client_global_name = prefix_+"."+client_local_name_;
-      CHECK(chdir(client_local_name_.c_str())==0, "chdir() to child root failed: %s", client_local_name_.c_str());
+      // unblock signals
+      sigset_t ss;
+      sigfillset(&ss);
+      if (pthread_sigmask(SIG_UNBLOCK, &ss, NULL) != 0) {
+        DIE("cannot unblock signals in child: pthread_sigmask() failed");
+      }
+      // reopen stdin to /dev/null
+      close(STDIN_FILENO);
+      if (open("/dev/null",O_RDONLY) == -1) {
+        DIE("failed to redirect stdin to /dev/null in child (errno=%d)", errno);
+      }
+      // chdir to client directory
+      if (chdir(client_local_name_.c_str())!=0) {
+        DIE("chdir() to child root failed: %s", client_local_name_.c_str());
+      }
+      // exec 'run'
+      ClientGlobalName client_global_name = prefix_+"."+client_local_name_;
       execl("./run", client_local_name_.c_str(), client_global_name.c_str(), 0);
       DIE("execl() failed");
     }
@@ -381,17 +397,26 @@ public:
 
   void stop() {
     if (pid_) {
-      LOG("killing child: %s", client_local_name_.c_str());
+      LOG("killing child: %s (%d)", client_local_name_.c_str(), pid_);
       kill(pid_, SIGTERM);
+      // waitpid() will be called, pid_ will be cleared
+      // when we get the corresponding SIGCHLD
     }
   }
 
+  void sigchld() {
+    int status;
+    if (waitpid(pid_, &status, 0) != pid_) {
+      LOG("WARNING: killed child (%s - %d) didn't exit cleanly", client_local_name_.c_str(), pid_);
+    }
+    pid_ = 0;
+  }
+
   pid_t pid() { return pid_; }
-  void clear_pid() { pid_ = 0; }
 
 private:
   std::string prefix_;
-  std::string client_local_name_;
+  ClientLocalName client_local_name_;
   pid_t pid_;
 };
 
@@ -399,21 +424,25 @@ class ChildManager {
 public:
   ChildManager(const std::string &prefix)
     : prefix_(prefix)
-  {}
+  {
+    discover_children();
+    start_children();
+  }
 
   ~ChildManager() {
     stop_children();
+    forget_children();
   }
 
-  bool child_exists(std::string &client_local_name) {
+  bool child_exists(const ClientLocalName &client_local_name) {
     return children_.find(client_local_name) != children_.end();
   }
 
-  void add_child(std::string client_local_name) {
+  void add_child(ClientLocalName client_local_name) {
     children_.insert(ChildMap::value_type(client_local_name, Child(prefix_, client_local_name)));
   }
 
-  void remove_child(std::string client_local_name) {
+  void remove_child(ClientLocalName client_local_name) {
     children_.erase(client_local_name);
   }
 
@@ -432,7 +461,7 @@ public:
       rv = stat(entry->d_name, &st);
       CHECK(rv==0, "stat() failed on %s", entry->d_name);
       if (S_ISDIR(st.st_mode)) {
-        std::string client_local_name(entry->d_name);
+        ClientLocalName client_local_name(entry->d_name);
         std::string run_path = client_local_name+"/run";
         if (access(run_path.c_str(), X_OK) == 0) {
           if (! child_exists(client_local_name)) {
@@ -483,14 +512,14 @@ public:
       Child &c = e.second;
       if (c.pid() == pid) {
         LOG("got SIGCHLD for %d, clearing pid in child", pid);
-        c.clear_pid();
+        c.sigchld();
         break;
       }
     }
   }
 
 private:
-  typedef std::map<std::string, Child> ChildMap;
+  typedef std::map<ClientLocalName, Child> ChildMap;
   ChildMap children_;
   std::string prefix_;
 };
@@ -520,16 +549,14 @@ public:
       /* zmq::socket_t */ sub_sock_(zmq_ctx_, ZMQ_SUB),
       /* SignalManager */ sm_(zmq_ctx_),
       /* JackConnection */ jc_(zmq_ctx_, opt_.client_global_name()),
-      /* ChildManager */ cm_(opt_.client_global_name()),
       /* Patch */ patch_("patch")
   {
+    sub_sock_.bind("inproc://messages");
+    sub_sock_.setsockopt(ZMQ_SUBSCRIBE, 0, 0);
   }
 
   void run() {
-    sub_sock_.bind("inproc://messages");
-    sub_sock_.setsockopt(ZMQ_SUBSCRIBE, 0, 0);
-    cm_.discover_children();
-    cm_.start_children();
+    ChildManager cm(opt_.client_global_name());
     showtime_msg_t msg;
     bool running = true;
     zmq::pollitem_t poll_item = { (void*) sub_sock_, 0, ZMQ_POLLIN, 0 };
@@ -543,9 +570,9 @@ public:
       case SHOWTIME_SIGNAL_RECEIVED: {
         //LOG("got signal #%d: %s", msg.signum, strsignal(msg.signum));
         if (msg.signum == SIGCHLD) {
-          cm_.sigchld(msg.pid);
+          cm.sigchld(msg.pid);
         }
-        if (SignalManager::is_termination_signal(msg.signum)) {
+        else if (SignalManager::is_termination_signal(msg.signum)) {
           running = false;
         }
         break;
@@ -575,8 +602,6 @@ public:
         DIE("unknown msg.type in received message: %d", msg.type);
       }
     }
-    cm_.stop_children();
-    cm_.forget_children();
   }
 
 private:
@@ -656,7 +681,6 @@ private:
   zmq::socket_t sub_sock_;
   SignalManager sm_;
   JackConnection jc_;
-  ChildManager cm_;
   Patch patch_;
 };
 
