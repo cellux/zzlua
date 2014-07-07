@@ -7,8 +7,8 @@ ZMQ_LIBS := $(shell pkg-config --libs libzmq)
 CFLAGS := -std=c++11 $(ZMQ_CFLAGS) $(JACK_CFLAGS) $(LUAJIT_CFLAGS)
 LDFLAGS := $(ZMQ_LIBS) $(JACK_LIBS) $(LUAJIT_LIBS)
 
-showtime: showtime.cc
+zzpatch: zzpatch.cc
 	$(CXX) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 clean:
-	rm -f showtime
+	rm -f zzpatch

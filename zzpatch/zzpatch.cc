@@ -43,25 +43,25 @@ typedef std::string PortGlobalName; /* orchestra.part.instrument:out */
 
 /*** messages ***/
 
-enum showtime_msg_type {
+enum zzpatch_msg_type {
   /* signals */
-  SHOWTIME_SIGNAL_RECEIVED,
+  ZZPATCH_SIGNAL_RECEIVED,
   /* jack */
-  SHOWTIME_JACK_PORT_REGISTRATION,
-  SHOWTIME_JACK_CLIENT_REGISTRATION
+  ZZPATCH_JACK_PORT_REGISTRATION,
+  ZZPATCH_JACK_CLIENT_REGISTRATION
 };
 
-#define SHOWTIME_MAX_CLIENT_GLOBAL_NAME_LENGTH 128
+#define ZZPATCH_MAX_CLIENT_GLOBAL_NAME_LENGTH 128
 
-struct showtime_msg_t {
-  showtime_msg_type type;
+struct zzpatch_msg_t {
+  zzpatch_msg_type type;
   /* signals */
   int signum;
   int pid;
   /* jack */
   jack_port_id_t port;
   int reg;
-  char name[SHOWTIME_MAX_CLIENT_GLOBAL_NAME_LENGTH+1];
+  char name[ZZPATCH_MAX_CLIENT_GLOBAL_NAME_LENGTH+1];
 };
 
 class Patch {
@@ -258,8 +258,8 @@ private:
                                               int reg,
                                               void *arg) {
     JackConnection *jc = (JackConnection*) arg;
-    showtime_msg_t msg;
-    msg.type = SHOWTIME_JACK_PORT_REGISTRATION;
+    zzpatch_msg_t msg;
+    msg.type = ZZPATCH_JACK_PORT_REGISTRATION;
     msg.port = port;
     msg.reg = reg;
     if (jc->client_socket_->send(&msg, sizeof(msg)) != sizeof(msg))
@@ -270,9 +270,9 @@ private:
                                                 int reg,
                                                 void *arg) {
     JackConnection *jc = (JackConnection*) arg;
-    showtime_msg_t msg;
-    msg.type = SHOWTIME_JACK_CLIENT_REGISTRATION;
-    if (strlen(client_global_name) > SHOWTIME_MAX_CLIENT_GLOBAL_NAME_LENGTH)
+    zzpatch_msg_t msg;
+    msg.type = ZZPATCH_JACK_CLIENT_REGISTRATION;
+    if (strlen(client_global_name) > ZZPATCH_MAX_CLIENT_GLOBAL_NAME_LENGTH)
       DIE("jack client registration callback: client name too long");
     strcpy(msg.name, client_global_name);
     msg.reg = reg;
@@ -325,7 +325,7 @@ private:
     sigset_t ss;
     siginfo_t siginfo;
     sigfillset(&ss);
-    showtime_msg_t msg;
+    zzpatch_msg_t msg;
     int signum;
     zmq::socket_t sock(sm->zmq_ctx_, ZMQ_PUB);
     sock.connect("inproc://messages");
@@ -334,7 +334,7 @@ private:
       if (signum < 0) {
         DIE("sigwait() failed\n");
       }
-      msg.type = SHOWTIME_SIGNAL_RECEIVED;
+      msg.type = ZZPATCH_SIGNAL_RECEIVED;
       msg.signum = signum;
       msg.pid = siginfo.si_pid;
       if (sock.send(&msg, sizeof(msg)) != sizeof(msg))
@@ -541,9 +541,9 @@ private:
   ClientGlobalName client_global_name_;
 };
 
-class ShowTime {
+class ZZPatch {
 public:
-  ShowTime(int argc, char **argv)
+  ZZPatch(int argc, char **argv)
     : /* Options */ opt_(argc, argv),
       /* zmq::context_t */ zmq_ctx_(),
       /* zmq::socket_t */ sub_sock_(zmq_ctx_, ZMQ_SUB),
@@ -557,7 +557,7 @@ public:
 
   void run() {
     ChildManager cm(opt_.client_global_name());
-    showtime_msg_t msg;
+    zzpatch_msg_t msg;
     bool running = true;
     zmq::pollitem_t poll_item = { (void*) sub_sock_, 0, ZMQ_POLLIN, 0 };
     while (running) {
@@ -567,7 +567,7 @@ public:
       if (sub_sock_.recv(&msg, sizeof(msg)) != sizeof(msg))
         DIE("zmq_recv() failed in main thread when receiving message");
       switch (msg.type) {
-      case SHOWTIME_SIGNAL_RECEIVED: {
+      case ZZPATCH_SIGNAL_RECEIVED: {
         //LOG("got signal #%d: %s", msg.signum, strsignal(msg.signum));
         if (msg.signum == SIGCHLD) {
           cm.sigchld(msg.pid);
@@ -577,7 +577,7 @@ public:
         }
         break;
       }
-      case SHOWTIME_JACK_PORT_REGISTRATION: {
+      case ZZPATCH_JACK_PORT_REGISTRATION: {
         const char *port_global_name = jc_.port_name(msg.port);
         if (msg.reg) {
           LOG("registered jack port: %s", port_global_name);
@@ -588,7 +588,7 @@ public:
         }
         break;
       }
-      case SHOWTIME_JACK_CLIENT_REGISTRATION: {
+      case ZZPATCH_JACK_CLIENT_REGISTRATION: {
         const char *client_global_name = msg.name;
         if (msg.reg) {
           LOG("registered jack client: %s", client_global_name);
@@ -685,7 +685,7 @@ private:
 };
 
 static void showUsage() {
-  printf("Usage: showtime <client-name>\n");
+  printf("Usage: zzpatch <client-name>\n");
 }
 
 int main(int argc, char **argv) {
@@ -693,7 +693,7 @@ int main(int argc, char **argv) {
     showUsage();
   }
   else {
-    std::auto_ptr<ShowTime> st(new ShowTime(argc, argv));
+    std::auto_ptr<ZZPatch> st(new ZZPatch(argc, argv));
     st->run();
   }
   return 0;
