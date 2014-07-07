@@ -549,7 +549,7 @@ public:
       /* zmq::socket_t */ sub_sock_(zmq_ctx_, ZMQ_SUB),
       /* SignalManager */ sm_(zmq_ctx_),
       /* JackConnection */ jc_(zmq_ctx_, opt_.client_global_name()),
-      /* Patch */ patch_("patch")
+      /* Patch */ patch_("config")
   {
     sub_sock_.bind("inproc://messages");
     sub_sock_.setsockopt(ZMQ_SUBSCRIBE, 0, 0);
