@@ -1,0 +1,40 @@
+local buffer = require('buffer')
+local sf = string.format
+
+local buf = buffer()
+assert(buf:size() == 0, sf("buf:size() is %d, expected 0", buf:size()))
+
+buf:append("hello")
+assert(buf:str()=="hello")
+assert(buf:size() == 5)
+buf:append(", world!")
+assert(buf:size() == 13, sf("buf:size()==%d, expected 13", buf:size()))
+assert(buf:str()=="hello, world!", sf("buf:str()=[%s]", buf:str()))
+
+local buf2 = buffer(5)
+assert(buf2:capacity()==5)
+assert(buf2:size()==0)
+buf2:append("hell")
+assert(buf2:capacity()==5)
+assert(buf2:size()==4)
+buf2:append("o, world!")
+assert(buf2:capacity()==1024)
+assert(buf2:size()==13)
+assert(buf2:str()=="hello, world!")
+assert(buf == buf2)
+
+buf2:append("\n\n\n\n\n\n", 2)
+assert(buf2=="hello, world!\n\n")
+
+buf3 = buffer('   ')
+assert(buf3:size()==3)
+assert(buf3:capacity()==3)
+buf3:fill(0x41)
+assert(buf3=='AAA')
+buf3:clear()
+assert(buf3=='\0\0\0')
+
+buf4 = buffer('abcdef', 3)
+assert(buf4:size()==3)
+assert(buf4:capacity()==3)
+assert(buf4=='abc')

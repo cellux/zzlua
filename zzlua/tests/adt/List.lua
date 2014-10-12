@@ -1,0 +1,12 @@
+local adt = require('adt')
+
+local l = adt.List()
+assert(l:empty())
+l:push(10)
+l:push(20)
+l:push(30)
+assert(l:size() == 3)
+assert(not l:empty())
+assert(l[0] == 10, "l[0]="..l[0])
+assert(l[1] == 20, "l[1]="..l[1])
+assert(l[2] == 30, "l[2]="..l[2])
