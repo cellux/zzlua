@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local bit = require('bit')
 local sf = string.format
 
 ffi.cdef [[
@@ -151,7 +152,12 @@ function M.recv(s, flags)
    -- NN_MSG=-1: nanomsg allocates the buffer for us
    local bytes_received = ffi.C.nn_recv(s, bufptr, -1, flags)
    if bytes_received == -1 then
-      error(sf("nn_recv() failed: %s", nn_error()))
+      if bit.band(flags, M.DONTWAIT) ~= 0 then
+         -- this is normal, there was nothing to process
+         return nil
+      else
+         error(sf("nn_recv() failed: %s", nn_error()))
+      end
    end
    local buf = ffi.string(bufptr[0], bytes_received)
    assert(ffi.C.nn_freemsg(bufptr[0])==0)
