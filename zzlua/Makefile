@@ -24,20 +24,21 @@ LDFLAGS = -Wl,-E -lm -ldl
 
 # zzlua: C core
 ZZ_SRC = $(wildcard *.c)
-ZZ_OBJ = $(patsubst %c,%o,$(ZZ_SRC))
+ZZ_OBJ = $(patsubst %.c,%.o,$(ZZ_SRC))
 $(ZZ_OBJ): $(LUAJIT_LIB)
 
 # zzlua: Lua libraries
-LIB_SRC = $(wildcard lib/*.lua)
-LIB_OBJ = $(patsubst %lua,%o,$(LIB_SRC))
-$(LIB_OBJ): $(LUAJIT_BIN)
+ZZLIB_SRC = $(wildcard lib/*.lua)
+ZZLIB_OBJ = $(patsubst %.lua,%.lo,$(ZZLIB_SRC))
+$(ZZLIB_OBJ): $(LUAJIT_BIN)
 
 # Lua libs are precompiled into object files
 # and then linked into the zzlua executable
-%.o : %.lua
-	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -b -g $< $@
+lib/%.lo : lib/%.lua
+	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -bt o -g $< $@
 
-zzlua: $(ZZ_OBJ) $(LIB_OBJ) $(LUAJIT_LIB)
+zzlua: $(ZZ_OBJ) $(ZZLIB_OBJ) $(LUAJIT_LIB)
+	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 .PHONY: test
 test: zzlua
