@@ -2,6 +2,7 @@ local buffer = require('buffer')
 local sf = string.format
 
 local buf = buffer()
+assert(type(buf:size())=="number", "type(buf:size())="..type(buf:size()))
 assert(buf:size() == 0, sf("buf:size() is %d, expected 0", buf:size()))
 
 buf:append("hello")

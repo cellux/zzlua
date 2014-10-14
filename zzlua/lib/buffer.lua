@@ -2,22 +2,22 @@ local ffi = require('ffi')
 
 ffi.cdef [[
 typedef struct {
-  size_t size;
-  size_t capacity;
+  uint32_t size;
+  uint32_t capacity;
   uint8_t *data;
 } buffer_t;
 
 buffer_t * buffer_new();
-buffer_t * buffer_new_with_capacity(size_t capacity);
-buffer_t * buffer_new_with_data(void *data, size_t size);
+buffer_t * buffer_new_with_capacity(uint32_t capacity);
+buffer_t * buffer_new_with_data(void *data, uint32_t size);
 buffer_t * buffer_new_with_string(char *str);
-buffer_t * buffer_new_with_string_length(char *str, size_t size);
+buffer_t * buffer_new_with_string_length(char *str, uint32_t size);
 
-size_t buffer_size(buffer_t *self);
-size_t buffer_capacity(buffer_t *self);
+uint32_t buffer_size(buffer_t *self);
+uint32_t buffer_capacity(buffer_t *self);
 uint8_t * buffer_data(buffer_t *self);
 
-buffer_t * buffer_append(buffer_t *self, void *data, size_t size);
+buffer_t * buffer_append(buffer_t *self, void *data, uint32_t size);
 int buffer_equals(buffer_t *self, buffer_t *other);
 void buffer_fill(buffer_t *self, uint8_t c);
 void buffer_clear(buffer_t *self);

@@ -25,7 +25,7 @@ buffer_t * buffer_new() {
   return buffer_new_with_capacity(BUFFER_DEFAULT_CAPACITY);
 }
 
-buffer_t * buffer_new_with_capacity(size_t capacity) {
+buffer_t * buffer_new_with_capacity(uint32_t capacity) {
   buffer_t *self = malloc(sizeof(buffer_t));
   if (!self) return NULL;
   self->data = calloc(capacity, 1);
@@ -35,7 +35,7 @@ buffer_t * buffer_new_with_capacity(size_t capacity) {
   return self;
 }
 
-buffer_t * buffer_new_with_data(void *data, size_t size) {
+buffer_t * buffer_new_with_data(void *data, uint32_t size) {
   buffer_t *self = buffer_new_with_capacity(size);
   memcpy(self->data, data, size);
   self->size = size;
@@ -46,15 +46,15 @@ buffer_t * buffer_new_with_string(char *str) {
   return buffer_new_with_string_length(str, strlen(str));
 }
 
-buffer_t * buffer_new_with_string_length(char *str, size_t size) {
+buffer_t * buffer_new_with_string_length(char *str, uint32_t size) {
   return buffer_new_with_data(str, size);
 }
 
-size_t buffer_size(buffer_t *self) {
+uint32_t buffer_size(buffer_t *self) {
   return self->size;
 }
 
-size_t buffer_capacity(buffer_t *self) {
+uint32_t buffer_capacity(buffer_t *self) {
   return self->capacity;
 }
 
@@ -62,7 +62,7 @@ uint8_t * buffer_data(buffer_t *self) {
   return self->data;
 }
 
-buffer_t * buffer_resize(buffer_t *self, size_t n) {
+buffer_t * buffer_resize(buffer_t *self, uint32_t n) {
   n = nearest_multiple_of(1024, n);
   self->data = realloc(self->data, n);
   if (!self->data) return NULL;
@@ -73,8 +73,8 @@ buffer_t * buffer_resize(buffer_t *self, size_t n) {
   return self;
 }
 
-buffer_t * buffer_append(buffer_t *self, const void *data, size_t size) {
-  size_t new_size = self->size + size;
+buffer_t * buffer_append(buffer_t *self, const void *data, uint32_t size) {
+  uint32_t new_size = self->size + size;
   if (new_size > self->capacity) {
     if (buffer_resize(self, new_size)==NULL) {
       return NULL;
