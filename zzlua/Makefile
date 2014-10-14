@@ -100,8 +100,6 @@ test: zzlua
 .PHONY: clean
 clean:
 	rm -f zzlua *.o lib/*.o lib/*.lo
-	$(MAKE) -C $(LUAJIT_DIR) clean
-	$(MAKE) -C $(NANOMSG_DIR) clean
 	rm -f $(CMP_OBJ)
 
 .PHONY: distclean
