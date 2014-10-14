@@ -7,9 +7,37 @@ local sf = string.format
 
 local M = {}
 
-local running = adt.List()
+-- runnable threads
+local runnable = adt.List()
+
+-- threads waiting for their time to come, ordered by wake-up time
 local sleeping = adt.OrderedList(function(st) return st.time end)
+
+-- threads waiting for an event to arrive
+local waiting = {}
+local waiting_count = 0
+
+local function add_waiting(t)
+   assert(waiting[t] == nil)
+   waiting[t] = true
+   waiting_count = waiting_count + 1
+end
+
+local function del_waiting(t)
+   assert(waiting[t] == true)
+   waiting[t] = nil
+   waiting_count = waiting_count - 1
+end
+
+-- callbacks/threads listening to various events
 local listeners = {}
+
+local function add_listener(msg_type, l)
+   if not listeners[msg_type] then
+      listeners[msg_type] = {}
+   end
+   table.insert(listeners[msg_type], l)
+end
 
 local event_sub = nn.socket(nn.AF_SP, nn.SUB)
 nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
@@ -29,30 +57,36 @@ local function SleepingThread(t, time)
    return { t = t, time = time }
 end
 
+local loop -- declare for sched()
+
 local function sched(fn, data)
    if fn then
-      running:push(RunnableThread(coroutine.create(fn), data))
+      runnable:push(RunnableThread(coroutine.create(fn), data))
    else
       loop()
    end
 end
 
-local function loop()
+loop = function()
    local now = time.time()
 
    -- wake up sleeping threads whose time has come
    while sleeping:size() > 0 and sleeping[0].time <= now do
       local st = sleeping:shift()
-      running:push(RunnableThread(st.t, nil))
+      runnable:push(RunnableThread(st.t, nil))
    end
 
    -- fetch next event from the queue
    local msg
-   if running:size() == 0 then
-      -- recv using timeout
-      local wait_until = now + 1
+   if runnable:size() == 0 then
+      -- there are no runnable threads
+      -- we recv using a timeout to avoid spinning
+      local wait_until = now + 1 -- default timeout is 1 second
       if sleeping:size() > 0 then
+         -- but may be shorter (or longer) if there are sleeping threads
          wait_until = sleeping[0].time
+         -- if it's closer than 1 ms, we wait for 1 ms
+         -- (that's the granularity of nn_poll)
          if wait_until - now < 0.001 then
             wait_until = now + 0.001
          end
@@ -68,7 +102,7 @@ local function loop()
       msg = nn.recv(event_sub, nn.DONTWAIT)
    end
 
-   -- process event
+   -- process event (if any)
    if msg then
       local unpacked = msgpack.unpack(msg)
       assert(type(unpacked) == "table")
@@ -80,7 +114,8 @@ local function loop()
          for _,l in ipairs(ls) do
             if type(l) == "thread" then
                -- a sleeping thread, waiting for this event
-               running:push(RunnableThread(l, msg_data))
+               runnable:push(RunnableThread(l, msg_data))
+               del_waiting(l)
             elseif type(l) == "function" then
                -- callback function
                sched(l, msg_data)
@@ -88,13 +123,16 @@ local function loop()
                error(sf("unknown listener type: %s", l))
             end
          end
+         -- we clear all listeners after they got notified, so they
+         -- must re-register if they want to get notified again
          listeners[msg_type] = nil
       end
    end
 
    -- resume next runnable coroutine
-   if running:size() > 0 then
-      local t, data = unpack(running:shift())
+   if runnable:size() > 0 then
+      local rt = runnable:shift()
+      local t, data = rt.t, rt.data
       local ok, rv = coroutine.resume(t, data)
       local status = coroutine.status(t)
       if status == "suspended" then
@@ -102,17 +140,12 @@ local function loop()
             -- the coroutine shall be resumed at the given time
             sleeping:push(SleepingThread(t, rv))
          elseif rv then
-            -- rv is the event which shall wake up this coroutine when
-            -- it arrives
-            local msg_type = rv
-            if not listeners[msg_type] then
-               listeners[msg_type] = {}
-            end
-            table.insert(listeners[msg_type], t)
-            waiting[t] = true
+            -- rv is the event which shall wake up this coroutine
+            add_listener(rv, t)
+            add_waiting(t)
          else
             -- the coroutine shall be resumed in the next loop
-            running:push(RunnableThread(t, nil))
+            runnable:push(RunnableThread(t, nil))
          end
       elseif status == "dead" then
          if not ok then
@@ -124,15 +157,19 @@ local function loop()
          error(sf("unhandled status returned from coroutine.status(): %s", status))
       end
    end
-   if running:size() > 0 or sleeping:size() > 0 then
+   if runnable:size() > 0 or sleeping:size() > 0 or waiting_count > 0 then
       loop()
    end
 end
 
 M.yield = coroutine.yield
 
+function M.on(msg_type, callback)
+   add_listener(msg_type, callback)
+end
+
 function M.emit(msg_type, msg_data)
-   local msg = msgpack.pack{msg_type, msg_data}
+   local msg = msgpack.pack({msg_type, msg_data})
    nn.send(event_pub, msg)
 end
 

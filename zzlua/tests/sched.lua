@@ -1,4 +1,7 @@
 local sched = require('sched')
+local sf = string.format
+
+-- coroutines
 
 local coll = {}
 
@@ -35,3 +38,35 @@ assert(#expected == #coll)
 for i=1,#expected do
    assert(coll[i] == expected[i])
 end
+
+-- data passed to sched gets forwarded to coroutine
+
+local output
+sched(function(x) output = x end, 42)
+sched()
+assert(output == 42)
+
+-- emit
+
+local output = nil
+sched.on('my-signal', function(my_signal_data) output = my_signal_data end)
+sched.emit('my-signal', 42.5)
+sched()
+assert(output == 42.5)
+
+-- sleep waiting for event
+
+local output = nil
+sched(function()
+         local wake_up_data = sched.yield('wake-up')
+         assert(type(wake_up_data)=="table")
+         assert(wake_up_data.value == 43)
+         output = wake_up_data.value
+      end)
+-- we must make sure that the emit happens when the other thread is
+-- already waiting for the event so we schedule this second
+sched(function()
+         sched.emit('wake-up', { value = 43 })
+      end)
+sched()
+assert(output == 43, sf("output=%s", output))
