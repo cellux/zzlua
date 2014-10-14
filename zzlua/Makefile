@@ -71,7 +71,7 @@ $(CMP_OBJ): $(CMP_DIR)/.stamp
 
 CC = gcc
 CFLAGS = -I./lib -I$(LUAJIT_SRC) -I$(NANOMSG_SRC) -I$(CMP_DIR)
-LDFLAGS = -Wl,-E -lm -ldl
+LDFLAGS = -Wl,-E -lm -ldl -lpthread -lanl
 
 # zzlua: low-level support for Lua libraries
 ZZ_LIB_C_SRC = $(wildcard lib/*.c)
@@ -89,8 +89,17 @@ lib/%.lo : lib/%.lua $(LUAJIT_BIN)
 
 zzlua.o: $(LUAJIT_LIB)
 
-zzlua: zzlua.o $(ZZ_LIB_C_OBJ) $(ZZ_LIB_LUA_OBJ) $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
-	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
+# zzlua + libs + support
+ZZ_OBJ = zzlua.o $(ZZ_LIB_C_OBJ) $(ZZ_LIB_LUA_OBJ)
+
+# libraries and object files to be searched for missing externs
+ZZ_LIB = $(LUAJIT_LIB) $(CMP_OBJ)
+
+# libraries and object files to be linked in as a whole
+ZZ_LIB_WHOLE = $(NANOMSG_LIB)
+
+zzlua: $(ZZ_OBJ) $(ZZ_LIB) $(ZZ_LIB_WHOLE)
+	$(CC) $(CFLAGS) $(ZZ_OBJ) $(ZZ_LIB) -Wl,--whole-archive $(ZZ_LIB_WHOLE) -Wl,--no-whole-archive $(LDFLAGS) -o $@
 
 .PHONY: test
 test: zzlua
