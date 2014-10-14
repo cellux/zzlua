@@ -8,6 +8,7 @@
 #define BUFFER
 
 #include <inttypes.h>
+#include <stdbool.h>
 
 #ifndef BUFFER_DEFAULT_CAPACITY
 #define BUFFER_DEFAULT_CAPACITY 256
@@ -36,5 +37,17 @@ void buffer_fill(buffer_t *self, uint8_t c);
 void buffer_clear(buffer_t *self);
 
 void buffer_free(buffer_t *self);
+
+/* cmp interoperability */
+
+struct cmp_ctx_s;
+
+typedef struct {
+  buffer_t *buffer;
+  uint32_t pos;
+} buffer_cmp_state;
+
+bool buffer_cmp_reader(struct cmp_ctx_s *ctx, void *data, size_t limit);
+size_t buffer_cmp_writer(struct cmp_ctx_s *ctx, const void *data, size_t count);
 
 #endif

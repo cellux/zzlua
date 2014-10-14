@@ -76,12 +76,11 @@ LDFLAGS = -Wl,-E -lm -ldl
 # zzlua: low-level support for Lua libraries
 ZZ_LIB_C_SRC = $(wildcard lib/*.c)
 ZZ_LIB_C_OBJ = $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
-lib/cmp_buffer.o: $(CMP_OBJ)
+lib/buffer.o: lib/buffer.h $(CMP_OBJ)
 
 # zzlua: Lua libraries
 ZZ_LIB_LUA_SRC = $(wildcard lib/*.lua)
 ZZ_LIB_LUA_OBJ = $(patsubst %.lua,%.lo,$(ZZ_LIB_LUA_SRC))
-lib/buffer.lo: lib/buffer.c lib/buffer.h
 
 # Lua libs are precompiled into object files
 # and then linked into the zzlua executable
