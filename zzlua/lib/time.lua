@@ -1,8 +1,11 @@
 local ffi = require('ffi')
 
+-- use size_t instead of long int because it has the right size on
+-- both 32 and 64 bit architectures
+
 ffi.cdef [[
-typedef long int __time_t;
-typedef long int __suseconds_t;
+typedef size_t __time_t;
+typedef size_t __suseconds_t;
 
 struct timeval {
   __time_t tv_sec;            /* Seconds.  */
@@ -17,7 +20,7 @@ struct timezone {
 int gettimeofday (struct timeval *TP,
                   struct timezone *TZP);
 
-typedef long int __syscall_slong_t;
+typedef size_t __syscall_slong_t;
 
 struct timespec {
   __time_t tv_sec;
@@ -37,14 +40,16 @@ function M.time()
    if ffi.C.gettimeofday(TP, nil) ~= 0 then
       error("gettimeofday() failed")
    end
-   return TP.tv_sec + TP.tv_usec / 1e6
+   -- on 64-bit architectures TP.tv_sec and TP.tv_usec are boxed
+   return tonumber(TP.tv_sec) + tonumber(TP.tv_usec) / 1e6
 end
 
 function M.sleep(seconds)
    -- sleep for the given number of seconds
    local REQUESTED_TIME = ffi.new("struct timespec")
-   REQUESTED_TIME.tv_sec = math.floor(seconds)
-   local float_part = seconds - REQUESTED_TIME.tv_sec
+   local integer_part = math.floor(seconds)
+   REQUESTED_TIME.tv_sec = integer_part
+   local float_part = seconds - integer_part
    local ns = float_part * 1e9
    REQUESTED_TIME.tv_nsec = ns
    local REMAINING = ffi.new("struct timespec")
