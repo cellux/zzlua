@@ -1,4 +1,4 @@
 *.o
 *.lo
-/LuaJIT*
+/deps
 /zzlua
