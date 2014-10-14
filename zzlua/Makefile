@@ -81,6 +81,7 @@ lib/cmp_buffer.o: $(CMP_OBJ)
 # zzlua: Lua libraries
 ZZ_LIB_LUA_SRC = $(wildcard lib/*.lua)
 ZZ_LIB_LUA_OBJ = $(patsubst %.lua,%.lo,$(ZZ_LIB_LUA_SRC))
+lib/buffer.lo: lib/buffer.c lib/buffer.h
 
 # Lua libs are precompiled into object files
 # and then linked into the zzlua executable
