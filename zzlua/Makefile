@@ -1,31 +1,82 @@
 .DEFAULT_GOAL = zzlua
 
+CURL = curl -k -L
+
+### statically linked dependencies ###
+
+# LuaJIT
+
 LUAJIT_VER = 2.0.3
 LUAJIT_TGZ = LuaJIT-$(LUAJIT_VER).tar.gz
 LUAJIT_URL = http://luajit.org/download/$(LUAJIT_TGZ)
-LUAJIT_DIR = LuaJIT-$(LUAJIT_VER)
+LUAJIT_DIR = deps/LuaJIT-$(LUAJIT_VER)
 LUAJIT_SRC = $(LUAJIT_DIR)/src
 LUAJIT_LIB = $(LUAJIT_SRC)/libluajit.a
 LUAJIT_BIN = $(LUAJIT_SRC)/luajit
 
-$(LUAJIT_TGZ):
-	wget -O $@ $(LUAJIT_URL)
+deps/$(LUAJIT_TGZ):
+	mkdir -p deps
+	$(CURL) -o $@ $(LUAJIT_URL)
 
-$(LUAJIT_DIR): $(LUAJIT_TGZ)
-	tar xvzf $^
+$(LUAJIT_DIR)/.stamp: deps/$(LUAJIT_TGZ)
+	cd deps && tar xvzf $(LUAJIT_TGZ)
 	touch $@
 
-$(LUAJIT_BIN) $(LUAJIT_LIB): $(LUAJIT_DIR)
-	$(MAKE) -C $^
+$(LUAJIT_BIN) $(LUAJIT_LIB): $(LUAJIT_DIR)/.stamp
+	$(MAKE) -C $(LUAJIT_DIR)
+
+# nanomsg
+
+NANOMSG_VER = 0.4-beta
+NANOMSG_TGZ = nanomsg-$(NANOMSG_VER).tar.gz
+NANOMSG_URL = http://download.nanomsg.org/$(NANOMSG_TGZ)
+NANOMSG_DIR = deps/nanomsg-$(NANOMSG_VER)
+NANOMSG_LIB = $(NANOMSG_DIR)/.libs/libnanomsg.a
+NANOMSG_SRC = $(NANOMSG_DIR)/src
+
+deps/$(NANOMSG_TGZ):
+	mkdir -p deps
+	$(CURL) -o $@ $(NANOMSG_URL)
+
+$(NANOMSG_DIR)/.stamp: deps/$(NANOMSG_TGZ)
+	cd deps && tar xvzf $(NANOMSG_TGZ)
+	touch $@
+
+$(NANOMSG_DIR)/Makefile: $(NANOMSG_DIR)/.stamp
+	cd $(NANOMSG_DIR) && ./configure
+
+$(NANOMSG_LIB): $(NANOMSG_DIR)/Makefile
+	$(MAKE) -C $(NANOMSG_DIR)
+
+# cmp
+
+CMP_VER = 4
+CMP_TGZ = cmp-$(CMP_VER).tar.gz
+CMP_URL = https://github.com/camgunz/cmp/archive/v$(CMP_VER).tar.gz
+CMP_DIR = deps/cmp-$(CMP_VER)
+CMP_OBJ = $(CMP_DIR)/cmp.o
+
+deps/$(CMP_TGZ):
+	mkdir -p deps
+	$(CURL) -o $@ $(CMP_URL)
+
+$(CMP_DIR)/.stamp: deps/$(CMP_TGZ)
+	cd deps && tar xvzf $(CMP_TGZ)
+	touch $@
+
+$(CMP_OBJ): $(CMP_DIR)/.stamp
+	cd $(CMP_DIR) && gcc -c cmp.c
+
+### main ###
 
 CC = gcc
-CFLAGS = -I$(LUAJIT_SRC)
+CFLAGS = -I$(LUAJIT_SRC) -I$(NANOMSG_SRC) -I$(CMP_DIR)
 LDFLAGS = -Wl,-E -lm -ldl
 
 # zzlua: C core
 ZZ_SRC = $(wildcard *.c)
 ZZ_OBJ = $(patsubst %.c,%.o,$(ZZ_SRC))
-$(ZZ_OBJ): $(LUAJIT_LIB)
+$(ZZ_OBJ): $(LUAJIT_LIB) $(CMP_OBJ)
 
 # zzlua: Lua libraries
 ZZLIB_SRC = $(wildcard lib/*.lua)
@@ -37,7 +88,7 @@ $(ZZLIB_OBJ): $(LUAJIT_BIN)
 lib/%.lo : lib/%.lua
 	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -bt o -g $< $@
 
-zzlua: $(ZZ_OBJ) $(ZZLIB_OBJ) $(LUAJIT_LIB)
+zzlua: $(ZZ_OBJ) $(ZZLIB_OBJ) $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
 
 .PHONY: test
@@ -46,5 +97,11 @@ test: zzlua
 
 .PHONY: clean
 clean:
-	rm -f *.o lib/*.o
+	rm -f zzlua *.o lib/*.lo
 	$(MAKE) -C $(LUAJIT_DIR) clean
+	$(MAKE) -C $(NANOMSG_DIR) clean
+	rm -f $(CMP_OBJ)
+
+.PHONY: distclean
+distclean: clean
+	rm -rf deps
