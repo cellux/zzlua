@@ -1,4 +1,6 @@
-local ffi = require("ffi")
+local ffi = require('ffi')
+local nn = require('nanomsg')
+local sf = string.format
 
 ffi.cdef [[
 
@@ -46,7 +48,7 @@ enum JackPortFlags {
   JackPortIsOutput   = 0x2,
   JackPortIsPhysical = 0x4,
   JackPortCanMonitor = 0x8,
-  JackPortIsTerminal = 0x10,
+  JackPortIsTerminal = 0x10
 };
 
 typedef enum {
@@ -54,7 +56,7 @@ typedef enum {
   JackTransportRolling     = 1, /**< Transport playing */
   JackTransportLooping     = 2, /**< For OLD_TRANSPORT, now ignored */
   JackTransportStarting    = 3, /**< Waiting for sync ready */
-  JackTransportNetStarting = 4, /**< Waiting for sync ready on the network*/
+  JackTransportNetStarting = 4  /**< Waiting for sync ready on the network*/
 } jack_transport_state_t;
 
 typedef enum {
@@ -297,43 +299,48 @@ size_t jack_ringbuffer_write(jack_ringbuffer_t *rb, const char *src, size_t cnt)
 void   jack_ringbuffer_write_advance(jack_ringbuffer_t *rb, size_t cnt);
 size_t jack_ringbuffer_write_space(const jack_ringbuffer_t *rb);
 
-/* Lua ctype for Jack client objects */
+/* zz addons */
 
-struct jack_client_ct {
+static const int ZZ_JACK_PORT_AUDIO = 1;
+static const int ZZ_JACK_PORT_MIDI  = 2;
+
+static const int ZZ_PORTS_MAX = 32;
+
+struct zz_jack_params {
   jack_client_t *client;
+  jack_ringbuffer_t *midi_rb;
+  jack_port_t* ports[ZZ_PORTS_MAX];
+  int port_types[ZZ_PORTS_MAX];
+  int port_flags[ZZ_PORTS_MAX];
+  int nports;
+  int event_socket;
 };
+
+int zz_jack_process_callback (jack_nframes_t nframes, void *arg);
 
 ]]
 
 local jack = ffi.load("jack")
 
-local g_midi_rb -- midi ringbuffer
-local g_client -- client instance
+local ZZ_PORTS_MAX = jack.ZZ_PORTS_MAX
+
+local ZZ_JACK_PORT_AUDIO = jack.ZZ_JACK_PORT_AUDIO
+local ZZ_JACK_PORT_MIDI  = jack.ZZ_JACK_PORT_MIDI
+
+local g_midi_rb     -- midi ringbuffer
+local g_client      -- client instance
+local g_client_name -- client short name
+
+local g_params = ffi.new("struct zz_jack_params")
+
+local ports_by_name = {} -- name => { jack_port_t* port, int port_index }
 
 local M = {}
 
-M.JACK_DEFAULT_AUDIO_TYPE = "32 bit float mono audio"
-M.JACK_DEFAULT_MIDI_TYPE  = "8 bit raw midi"
+M.DEFAULT_AUDIO_TYPE = "32 bit float mono audio"
+M.DEFAULT_MIDI_TYPE  = "8 bit raw midi"
 
-local Client_mt = {}
-
-function Client_mt:close()
-   return jack.jack_client_close(self.client)
-end
-
-function Client_mt:activate()
-   return jack.jack_activate(self.client)
-end
-
-function Client_mt:deactivate()
-   return jack.jack_deactivate(self.client)
-end
-
-Client_mt.__index = Client_mt
-
-local Client_ct = ffi.metatype("struct jack_client_ct", Client_mt)
-
-function M.open(client_name)
+function M.client_open(client_name)
    if g_client then
       error("attempt to create two Jack clients (there can be only one)")
    end
@@ -341,47 +348,123 @@ function M.open(client_name)
    local status = ffi.new("jack_status_t[1]")
    local client = jack.jack_client_open(client_name, options, status)
    if client ~= nil then
-      g_client = Client_ct(client)
+      g_client = client
+      g_client_name = client_name
       g_midi_rb = jack.jack_ringbuffer_create(4096)
-      assert(g_midi_rb, "jack_ringbuffer_create() failed")
+      assert(g_midi_rb ~= nil, "jack_ringbuffer_create() failed")
+      g_params.client = g_client
+      g_params.midi_rb = g_midi_rb
+      g_params.nports = 0
+      local event_socket = nn.socket(nn.AF_SP, nn.PUB)
+      nn.connect(event_socket, "inproc://events")
+      g_params.event_socket = event_socket
+      local rv = jack.jack_set_process_callback(g_client,
+                                                ffi.C.zz_jack_process_callback,
+                                                g_params)
+      if rv ~= 0 then
+         error("jack_set_process_callback() failed")
+      end
+      local rv = jack.jack_activate(g_client)
+      if rv ~= 0 then
+         error("jack_activate() failed")
+      end
    end
    return g_client, tonumber(status[0])
 end
 
 local function assert_client()
-   assert(g_client, "you must create a jack client before invoking any jack functions")
+   assert(g_client, "you must create a jack client before invoking this jack function")
 end
 
-function M.activate()
+function M.send_midi(port, ...)
    assert_client()
-   return g_client:activate()
-end
-
-function M.deactivate()
-   assert_client()
-   return g_client:deactivate()
-end
-
-function M.write_midi_bytes(...)
-   assert_client()
-   local bytes = {...}
-   local len = #bytes
-   local buf = ffi.new("uint8_t[?]", len)
-   for i=1,len do
-      buf[i-1] = bytes[i]
+   if not ports_by_name[port] then
+      error(sf("send_midi: invalid port: %s", port))
    end
-   local bytes_written = jack.jack_ringbuffer_write(g_midi_rb, buf, len)
-   if bytes_written ~= len then
+   local port, port_index = unpack(ports_by_name[port])
+   local data = {...}
+   local data_size = #data
+   local buf_size = 2+data_size
+   local buf = ffi.new("uint8_t[?]", buf_size)
+   buf[0] = port_index
+   buf[1] = data_size
+   for i=1,data_size do
+      buf[2+i-1] = data[i]
+   end
+   local bytes_written = jack.jack_ringbuffer_write(g_midi_rb, buf, buf_size)
+   if bytes_written ~= buf_size then
       error("write error: jack midi ringbuffer is full")
    end
 end
 
-function M.close()
+function M.port_register(name, type, flags)
    assert_client()
+   if ports_by_name[name] then
+      error(sf("this port has been already registered: %s", name))
+   end
+   local port_index = g_params.nports
+   if port_index >= ZZ_PORTS_MAX then
+      error(sf("reached max number of Jack ports (%d)", ZZ_PORTS_MAX))
+   end
+   local port = jack.jack_port_register(g_client, name, type, flags, 0)
+   if port == nil then
+      error("jack_port_register() failed")
+   end
+   ports_by_name[name] = { port, port_index }
+   g_params.ports[port_index] = port
+   if type == M.DEFAULT_AUDIO_TYPE then
+      g_params.port_types[port_index] = ZZ_JACK_PORT_AUDIO
+   elseif type == M.DEFAULT_MIDI_TYPE then
+      g_params.port_types[port_index] = ZZ_JACK_PORT_MIDI
+   else
+      error(sf("invalid jack port type: %s", type))
+   end
+   g_params.port_flags[port_index] = flags
+   g_params.nports = g_params.nports + 1
+   return port
+end
+
+local function fq_port_name(port_name)
+   if string.find(port_name, ":", 1, true) then
+      return port_name
+   else
+      -- prepend client name to make it fully qualified
+      return sf("%s:%s", g_client_name, port_name)
+   end
+end
+
+function M.connect(src_port, dst_port)
+   assert_client()
+   src_port = fq_port_name(src_port)
+   dst_port = fq_port_name(dst_port)
+   local rv = jack.jack_connect(g_client, src_port, dst_port)
+   if rv ~= 0 then
+      error("jack_connect() failed")
+   end
+   return rv
+end
+
+local function unregister_ports()
+   for i=1,g_params.nports do
+      jack.jack_port_unregister(g_client, g_params.ports[i-1])
+   end
+   ports_by_name = {}
+   g_params.nports = 0
+end
+
+function M.client_close()
+   assert_client()
+   jack.jack_deactivate(g_client)
+   nn.close(g_params.event_socket)
+   unregister_ports()
+   g_params.event_socket = 0
    jack.jack_ringbuffer_free(g_midi_rb)
+   g_params.midi_rb = nil
    g_midi_rb = nil
-   local rv = g_client:close()
+   local rv = jack.jack_client_close(g_client)
+   g_params.client = nil
    g_client = nil
+   g_client_name = nil
    return rv
 end
 
