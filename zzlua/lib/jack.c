@@ -32,6 +32,7 @@ int zz_jack_process_callback (jack_nframes_t nframes, void *arg) {
       }
       else {
         /* process midi messages (send them out) */
+        /* WARNING: this code cannot handle ZZ_PORTS_MAX > 32 */
         uint32_t port_initialized = 0;
         void *port_buffers[ZZ_PORTS_MAX];
         int i = 0;
