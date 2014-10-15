@@ -33,12 +33,12 @@ int zz_jack_process_callback (jack_nframes_t nframes, void *arg) {
       else {
         /* process midi messages (send them out) */
         uint32_t port_initialized = 0;
-        void *port_buffers[32];
+        void *port_buffers[ZZ_PORTS_MAX];
         int i = 0;
         while (i < bytes_read) {
           unsigned char port_index = midi_buf[i++];
-          if (port_index >= 32) {
-            fprintf(stderr, "midi out is not supported for ports with index >= 32\n");
+          if (port_index >= ZZ_PORTS_MAX) {
+            fprintf(stderr, "midi out is not supported for ports with index >= %d\n", ZZ_PORTS_MAX);
           }
           else if (port_index >= params->nports) {
             fprintf(stderr, "invalid port_index: %d, must be < %d\n", port_index, params->nports);
