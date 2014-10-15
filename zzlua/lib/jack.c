@@ -105,6 +105,6 @@ int zz_jack_process_callback (jack_nframes_t nframes, void *arg) {
       cmp_state.pos = 0;
     }
   }
-  free(cmp_buf);
+  buffer_free(cmp_buf);
   return 0;
 }
