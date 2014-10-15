@@ -71,7 +71,7 @@ $(CMP_OBJ): $(CMP_DIR)/.stamp
 
 CC = gcc
 CFLAGS = -I./lib -I$(LUAJIT_SRC) -I$(NANOMSG_SRC) -I$(CMP_DIR)
-LDFLAGS = -Wl,-E -lm -ldl -lpthread -lanl
+LDFLAGS = -Wl,-E -lm -ldl -lpthread -lanl -ljack
 
 # zzlua: low-level support for Lua libraries
 ZZ_LIB_C_SRC = $(wildcard lib/*.c)
