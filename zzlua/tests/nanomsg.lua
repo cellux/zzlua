@@ -9,10 +9,10 @@ end
 
 local sub_sock = nn.socket(nn.AF_SP, nn.SUB)
 nn.setsockopt(sub_sock, nn.SUB, nn.SUB_SUBSCRIBE, "")
-nn.connect(sub_sock, "inproc://messages")
+nn.bind(sub_sock, "inproc://messages")
 
 local pub_sock = nn.socket(nn.AF_SP, nn.PUB)
-nn.bind(pub_sock, "inproc://messages") -- bind the PUB, connect to SUB
+nn.connect(pub_sock, "inproc://messages")
 nn.send(pub_sock, "hello")
 
 local poll = nn.Poll()

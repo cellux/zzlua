@@ -41,13 +41,13 @@ end
 
 local event_sub = nn.socket(nn.AF_SP, nn.SUB)
 nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
-nn.connect(event_sub, "inproc://events")
+nn.bind(event_sub, "inproc://events")
 
 local sub_poll = nn.Poll()
 sub_poll:add(event_sub, nn.POLLIN)
 
 local event_pub = nn.socket(nn.AF_SP, nn.PUB)
-nn.bind(event_pub, "inproc://events")
+nn.connect(event_pub, "inproc://events")
 
 local function RunnableThread(t, data)
    return { t = t, data = data }
