@@ -26,7 +26,9 @@ int zz_jack_process_callback (jack_nframes_t nframes, void *arg) {
       jack_ringbuffer_reset(params->midi_rb);
     }
     else {
-      size_t bytes_read = jack_ringbuffer_read(params->midi_rb, midi_buf, nbytes);
+      size_t bytes_read = jack_ringbuffer_read(params->midi_rb,
+                                               (char*) midi_buf,
+                                               nbytes);
       if (bytes_read != nbytes) {
         fprintf(stderr, "jack_ringbuffer_read() failed!\n");
       }

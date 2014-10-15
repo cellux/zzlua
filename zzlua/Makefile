@@ -70,7 +70,7 @@ $(CMP_OBJ): $(CMP_DIR)/.stamp
 ### main ###
 
 CC = gcc
-CFLAGS = -I./lib -I$(LUAJIT_SRC) -I$(NANOMSG_SRC) -I$(CMP_DIR)
+CFLAGS = -Wall -I./lib -I$(LUAJIT_SRC) -I$(NANOMSG_SRC) -I$(CMP_DIR)
 LDFLAGS = -Wl,-E -lm -ldl -lpthread -lanl -ljack
 
 # zzlua: low-level support for Lua libraries
