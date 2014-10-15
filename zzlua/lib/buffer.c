@@ -48,14 +48,6 @@ buffer_t * buffer_new_with_data(void *data, uint32_t size) {
   return self;
 }
 
-buffer_t * buffer_new_with_string(char *str) {
-  return buffer_new_with_string_length(str, strlen(str));
-}
-
-buffer_t * buffer_new_with_string_length(char *str, uint32_t size) {
-  return buffer_new_with_data(str, size);
-}
-
 uint32_t buffer_size(buffer_t *self) {
   return self->size;
 }

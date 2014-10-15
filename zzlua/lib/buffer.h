@@ -23,8 +23,6 @@ typedef struct {
 buffer_t * buffer_new();
 buffer_t * buffer_new_with_capacity(uint32_t capacity);
 buffer_t * buffer_new_with_data(void *data, uint32_t size);
-buffer_t * buffer_new_with_string(char *str);
-buffer_t * buffer_new_with_string_length(char *str, uint32_t size);
 
 uint32_t buffer_size(buffer_t *self);
 uint32_t buffer_capacity(buffer_t *self);
