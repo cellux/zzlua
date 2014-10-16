@@ -62,8 +62,14 @@ sched()
 assert.type(sample_rate, 'number')
 assert.type(buffer_size, 'number')
 assert.equals(#ports, 2, "#ports")
-assert.equals(connected_a, ports[1])
-assert.equals(connected_b, ports[2])
+-- the order of port-registration events is undeterministic
+if connected_a == ports[1] then
+   assert.equals(connected_a, ports[1])
+   assert.equals(connected_b, ports[2])
+else
+   assert.equals(connected_a, ports[2])
+   assert.equals(connected_b, ports[1])
+end
 assert.equals(midi_data, { 0x90, 60, 100 })
 
 assert(jack.client_close()==0)
