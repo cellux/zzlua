@@ -398,8 +398,8 @@ function M.client_open(client_name)
                ffi.C.zz_jack_port_registration_callback)
       setup_cb("jack_set_port_connect_callback",
                ffi.C.zz_jack_port_connect_callback)
-      setup_cb("jack_set_port_rename_callback",
-               ffi.C.zz_jack_port_rename_callback)
+      --setup_cb("jack_set_port_rename_callback",
+      --         ffi.C.zz_jack_port_rename_callback)
       setup_cb("jack_set_xrun_callback",
                ffi.C.zz_jack_xrun_callback)
       local rv = jack.jack_activate(g_client)
