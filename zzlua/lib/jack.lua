@@ -482,6 +482,46 @@ function M.connect(src_port, dst_port)
    return rv
 end
 
+function M.port_by_id(port_id)
+   assert_client()
+   return jack.jack_port_by_id(g_client, port_id)
+end
+
+function M.port_by_name(port_name)
+   assert_client()
+   return jack.jack_port_by_name(g_client, port_name)
+end
+
+function M.port_exists(port_name)
+   assert_client()
+   return M.port_by_name(port_name) ~= nil
+end
+
+local function resolve_port(p)
+   if type(p) == "number" then
+      return M.port_by_id(p)
+   elseif type(p) == "string" then
+      return M.port_by_name(fq_port_name(p))
+   else
+      return p
+   end
+end
+
+function M.port_name(port)
+   assert_client()
+   return ffi.string(jack.jack_port_name(resolve_port(port)))
+end
+
+function M.port_type(port)
+   assert_client()
+   return jack.jack_port_type(resolve_port(port))
+end
+
+function M.port_flags(port)
+   assert_client()
+   return jack.jack_port_flags(resolve_port(port))
+end
+
 local function unregister_ports()
    for i=1,g_params.nports do
       jack.jack_port_unregister(g_client, g_params.ports[i-1])
