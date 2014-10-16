@@ -27,8 +27,8 @@ struct timespec {
   __syscall_slong_t tv_nsec;
 };
 
-int nanosleep (const struct timespec *REQUESTED_TIME,
-               struct timespec *REMAINING);
+int nanosleep (const struct timespec *requested_time,
+               struct timespec *remaining);
 
 ]]
 
@@ -46,14 +46,14 @@ end
 
 function M.sleep(seconds)
    -- sleep for the given number of seconds
-   local REQUESTED_TIME = ffi.new("struct timespec")
+   local requested_time = ffi.new("struct timespec")
    local integer_part = math.floor(seconds)
-   REQUESTED_TIME.tv_sec = integer_part
+   requested_time.tv_sec = integer_part
    local float_part = seconds - integer_part
    local ns = float_part * 1e9
-   REQUESTED_TIME.tv_nsec = ns
-   local REMAINING = ffi.new("struct timespec")
-   if ffi.C.nanosleep(REQUESTED_TIME, REMAINING) ~= 0 then
+   requested_time.tv_nsec = ns
+   local remaining = ffi.new("struct timespec")
+   if ffi.C.nanosleep(requested_time, remaining) ~= 0 then
       error("nanosleep() failed")
    end
 end
