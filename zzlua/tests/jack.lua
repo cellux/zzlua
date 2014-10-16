@@ -17,18 +17,53 @@ if not client then
    end
 end
 
-jack.port_register("midi_out", jack.DEFAULT_MIDI_TYPE, jack.JackPortIsOutput)
-jack.port_register("midi_in", jack.DEFAULT_MIDI_TYPE, jack.JackPortIsInput)
-jack.connect("midi_out", "midi_in")
+local sample_rate
+local buffer_size
+local ports = {}
+local connected_a, connected_b
+local midi_data
 
-local midi_data = nil
+sched.on_forever('jack.sample-rate', function(data)
+                                        sample_rate = data
+                                     end)
+sched.on_forever('jack.buffer-size', function(data)
+                                        buffer_size = data
+                                     end)
+sched.on_forever('jack.port-registration', function(data)
+                                              local port, reg = unpack(data)
+                                              assert(reg==1)
+                                              table.insert(ports, port)
+                                           end)
+sched.on_forever('jack.port-connect', function(data)
+                                         local a, b, connect = unpack(data)
+                                         assert(connect==1)
+                                         connected_a = a
+                                         connected_b = b
+                                      end)
+
 sched(function()
-         jack.send_midi("midi_out", 0x90, 60, 100)
-      end)
-sched(function()
-         midi_data = sched.yield('jack.midi')
+         jack.port_register("midi_out",
+                            jack.DEFAULT_MIDI_TYPE,
+                            jack.JackPortIsOutput)
+         jack.port_register("midi_in",
+                            jack.DEFAULT_MIDI_TYPE,
+                            jack.JackPortIsInput)
+         jack.connect("midi_out", "midi_in")
+         
+         sched(function()
+                  jack.send_midi("midi_out", 0x90, 60, 100)
+               end)
+         sched(function()
+                  midi_data = sched.yield('jack.midi')
+               end)
       end)
 sched()
+
+assert.type(sample_rate, 'number')
+assert.type(buffer_size, 'number')
+assert.equals(#ports, 2, "#ports")
+assert.equals(connected_a, ports[1])
+assert.equals(connected_b, ports[2])
 assert.equals(midi_data, { 0x90, 60, 100 })
 
 assert(jack.client_close()==0)

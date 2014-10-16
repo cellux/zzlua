@@ -299,6 +299,12 @@ size_t jack_ringbuffer_write(jack_ringbuffer_t *rb, const char *src, size_t cnt)
 void   jack_ringbuffer_write_advance(jack_ringbuffer_t *rb, size_t cnt);
 size_t jack_ringbuffer_write_space(const jack_ringbuffer_t *rb);
 
+/* statistics */
+
+float jack_get_max_delayed_usecs (jack_client_t *client);
+float jack_get_xrun_delayed_usecs (jack_client_t *client);
+void  jack_reset_max_delayed_usecs (jack_client_t *client);
+
 /* zz addons */
 
 static const int ZZ_JACK_PORT_AUDIO = 1;
@@ -316,7 +322,15 @@ struct zz_jack_params {
   int event_socket;
 };
 
-int zz_jack_process_callback (jack_nframes_t nframes, void *arg);
+int  zz_jack_process_callback (jack_nframes_t, void *);
+int  zz_jack_xrun_callback(void *);
+void zz_jack_info_shutdown_callback(jack_status_t, const char *, void *);
+int  zz_jack_buffer_size_callback(jack_nframes_t, void *);
+int  zz_jack_sample_rate_callback(jack_nframes_t, void *);
+void zz_jack_port_registration_callback(jack_port_id_t, int, void *);
+void zz_jack_client_registration_callback(const char*, int, void *);
+void zz_jack_port_connect_callback(jack_port_id_t, jack_port_id_t, int, void *);
+void zz_jack_port_rename_callback(jack_port_id_t, const char *, const char *, void *);
 
 ]]
 
@@ -358,12 +372,36 @@ function M.client_open(client_name)
       local event_socket = nn.socket(nn.AF_SP, nn.PUB)
       nn.connect(event_socket, "inproc://events")
       g_params.event_socket = event_socket
-      local rv = jack.jack_set_process_callback(g_client,
-                                                ffi.C.zz_jack_process_callback,
-                                                g_params)
-      if rv ~= 0 then
-         error("jack_set_process_callback() failed")
+      -- setup callbacks
+      local function setup_cb(setup_fn_name, cb_func, skip_check)
+         local setup_fn = jack[setup_fn_name]
+         if setup_fn == nil then
+            error(sf("invalid setup_fn_name: %s", setup_fn_name))
+         end
+         local rv = setup_fn(g_client, cb_func, g_params)
+         if not skip_check and rv ~= 0 then
+            error(sf("%s() failed", setup_fn_name))
+         end
       end
+      setup_cb("jack_set_process_callback",
+               ffi.C.zz_jack_process_callback)
+      setup_cb("jack_on_info_shutdown",
+               ffi.C.zz_jack_info_shutdown_callback,
+               true) -- jack_on_info_shutdown() returns void
+      setup_cb("jack_set_buffer_size_callback",
+               ffi.C.zz_jack_buffer_size_callback)
+      setup_cb("jack_set_sample_rate_callback",
+               ffi.C.zz_jack_sample_rate_callback)
+      setup_cb("jack_set_client_registration_callback",
+               ffi.C.zz_jack_client_registration_callback)
+      setup_cb("jack_set_port_registration_callback",
+               ffi.C.zz_jack_port_registration_callback)
+      setup_cb("jack_set_port_connect_callback",
+               ffi.C.zz_jack_port_connect_callback)
+      setup_cb("jack_set_port_rename_callback",
+               ffi.C.zz_jack_port_rename_callback)
+      setup_cb("jack_set_xrun_callback",
+               ffi.C.zz_jack_xrun_callback)
       local rv = jack.jack_activate(g_client)
       if rv ~= 0 then
          error("jack_activate() failed")
