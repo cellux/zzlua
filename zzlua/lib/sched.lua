@@ -2,6 +2,7 @@ local adt = require('adt')
 local time = require('time')
 local nn = require('nanomsg')
 local msgpack = require('msgpack')
+local inspect = require('inspect')
 
 local sf = string.format
 
@@ -31,12 +32,16 @@ end
 
 -- callbacks/threads listening to various events
 local listeners = {}
+local forever_listeners = {}
 
-local function add_listener(msg_type, l)
+local function add_listener(msg_type, l, forever)
    if not listeners[msg_type] then
       listeners[msg_type] = {}
    end
    table.insert(listeners[msg_type], l)
+   if forever then
+      forever_listeners[l] = true
+   end
 end
 
 local event_sub = nn.socket(nn.AF_SP, nn.SUB)
@@ -109,6 +114,7 @@ loop = function()
       assert(#unpacked == 2)
       local msg_type = unpacked[1]
       local msg_data = unpacked[2]
+      --print(sf("got event: %s: %s", msg_type, inspect(msg_data)))
       local ls = listeners[msg_type]
       if ls then
          for _,l in ipairs(ls) do
@@ -125,7 +131,18 @@ loop = function()
          end
          -- we clear all listeners after they got notified, so they
          -- must re-register if they want to get notified again
-         listeners[msg_type] = nil
+         -- (except forever listeners)
+         local remaining_listeners = {}
+         for _,l in ipairs(listeners[msg_type]) do
+            if forever_listeners[l] then
+               table.insert(remaining_listeners, l)
+            end
+         end
+         if #remaining_listeners > 0 then
+            listeners[msg_type] = remaining_listeners
+         else
+            listeners[msg_type] = nil
+         end
       end
    end
 
@@ -166,6 +183,10 @@ M.yield = coroutine.yield
 
 function M.on(msg_type, callback)
    add_listener(msg_type, callback)
+end
+
+function M.on_forever(msg_type, callback)
+   add_listener(msg_type, callback, true)
 end
 
 function M.emit(msg_type, msg_data)
