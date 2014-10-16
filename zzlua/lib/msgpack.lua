@@ -3,6 +3,7 @@ local buffer = require('buffer')
 local sf = string.format
 
 ffi.cdef [[
+
 typedef bool   (*cmp_reader) (struct cmp_ctx_s *ctx,
                               void *data,
                               size_t limit);
@@ -85,14 +86,6 @@ bool cmp_read_bin(cmp_ctx_t *ctx, void *data, uint32_t *size);
 bool cmp_read_array(cmp_ctx_t *ctx, uint32_t *size);
 bool cmp_read_map(cmp_ctx_t *ctx, uint32_t *size);
 bool cmp_read_object(cmp_ctx_t *ctx, cmp_object_t *obj);
-
-typedef struct {
-  buffer_t *buffer;
-  uint32_t pos;
-} buffer_cmp_state;
-
-bool buffer_cmp_reader(struct cmp_ctx_s *ctx, void *data, size_t limit);
-size_t buffer_cmp_writer(struct cmp_ctx_s *ctx, const void *data, size_t count);
 
 ]]
 
@@ -337,12 +330,12 @@ local function Context(buf)
    local self = {
       buf = buf,
       ctx = ffi.new("cmp_ctx_t"),
-      state = ffi.new("buffer_cmp_state", buf.buf, 0),
+      state = ffi.new("cmp_buffer_state", buf.buf, 0),
    }
    ffi.C.cmp_init(self.ctx,
                   self.state,
-                  ffi.C.buffer_cmp_reader,
-                  ffi.C.buffer_cmp_writer)
+                  ffi.C.cmp_buffer_reader,
+                  ffi.C.cmp_buffer_writer)
    return setmetatable(self, Context_mt)
 end
 
@@ -353,8 +346,7 @@ local M = {}
 function M.pack(obj)
    local ctx = Context()
    ctx:write(obj)
-   local buffer = ctx.state.buffer
-   return ffi.string(buffer.data, buffer.size)
+   return ctx.buf:data()
 end
 
 function M.unpack(data)

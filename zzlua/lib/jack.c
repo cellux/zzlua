@@ -70,8 +70,11 @@ int zz_jack_process_callback (jack_nframes_t nframes, void *arg) {
 
   jack_midi_event_t midi_event;
   cmp_ctx_t cmp_ctx;
-  buffer_t *cmp_buf = buffer_new();
-  buffer_cmp_state cmp_state = { cmp_buf, 0 };
+  buffer_t cmp_buf;
+
+  /* we use midi_buf (a statically allocated buffer) as cmp_buf->data */
+  /* dynamic=false ensures that the buffer doesn't grow beyond MIDI_BUF_SIZE */
+  buffer_init(&cmp_buf, midi_buf, 0, MIDI_BUF_SIZE, false);
 
   int i, j, k;
   for (i = 0; i < params->nports; i++) {
@@ -88,23 +91,31 @@ int zz_jack_process_callback (jack_nframes_t nframes, void *arg) {
         fprintf(stderr, "jack_midi_event_get() failed!\n");
         break;
       }
-      cmp_init(&cmp_ctx, &cmp_state, buffer_cmp_reader, buffer_cmp_writer);
+      cmp_buffer_state cmp_buf_state = { &cmp_buf, 0 };
+      cmp_init(&cmp_ctx, &cmp_buf_state, cmp_buffer_reader, cmp_buffer_writer);
       cmp_write_array(&cmp_ctx, 2);
       cmp_write_str(&cmp_ctx, "jack.midi", 9);
       cmp_write_array(&cmp_ctx, midi_event.size);
       for (k = 0; k < midi_event.size; k++) {
         cmp_write_u8(&cmp_ctx, midi_event.buffer[k]);
       }
-      int bytes_sent = nn_send(params->event_socket, cmp_buf->data, cmp_buf->size, 0);
-      if (bytes_sent != cmp_buf->size) {
-        fprintf(stderr, "nn_send() failed\n");
-        break;
+      if (cmp_buf.size == cmp_buf.capacity) {
+        /* we handle this as an overflow */
+        fprintf(stderr, "cmp_buf overflow while serializing midi event!\n");
       }
-      /* reuse buffer for next round */
-      cmp_buf->size = 0;
-      cmp_state.pos = 0;
+      else {
+        int bytes_sent = nn_send(params->event_socket,
+                                 cmp_buf.data,
+                                 cmp_buf.size,
+                                 0);
+        if (bytes_sent != cmp_buf.size) {
+          fprintf(stderr, "nn_send() failed\n");
+          break;
+        }
+      }
+      /* empty buffer for next round */
+      buffer_reset(&cmp_buf);
     }
   }
-  buffer_free(cmp_buf);
   return 0;
 }

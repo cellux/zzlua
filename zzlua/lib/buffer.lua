@@ -3,26 +3,44 @@ local sf = string.format
 
 ffi.cdef [[
 typedef struct {
+  uint8_t *data;
   uint32_t size;
   uint32_t capacity;
-  uint8_t *data;
+  bool dynamic;
 } buffer_t;
+
+void buffer_init(buffer_t *self,
+                 uint8_t *data,
+                 uint32_t size,
+                 uint32_t capacity,
+                 bool dynamic);
 
 buffer_t * buffer_new();
 buffer_t * buffer_new_with_capacity(uint32_t capacity);
 buffer_t * buffer_new_with_data(void *data, uint32_t size);
 
-uint32_t buffer_size(buffer_t *self);
-uint32_t buffer_capacity(buffer_t *self);
-uint8_t * buffer_data(buffer_t *self);
+uint32_t buffer_resize(buffer_t *self, uint32_t n);
+uint32_t buffer_append(buffer_t *self, const void *data, uint32_t size);
 
-buffer_t * buffer_resize(buffer_t *self, uint32_t n);
-buffer_t * buffer_append(buffer_t *self, void *data, uint32_t size);
 int buffer_equals(buffer_t *self, buffer_t *other);
+
 void buffer_fill(buffer_t *self, uint8_t c);
 void buffer_clear(buffer_t *self);
+void buffer_reset(buffer_t *self);
 
 void buffer_free(buffer_t *self);
+
+/* cmp-buffer interop */
+
+struct cmp_ctx_s;
+
+typedef struct {
+  buffer_t *buffer;
+  uint32_t pos;
+} cmp_buffer_state;
+
+bool cmp_buffer_reader(struct cmp_ctx_s *ctx, void *data, size_t limit);
+size_t cmp_buffer_writer(struct cmp_ctx_s *ctx, const void *data, size_t count);
 
 struct Buffer_ct {
   buffer_t * buf;
@@ -32,17 +50,17 @@ struct Buffer_ct {
 local Buffer_mt = {}
 
 function Buffer_mt:size()
-   return ffi.C.buffer_size(self.buf)
+   return self.buf.size
 end
 
 function Buffer_mt:capacity()
-   return ffi.C.buffer_capacity(self.buf)
+   return self.buf.capacity
 end
 
 function Buffer_mt:data(index, length)
    index = index or 0
-   length = length or (self:size()-index)
-   return ffi.string(ffi.C.buffer_data(self.buf)+index, length)
+   length = length or (self.buf.size - index)
+   return ffi.string(self.buf.data+index, length)
 end
 
 function Buffer_mt:__index(i)
@@ -53,11 +71,11 @@ function Buffer_mt:__index(i)
    end
 end
 
-function Buffer_mt:__newindex(i, data)
-   assert(type(i)=="number")
+function Buffer_mt:__newindex(index, data)
+   assert(type(index)=="number")
    local data_size = #data
-   assert(i+data_size <= self:size())
-   ffi.copy(ffi.C.buffer_data(self.buf)+i, data, data_size)
+   assert(index+data_size <= self.buf.size)
+   ffi.copy(self.buf.data+index, data, data_size)
 end
 
 function Buffer_mt:resize(n)
@@ -84,6 +102,10 @@ end
 
 function Buffer_mt:clear()
    ffi.C.buffer_clear(self.buf)
+end
+
+function Buffer_mt:reset()
+   ffi.C.buffer_reset(self.buf)
 end
 
 function Buffer_mt:free()

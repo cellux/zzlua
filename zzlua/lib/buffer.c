@@ -1,31 +1,25 @@
-//
-// buffer.c
-//
-// Copyright (c) 2012 TJ Holowaychuk <tj@vision-media.ca>
-//
-
-#include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <ctype.h>
-#include <sys/types.h>
 
 #include "cmp.h"
 
 #include "buffer.h"
 
-// TODO: shared with reference counting
-// TODO: linked list for append/prepend etc
-
-/*
- * Compute the nearest multiple of `a` from `b`.
- */
-
 #define nearest_multiple_of(a, b) \
   (((b) + ((a) - 1)) & ~((a) - 1))
+
+void buffer_init(buffer_t *self,
+                 uint8_t *data,
+                 uint32_t size,
+                 uint32_t capacity,
+                 bool dynamic) {
+  self->data = data;
+  self->size = size;
+  self->capacity = capacity;
+  self->dynamic = dynamic;
+}
 
 buffer_t * buffer_new() {
   return buffer_new_with_capacity(BUFFER_DEFAULT_CAPACITY);
@@ -33,54 +27,51 @@ buffer_t * buffer_new() {
 
 buffer_t * buffer_new_with_capacity(uint32_t capacity) {
   buffer_t *self = malloc(sizeof(buffer_t));
-  if (!self) return NULL;
-  self->data = calloc(capacity, 1);
-  if (!self->data) return NULL;
-  self->capacity = capacity;
-  self->size = 0;
+  if (!self) {
+    return NULL;
+  }
+  uint8_t *data = calloc(capacity, 1);
+  if (!data) {
+    free(self);
+    return NULL;
+  }
+  uint32_t size = 0;
+  bool dynamic = true;
+  buffer_init(self, data, size, capacity, dynamic);
   return self;
 }
 
 buffer_t * buffer_new_with_data(void *data, uint32_t size) {
   buffer_t *self = buffer_new_with_capacity(size);
-  memcpy(self->data, data, size);
-  self->size = size;
+  if (self) {
+    memcpy(self->data, data, size);
+    self->size = size;
+  }
   return self;
 }
 
-uint32_t buffer_size(buffer_t *self) {
-  return self->size;
-}
-
-uint32_t buffer_capacity(buffer_t *self) {
-  return self->capacity;
-}
-
-uint8_t * buffer_data(buffer_t *self) {
-  return self->data;
-}
-
-buffer_t * buffer_resize(buffer_t *self, uint32_t n) {
+uint32_t buffer_resize(buffer_t *self, uint32_t n) {
+  if (!self->dynamic) return 0;
   n = nearest_multiple_of(1024, n);
   self->data = realloc(self->data, n);
-  if (!self->data) return NULL;
+  if (!self->data) return 0;
   self->capacity = n;
   if (self->capacity < self->size) {
     self->size = self->capacity;
   }
-  return self;
+  return self->capacity;
 }
 
-buffer_t * buffer_append(buffer_t *self, const void *data, uint32_t size) {
+uint32_t buffer_append(buffer_t *self, const void *data, uint32_t size) {
   uint32_t new_size = self->size + size;
   if (new_size > self->capacity) {
-    if (buffer_resize(self, new_size)==NULL) {
-      return NULL;
+    if (!buffer_resize(self, new_size)) {
+      return 0;
     }
   }
   memcpy(self->data + self->size, data, size);
   self->size = new_size;
-  return self;
+  return size;
 }
 
 int buffer_equals(buffer_t *self, buffer_t *other) {
@@ -96,17 +87,25 @@ void buffer_clear(buffer_t *self) {
   buffer_fill(self, 0);
 }
 
+void buffer_reset(buffer_t *self) {
+  self->size = 0;
+}
+
 void buffer_free(buffer_t *self) {
-  free(self->data);
+  if (self->data) {
+    free(self->data);
+    self->data = NULL;
+  }
   free(self);
+  self = NULL;
 }
 
 /* cmp interoperability */
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 
-bool buffer_cmp_reader(struct cmp_ctx_s *ctx, void *data, size_t limit) {
-  buffer_cmp_state *state = (buffer_cmp_state*) ctx->buf;
+bool cmp_buffer_reader(struct cmp_ctx_s *ctx, void *data, size_t limit) {
+  cmp_buffer_state *state = (cmp_buffer_state*) ctx->buf;
   if (state->pos >= state->buffer->size) {
     return false;
   }
@@ -117,13 +116,11 @@ bool buffer_cmp_reader(struct cmp_ctx_s *ctx, void *data, size_t limit) {
   return bytes_to_read == limit;
 }
 
-size_t buffer_cmp_writer(struct cmp_ctx_s *ctx, const void *data, size_t count) {
-  buffer_cmp_state *state = (buffer_cmp_state*) ctx->buf;
-  if (buffer_append(state->buffer, data, count) == NULL) {
-    return 0;
-  }
-  else {
-    state->pos = state->buffer->size;
-    return count;
-  }
+size_t cmp_buffer_writer(struct cmp_ctx_s *ctx, const void *data, size_t count) {
+  cmp_buffer_state *state = (cmp_buffer_state*) ctx->buf;
+  uint32_t bytes_appended = buffer_append(state->buffer, data, count);
+  state->pos += bytes_appended;
+  /* cmp.c uses the return value as a bool so I guess it must be
+     non-zero if all bytes could be written and 0 otherwise */
+  return bytes_appended == count ? bytes_appended : 0;
 }
