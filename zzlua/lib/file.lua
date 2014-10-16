@@ -1,8 +1,7 @@
 local ffi = require('ffi')
+require('ctypes')
 
 ffi.cdef [[
-typedef int __ssize_t;
-typedef __ssize_t ssize_t;
 
 int open (const char *__file, int __oflag, ...);
 ssize_t read (int __fd, void *__buf, size_t __nbytes);
@@ -10,7 +9,6 @@ int close (int __fd);
 
 int access(const char *pathname, int mode);
 
-typedef long int __off_t;
 __off_t lseek (int __fd, __off_t __offset, int __whence);
 
 struct File_ct {
