@@ -414,13 +414,12 @@ local function assert_client()
    assert(g_client, "you must create a jack client before invoking this jack function")
 end
 
-function M.send_midi(port, ...)
+function M.send_midi(port, data)
    assert_client()
    if not ports_by_name[port] then
       error(sf("send_midi: invalid port: %s", port))
    end
    local port, port_index = unpack(ports_by_name[port])
-   local data = {...}
    local data_size = #data
    local buf_size = 2+data_size
    local buf = ffi.new("uint8_t[?]", buf_size)

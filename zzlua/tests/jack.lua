@@ -51,7 +51,7 @@ sched(function()
          jack.connect("midi_out", "midi_in")
          
          sched(function()
-                  jack.send_midi("midi_out", 0x90, 60, 100)
+                  jack.send_midi("midi_out", {0x90, 60, 100})
                end)
          sched(function()
                   midi_data = sched.yield('jack.midi')
