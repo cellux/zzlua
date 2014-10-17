@@ -6,7 +6,7 @@ local sf = string.format
 
 local function signal_handler(data)
    local signum, pid = unpack(data)
-   print(sf("got signal %d from pid %d", signum, pid))
+   --print(sf("got signal %d from pid %d", signum, pid))
    if signum == 15 or signum == 2 then
       sched.emit('quit')
    end
