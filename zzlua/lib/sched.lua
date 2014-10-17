@@ -8,6 +8,9 @@ local sf = string.format
 
 local M = {}
 
+-- a 'quit' event makes this false, causing the scheduler to exit
+local running = true
+
 -- runnable threads
 local runnable = adt.List()
 
@@ -44,6 +47,8 @@ local function add_listener(msg_type, l, forever)
    end
 end
 
+add_listener('quit', function() running = false end, true)
+
 local event_sub = nn.socket(nn.AF_SP, nn.SUB)
 nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
 nn.bind(event_sub, "inproc://events")
@@ -72,7 +77,8 @@ local function sched(fn, data)
    end
 end
 
-loop = function()
+-- tick: one iteration of the event loop
+local function tick() 
    local now = time.time()
 
    -- wake up sleeping threads whose time has come
@@ -174,9 +180,13 @@ loop = function()
          error(sf("unhandled status returned from coroutine.status(): %s", status))
       end
    end
-   if runnable:size() > 0 or sleeping:size() > 0 or waiting_count > 0 then
-      loop()
-   end
+end
+
+loop = function()
+   repeat
+      tick()
+   until not running or
+      (runnable:size() == 0 and sleeping:size() == 0 and waiting_count == 0)
 end
 
 M.yield = coroutine.yield

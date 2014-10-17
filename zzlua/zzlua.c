@@ -2,16 +2,99 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <signal.h>
+#include <pthread.h>
+
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
 
-#include <signal.h>
+#include "buffer.h"
+#include "cmp.h"
+#include "nn.h"
+#include "pubsub.h"
 
 /* most of this comes from LuaJIT */
 
 static lua_State *gL = NULL;
 static const char *progname = "zzlua";
+
+static pthread_t signal_handler_thread_id;
+static sigset_t saved_sigset;
+
+static void *signal_handler_thread(void *arg) {
+  sigset_t ss;
+  siginfo_t siginfo;
+  int signum;
+  int event_socket;
+  int endpoint_id;
+  unsigned char msg_buf[32];
+  cmp_ctx_t cmp_ctx;
+  buffer_t cmp_buf;
+  cmp_buffer_state cmp_buf_state;
+
+  buffer_init(&cmp_buf, msg_buf, 0, 32, false);
+  cmp_buf_state.buffer = &cmp_buf;
+  cmp_init(&cmp_ctx, &cmp_buf_state, cmp_buffer_reader, cmp_buffer_writer);
+
+  event_socket = nn_socket(AF_SP, NN_PUB);
+  if (event_socket < 0) {
+    fprintf(stderr, "Cannot create event socket in signal_handler_thread, nn_socket() failed\n");
+    exit(1);
+  }
+  endpoint_id = nn_connect(event_socket, "inproc://events");
+  if (endpoint_id < 0) {
+    fprintf(stderr, "Cannot connect event socket to event queue, nn_connect() failed\n");
+    exit(1);
+  }
+
+  sigfillset(&ss);
+
+  for (;;) {
+    signum = sigwaitinfo(&ss, &siginfo);
+    if (signum < 0) {
+      fprintf(stderr, "sigwait() failed\n");
+      exit(1);
+    }
+    cmp_buf_state.pos = 0;
+    cmp_write_array(&cmp_ctx, 2);
+    cmp_write_str(&cmp_ctx, "signal", 6);
+    cmp_write_array(&cmp_ctx, 2);
+    cmp_write_sint(&cmp_ctx, signum);
+    cmp_write_sint(&cmp_ctx, siginfo.si_pid);
+    int bytes_sent = nn_send(event_socket,
+                             cmp_buf.data,
+                             cmp_buf.size,
+                             0);
+    if (bytes_sent != cmp_buf.size) {
+      fprintf(stderr, "nn_send() failed when sending signal event!\n");
+    }
+
+    if (signum == SIGTERM || signum == SIGINT) {
+      break;
+    }
+  }
+  return NULL;
+}
+
+void setup_signal_handler_thread() {
+  sigset_t ss;
+  sigfillset(&ss);
+  /* block all signals in main thread */
+  if (pthread_sigmask(SIG_BLOCK, &ss, &saved_sigset) != 0) {
+    fprintf(stderr, "pthread_sigmask() failed\n");
+    exit(1);
+  }
+  /* signals are handled in a dedicated thread which sends an event to
+     the Lua scheduler when a signal arrives */
+  if (pthread_create(&signal_handler_thread_id,
+                     NULL,
+                     signal_handler_thread,
+                     NULL) != 0) {
+    fprintf(stderr, "cannot create signal handler thread: pthread_create() failed\n");
+    exit(1);
+  }
+}
 
 static void lstop(lua_State *L, lua_Debug *ar)
 {
@@ -110,6 +193,13 @@ static int dostring(lua_State *L, const char *s, const char *name)
 {
   int status = luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
   return report(L, status);
+}
+
+static int dolibrary(lua_State *L, const char *name)
+{
+  lua_getglobal(L, "require");
+  lua_pushstring(L, name);
+  return report(L, docall(L, 1, 1));
 }
 
 static int handle_script(lua_State *L, char **argv, int n)
@@ -211,6 +301,7 @@ static int pmain(lua_State *L)
   luaopen_bit(L);
   //luaopen_jit(L);
   luaopen_ffi(L);
+  dolibrary(L, "zzlua");
   lua_gc(L, LUA_GCRESTART, -1);
   s->status = runargs(L, argv, (script > 0) ? script : s->argc);
   if (s->status != 0) return 0;
