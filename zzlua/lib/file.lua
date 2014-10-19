@@ -6,9 +6,10 @@ ffi.cdef [[
 
 int     open (const char *__file, int __oflag, ...);
 ssize_t read (int __fd, void *__buf, size_t __nbytes);
-int     close (int __fd);
-int     access (const char *pathname, int mode);
 __off_t lseek (int __fd, __off_t __offset, int __whence);
+int     close (int __fd);
+
+int     access (const char *pathname, int mode);
 int     chmod (const char *__file, __mode_t __mode);
 
 struct Stat_ct {
