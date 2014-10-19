@@ -77,3 +77,27 @@ assert(f:seek(2, true)==7)
 local contents = f:read(5)
 assert(contents=="world")
 f:close()
+
+-- reading directories
+local entries = {}
+local dir = file.opendir("testdata")
+local function add_entry()
+   local e = dir:read()
+   if e then
+      assert(type(e)=="string")
+      table.insert(entries, e)
+   end
+   return e
+end
+for i=1,3 do add_entry() end
+assert(dir:read()==nil)
+table.sort(entries)
+assert.equals(entries, {'.', '..', 'hello.txt'})
+assert.equals(dir:close(), 0)
+
+local entries = {}
+for f in file.readdir("testdata") do
+   table.insert(entries, f)
+end
+table.sort(entries)
+assert.equals(entries, {'.','..','hello.txt'})

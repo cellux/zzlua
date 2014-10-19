@@ -40,6 +40,19 @@ void zzlua_lstat(const char *pathname, struct stat *buf);
 struct File_ct {
   int fd;
 };
+
+typedef struct __dirstream DIR;
+
+struct Dir_ct {
+  DIR *dir;
+};
+
+DIR *opendir(const char *path);
+struct dirent * readdir (DIR *dir);
+int closedir (DIR *dir);
+
+char * zzlua_dirent_name(struct dirent *);
+
 ]]
 
 local O_RDONLY = 0
@@ -182,6 +195,30 @@ end
 
 local Stat = ffi.metatype("struct Stat_ct", Stat_mt)
 
+local Dir_mt = {}
+
+function Dir_mt:read()
+   local entry = ffi.C.readdir(self.dir)
+   if entry ~= nil then
+      return ffi.string(ffi.C.zzlua_dirent_name(entry))
+   else
+      return nil
+   end
+end
+
+function Dir_mt:close()
+   if self.dir ~= nil then
+      util.check_ok("closedir", 0, ffi.C.closedir(self.dir))
+      self.dir = nil
+   end
+   return 0
+end
+
+Dir_mt.__index = Dir_mt
+Dir_mt.__gc = Dir_mt.close
+
+local Dir = ffi.metatype("struct Dir_ct", Dir_mt)
+
 local M = {}
 
 function M.open(path)
@@ -194,6 +231,18 @@ function M.read(path)
    local contents = f:read()
    f:close()
    return contents
+end
+
+function M.opendir(path)
+   return Dir(util.check_bad("opendir", nil, ffi.C.opendir(path)))
+end
+
+function M.readdir(path)
+   local dir = M.opendir(path)
+   local function next()
+      return dir:read()
+   end
+   return next
 end
 
 function M.exists(path)

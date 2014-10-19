@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <dirent.h>
 
 struct stat * zzlua_Stat_new() {
   return malloc(sizeof(struct stat));
@@ -31,4 +32,8 @@ int zzlua_stat(const char *pathname, struct stat *buf) {
 
 int zzlua_lstat(const char *pathname, struct stat *buf) {
   return lstat(pathname, buf);
+}
+
+char * zzlua_dirent_name(struct dirent *entry) {
+  return entry->d_name;
 }
