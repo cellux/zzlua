@@ -16,8 +16,6 @@
 
 /* most of this comes from LuaJIT */
 
-static const char *progname = "zzlua";
-
 static pthread_t signal_handler_thread_id;
 static sigset_t saved_sigset;
 
@@ -180,7 +178,6 @@ static int pmain(lua_State *L)
 
 int main(int argc, char **argv)
 {
-  progname = argv[0];
   int status;
   lua_State *L = luaL_newstate();
   if (L == NULL) {
