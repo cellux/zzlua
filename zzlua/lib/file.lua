@@ -92,7 +92,11 @@ function File_mt:seek(offset, relative)
 end
 
 function File_mt:close()
-   return ffi.C.close(self.fd)
+   if self.fd >= 0 then
+      util.check_ok("close", 0, ffi.C.close(self.fd))
+      self.fd = -1
+   end
+   return 0
 end
 
 File_mt.__index = File_mt
