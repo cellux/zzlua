@@ -87,7 +87,7 @@ ZZ_LIB_LUA_OBJ = $(patsubst %.lua,%.lo,$(ZZ_LIB_LUA_SRC))
 lib/%.lo : lib/%.lua $(LUAJIT_BIN)
 	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -bt o -g $< $@
 
-zzlua.o: $(LUAJIT_LIB)
+zzlua.o: $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
 
 # zzlua + libs + support
 ZZ_OBJ = zzlua.o $(ZZ_LIB_C_OBJ) $(ZZ_LIB_LUA_OBJ)
