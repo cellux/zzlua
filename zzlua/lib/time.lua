@@ -1,11 +1,7 @@
 local ffi = require('ffi')
 
--- use size_t instead of long int because it has the right size on
--- both 32 and 64 bit architectures
-
 ffi.cdef [[
-typedef size_t __time_t;
-typedef size_t __suseconds_t;
+typedef long int __suseconds_t;
 
 struct timeval {
   __time_t tv_sec;            /* Seconds.  */
@@ -20,13 +16,7 @@ struct timezone {
 int gettimeofday (struct timeval *TP,
                   struct timezone *TZP);
 
-typedef size_t __syscall_slong_t;
-
-struct timespec {
-  __time_t tv_sec;
-  __syscall_slong_t tv_nsec;
-};
-
+/* struct timespec is predefined for us by zzlua */
 int nanosleep (const struct timespec *requested_time,
                struct timespec *remaining);
 

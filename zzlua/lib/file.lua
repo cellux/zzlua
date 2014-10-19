@@ -1,5 +1,5 @@
 local ffi = require('ffi')
-require('ctypes')
+local sf = string.format
 
 ffi.cdef [[
 

@@ -1,8 +1,37 @@
 -- statements in this file are executed once at zzlua startup
 
 local ffi = require('ffi')
+
+-- some commonly used C types
+
+ffi.cdef [[
+  typedef long int ssize_t;
+
+  /* types of struct stat fields */
+
+  typedef unsigned long long int __dev_t;
+  typedef unsigned long int __ino_t;
+  typedef unsigned int __mode_t;
+  typedef unsigned int __nlink_t;
+  typedef unsigned int __uid_t;
+  typedef unsigned int __gid_t;
+  typedef long int __off_t;
+  typedef long int __blksize_t;
+  typedef long int __blkcnt_t;
+
+  typedef long int __time_t;
+  typedef long int __syscall_slong_t;
+
+  struct timespec {
+    __time_t tv_sec;
+    __syscall_slong_t tv_nsec;
+  };
+]]
+
 local sched = require('sched')
 local sf = string.format
+
+-- setup signal handler
 
 local function signal_handler(data)
    local signum, pid = unpack(data)
@@ -20,6 +49,8 @@ void setup_signal_handler_thread();
 
 ffi.C.setup_signal_handler_thread()
 
+--[[ main ]]--
+
 local function zzlua_run(chunk, err)
    if chunk then
       chunk()
@@ -27,8 +58,6 @@ local function zzlua_run(chunk, err)
       error(err, 0)
    end
 end
-
---[[ main ]]--
 
 -- process zzlua options
 
