@@ -110,22 +110,6 @@ static int report(lua_State *L, int status)
   return status;
 }
 
-static struct Smain {
-  char **argv;
-  int argc;
-  int status;
-} smain;
-
-static void getargs(lua_State *L, int argc, char **argv) {
-  int i;
-  lua_createtable(L, argc, 0);
-  for (i=1; i<argc; i++) {
-    lua_pushstring(L, argv[i]);
-    lua_rawseti(L, -2, i);
-  }
-  lua_setglobal(L, "arg");
-}
-
 static int traceback(lua_State *L)
 {
   if (!lua_isstring(L, 1)) { /* Non-string error object? Try metamethod. */
@@ -152,11 +136,30 @@ static int docall(lua_State *L, int narg, int clear)
   return status;
 }
 
+static void set_arg(lua_State *L, int argc, char **argv) {
+  /* set the global Lua variable "arg" to the list of command line
+   * arguments */
+  int i;
+  lua_createtable(L, argc, 0);
+  for (i=1; i<argc; i++) {
+    lua_pushstring(L, argv[i]);
+    lua_rawseti(L, -2, i);
+  }
+  lua_setglobal(L, "arg");
+}
+
+static struct Smain {
+  char **argv;
+  int argc;
+  int status;
+} smain;
+
 static int pmain(lua_State *L)
 {
   struct Smain *s = &smain;
-  lua_gc(L, LUA_GCSTOP, 0);  /* stop collector during initialization */
-  //luaL_openlibs(L);  /* open libraries */
+  /* stop collector during initialization */
+  lua_gc(L, LUA_GCSTOP, 0); 
+  /* open the libraries we need */
   luaopen_base(L);
   luaopen_math(L);
   luaopen_string(L);
@@ -169,7 +172,9 @@ static int pmain(lua_State *L)
   //luaopen_jit(L);
   luaopen_ffi(L);
   lua_gc(L, LUA_GCRESTART, -1);
-  getargs(L, s->argc, s->argv);
+  /* collect command line arguments into _G.arg */
+  set_arg(L, s->argc, s->argv);
+  /* to be continued in Lua... */
   lua_getglobal(L, "require");
   lua_pushstring(L, "zzlua");
   s->status = report(L, docall(L, 1, 1));
