@@ -20,40 +20,37 @@ void setup_signal_handler_thread();
 
 ffi.C.setup_signal_handler_thread()
 
--- find script arg on command line, load and execute
+local function zzlua_run(chunk, err)
+   if chunk then
+      chunk()
+   else
+      error(err, 0)
+   end
+end
+
+--[[ main ]]--
+
+-- process zzlua options
 
 local arg_index = 1
 while arg_index <= #arg do
    if arg[arg_index] == '-e' then
       arg_index = arg_index + 1
-      local expr = arg[arg_index]
-      local chunk, err = loadstring(expr)
-      if chunk then
-         chunk()
-      else
-         error("error in chunk given to -e: "..err)
-      end
+      local script = arg[arg_index]
+      zzlua_run(loadstring(script))
    else
-      -- found script arg
+      -- the first non-option arg is the path of the script to run
       break
    end
    arg_index = arg_index + 1
 end
 
-local script_path = arg[arg_index] or '-'
+-- run zzlua script (from specified file or stdin)
+
+local script_path = arg[arg_index]
 local script_args = {}
 for i=arg_index+1,#arg do
    table.insert(script_args, arg[i])
 end
-arg = script_args
-local chunk, err
-if script_path == '-' then
-   chunk, err = loadfile()
-else
-   chunk, err = loadfile(script_path)
-end
-if chunk then
-   chunk()
-else
-   error(sf("error in %s: %s", script_path, err))
-end
+arg = script_args -- the script shall not see any zzlua options
+zzlua_run(loadfile(script_path)) -- loadfile(nil) loads from stdin
