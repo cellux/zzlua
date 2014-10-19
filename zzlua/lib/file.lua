@@ -185,6 +185,18 @@ function M.exists(path)
    return ffi.C.access(path, F_OK) == 0
 end
 
+function M.is_readable(path)
+   return ffi.C.access(path, R_OK) == 0
+end
+
+function M.is_writable(path)
+   return ffi.C.access(path, W_OK) == 0
+end
+
+function M.is_executable(path)
+   return ffi.C.access(path, X_OK) == 0
+end
+
 function M.stat(path)
    local s = Stat(ffi.C.zzlua_Stat_new())
    s:stat(path)

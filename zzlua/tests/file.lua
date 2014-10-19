@@ -11,8 +11,10 @@ assert(not file.exists('non-existing-file'))
 local function oct(s) return tonumber(s, 8) end
 file.chmod("testdata/hello.txt", oct("755"))
 assert.equals(file.stat("testdata/hello.txt").perms, oct("755"))
+assert(file.is_executable("testdata/hello.txt"))
 file.chmod("testdata/hello.txt", oct("644"))
 assert(file.stat("testdata/hello.txt").perms == oct("644"))
+assert(not file.is_executable("testdata/hello.txt"))
 
 -- stat
 local s = file.stat("testdata/hello.txt")
