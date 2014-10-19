@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local util = require('util')
 local sf = string.format
 
 ffi.cdef [[
@@ -56,13 +57,13 @@ local R_OK = 4
 local File_mt = {}
 
 function File_mt:pos()
-   return ffi.C.lseek(self.fd, 0, SEEK_CUR)
+   return util.check_bad("lseek", -1, ffi.C.lseek(self.fd, 0, SEEK_CUR))
 end
 
 function File_mt:size()
    local pos = self:pos()
-   local size = ffi.C.lseek(self.fd, 0, SEEK_END)
-   ffi.C.lseek(self.fd, pos, SEEK_SET)
+   local size = util.check_bad("lseek", -1, ffi.C.lseek(self.fd, 0, SEEK_END))
+   util.check_bad("lseek", -1, ffi.C.lseek(self.fd, pos, SEEK_SET))
    return size
 end
 
@@ -81,11 +82,11 @@ end
 
 function File_mt:seek(offset, relative)
    if relative then
-      return ffi.C.lseek(self.fd, offset, SEEK_CUR)
+      return util.check_bad("lseek", -1, ffi.C.lseek(self.fd, offset, SEEK_CUR))
    elseif offset >= 0 then
-      return ffi.C.lseek(self.fd, offset, SEEK_SET)
+      return util.check_bad("lseek", -1, ffi.C.lseek(self.fd, offset, SEEK_SET))
    else
-      return ffi.C.lseek(self.fd, offset, SEEK_END)
+      return util.check_bad("lseek", -1, ffi.C.lseek(self.fd, offset, SEEK_END))
    end
 end
 

@@ -52,7 +52,7 @@ function M.kill(pid, sig)
 end
 
 function M.fork()
-   return check_bad("fork", -1, ffi.C.fork())
+   return util.check_bad("fork", -1, ffi.C.fork())
 end
 
 function M.getenv(name)
@@ -97,7 +97,7 @@ function M.unblock_all_signals()
 end
 
 function M.chdir(path)
-   return check_ok("chdir", 0, ffi.C.chdir(path))
+   return util.check_ok("chdir", 0, ffi.C.chdir(path))
 end
 
 return M
