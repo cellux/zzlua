@@ -55,17 +55,26 @@ local R_OK = 4
 
 local File_mt = {}
 
+function File_mt:pos()
+   return ffi.C.lseek(self.fd, 0, SEEK_CUR)
+end
+
+function File_mt:size()
+   local pos = self:pos()
+   local size = ffi.C.lseek(self.fd, 0, SEEK_END)
+   ffi.C.lseek(self.fd, pos, SEEK_SET)
+   return size
+end
+
 function File_mt:read(rsize)
    if not rsize then
-      local fpos = ffi.C.lseek(self.fd, 0, SEEK_CUR)
-      local fsize = ffi.C.lseek(self.fd, 0, SEEK_END)
-      rsize = fsize - fpos
-      ffi.C.lseek(self.fd, fpos, SEEK_SET)
+      -- read the whole rest of the file
+      rsize = self:size() - self:pos()
    end
    local buf = ffi.new("uint8_t[?]", rsize)
    local bytes_read = ffi.C.read(self.fd, buf, rsize)
    if bytes_read ~= rsize then
-      error("read() failed")
+      error(sf("read() failed: expected to read %d bytes, got %d bytes", rsize, bytes_read))
    end
    return ffi.string(buf, rsize)
 end
