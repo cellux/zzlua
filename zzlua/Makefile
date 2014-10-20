@@ -108,7 +108,6 @@ test: zzlua
 .PHONY: clean
 clean:
 	rm -f zzlua *.o lib/*.o lib/*.lo
-	rm -f $(CMP_OBJ)
 
 .PHONY: distclean
 distclean: clean
