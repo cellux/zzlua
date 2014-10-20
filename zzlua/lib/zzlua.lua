@@ -60,8 +60,10 @@ end
 -- process zzlua options
 
 local arg_index = 1
+local opt_e = false
 while arg_index <= #arg do
    if arg[arg_index] == '-e' then
+      opt_e = true
       arg_index = arg_index + 1
       local script = arg[arg_index]
       zz_run(loadstring(script))
@@ -80,4 +82,10 @@ for i=arg_index+1,#arg do
    table.insert(script_args, arg[i])
 end
 arg = script_args -- the script shall not see any zzlua options
-zz_run(loadfile(script_path)) -- loadfile(nil) loads from stdin
+
+if opt_e and not script_path then
+   -- if there was a script passed in via -e, but we didn't get a
+   -- script path on the command line, then don't read from stdin
+else
+   zz_run(loadfile(script_path)) -- loadfile(nil) loads from stdin
+end
