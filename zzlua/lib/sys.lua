@@ -71,6 +71,7 @@ function M.execvp(path, argv)
 end
 
 function M.waitpid(pid, options)
+   options = options or 0
    local status = ffi.new("int[1]")
    local rv = util.check_bad("waitpid", -1, ffi.C.waitpid(pid, status, options))
    return rv, tonumber(status[0])
