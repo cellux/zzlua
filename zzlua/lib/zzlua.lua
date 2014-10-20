@@ -29,6 +29,7 @@ ffi.cdef [[
 ]]
 
 local sched = require('sched')
+local signal = require('signal')
 local sf = string.format
 
 -- setup signal handler
@@ -40,12 +41,8 @@ local function signal_handler(data)
       sched.emit('quit')
    end
 end
-
 sched.on_forever('signal', signal_handler)
-
-ffi.cdef "void zz_setup_signal_handler_thread();"
-
-ffi.C.zz_setup_signal_handler_thread()
+signal.setup_signal_handler_thread()
 
 --[[ main ]]--
 

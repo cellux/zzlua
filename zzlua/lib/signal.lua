@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local sys = require('sys') -- for pid_t
 local util = require('util')
 
 ffi.cdef [[
@@ -16,7 +17,21 @@ int sigismember (const sigset_t *__set, int __signo);
 
 int pthread_sigmask(int how, const sigset_t *set, sigset_t *oldset);
 
-int kill (__pid_t __pid, int __sig);
+int kill (pid_t __pid, int __sig);
+
+typedef unsigned long int pthread_t;
+
+typedef union {
+  char __size[56];
+  long int __align;
+} pthread_attr_t;
+
+int pthread_create(pthread_t *thread,
+                   const pthread_attr_t *attr,
+                   void *(*start_routine) (void *),
+                   void *arg);
+
+void *zz_signal_handler_thread(void *arg);
 
 ]]
 
@@ -48,6 +63,21 @@ end
 
 function M.kill(pid, sig)
    return util.check_bad("kill", 0, ffi.C.kill(pid, sig))
+end
+
+function M.setup_signal_handler_thread()
+   -- block all signals in the main thread
+   M.block()
+   -- signals are handled in a dedicated thread which sends an event
+   -- to the Lua scheduler when a signal arrives
+   local thread_id = ffi.new("pthread_t[1]")
+   local rv = ffi.C.pthread_create(thread_id,
+                                   nil,
+                                   ffi.C.zz_signal_handler_thread,
+                                   nil)
+   if rv ~= 0 then
+      error("cannot create signal handler thread: pthread_create() failed")
+   end
 end
 
 return M
