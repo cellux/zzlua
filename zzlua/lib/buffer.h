@@ -2,7 +2,6 @@
 #define ZZ_BUFFER
 
 #include <inttypes.h>
-#include <stdbool.h>
 
 #ifndef ZZ_BUFFER_DEFAULT_CAPACITY
 #define ZZ_BUFFER_DEFAULT_CAPACITY 256
@@ -35,17 +34,5 @@ void zz_buffer_clear(zz_buffer_t *self);
 void zz_buffer_reset(zz_buffer_t *self);
 
 void zz_buffer_free(zz_buffer_t *self);
-
-/* cmp-zz_buffer interop */
-
-struct cmp_ctx_s;
-
-typedef struct {
-  zz_buffer_t *buffer;
-  uint32_t pos;
-} zz_cmp_buffer_state;
-
-bool zz_cmp_buffer_reader(struct cmp_ctx_s *ctx, void *data, size_t limit);
-size_t zz_cmp_buffer_writer(struct cmp_ctx_s *ctx, const void *data, size_t count);
 
 #endif

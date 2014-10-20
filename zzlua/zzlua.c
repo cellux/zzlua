@@ -9,8 +9,8 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-#include "buffer.h"
-#include "cmp.h"
+#include "msgpack.h"
+
 #include "nn.h"
 #include "pubsub.h"
 

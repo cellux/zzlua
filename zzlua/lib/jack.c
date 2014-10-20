@@ -5,14 +5,12 @@
 #include <jack/ringbuffer.h>
 #include <jack/statistics.h>
 
-#include <stdbool.h> /* needed by cmp.h */
-#include <string.h>  /* for strlen() */
+#include <string.h>  /* strlen() */
 
-#include "nn.h"   /* nanomsg */
-#include "cmp.h"  /* msgpack */
+#include "nn.h"      /* nanomsg */
+#include "msgpack.h" /* cmp */
 
 #include "jack.h"
-#include "buffer.h"
 
 #define SCRATCH_SIZE 1024
 

@@ -87,6 +87,16 @@ bool cmp_read_array(cmp_ctx_t *ctx, uint32_t *size);
 bool cmp_read_map(cmp_ctx_t *ctx, uint32_t *size);
 bool cmp_read_object(cmp_ctx_t *ctx, cmp_object_t *obj);
 
+/* cmp-zz_buffer interop */
+
+typedef struct {
+  zz_buffer_t *buffer;
+  uint32_t pos;
+} zz_cmp_buffer_state;
+
+bool zz_cmp_buffer_reader(struct cmp_ctx_s *ctx, void *data, size_t limit);
+size_t zz_cmp_buffer_writer(struct cmp_ctx_s *ctx, const void *data, size_t count);
+
 ]]
 
 local CMP_TYPE_POSITIVE_FIXNUM = 0
