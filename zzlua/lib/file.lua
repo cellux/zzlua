@@ -263,14 +263,20 @@ end
 
 function M.stat(path)
    local s = Stat(ffi.C.zz_file_Stat_new())
-   s:stat(path)
-   return s
+   if s:stat(path)==0 then
+      return s
+   else
+      return nil
+   end
 end
 
 function M.lstat(path)
    local s = Stat(ffi.C.zz_file_Stat_new())
-   s:lstat(path)
-   return s
+   if s:lstat(path)==0 then
+      return s
+   else
+      return nil
+   end
 end
 
 function M.chmod(path, mode)
