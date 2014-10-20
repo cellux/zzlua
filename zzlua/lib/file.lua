@@ -34,8 +34,8 @@ struct timespec * zz_file_Stat_mtime(struct stat *);
 struct timespec * zz_file_Stat_ctime(struct stat *);
 void              zz_file_Stat_free(struct stat *);
 
-void zz_file_stat(const char *pathname, struct stat *buf);
-void zz_file_lstat(const char *pathname, struct stat *buf);
+int zz_file_stat(const char *pathname, struct stat *buf);
+int zz_file_lstat(const char *pathname, struct stat *buf);
 
 struct File_ct {
   int fd;
