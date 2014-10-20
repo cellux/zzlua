@@ -99,7 +99,10 @@ function Buffer_mt:reset()
 end
 
 function Buffer_mt:free()
-   ffi.C.zz_buffer_free(self.buf)
+   if self.buf ~= nil then
+      ffi.C.zz_buffer_free(self.buf)
+      self.buf = nil
+   end
 end
 
 Buffer_mt.__gc = Buffer_mt.free

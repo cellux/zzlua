@@ -94,5 +94,4 @@ void zz_buffer_free(zz_buffer_t *self) {
     self->data = NULL;
   }
   free(self);
-  self = NULL;
 }
