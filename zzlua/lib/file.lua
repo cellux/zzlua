@@ -191,9 +191,14 @@ function Stat_mt:__index(key)
    end
 end
 
-function Stat_mt:__gc()
-   ffi.C.zz_file_Stat_free(self.buf)
+function Stat_mt:free()
+   if self.buf ~= nil then
+      ffi.C.zz_file_Stat_free(self.buf)
+      self.buf = nil
+   end
 end
+
+Stat_mt.__gc = Stat_mt.free
 
 local Stat = ffi.metatype("struct Stat_ct", Stat_mt)
 
