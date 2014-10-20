@@ -7,8 +7,8 @@
 
 #include <string.h>  /* strlen() */
 
-#include "nn.h"      /* nanomsg */
 #include "msgpack.h" /* cmp */
+#include "nanomsg/nn.h"
 
 #include "jack.h"
 

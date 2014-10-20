@@ -47,6 +47,7 @@ $(NANOMSG_DIR)/Makefile: $(NANOMSG_DIR)/.stamp
 
 $(NANOMSG_LIB): $(NANOMSG_DIR)/Makefile
 	$(MAKE) -C $(NANOMSG_DIR)
+	ln -s . $(NANOMSG_SRC)/nanomsg
 
 # cmp
 
@@ -70,32 +71,35 @@ $(CMP_OBJ): $(CMP_DIR)/.stamp
 ### main ###
 
 CC = gcc
-CFLAGS = -Wall -I./lib -I$(LUAJIT_SRC) -I$(NANOMSG_SRC) -I$(CMP_DIR)
+CFLAGS = -Wall -iquote ./lib -iquote $(LUAJIT_SRC) -iquote $(NANOMSG_SRC) -iquote $(CMP_DIR)
 LDFLAGS = -Wl,-E -lm -ldl -lpthread -lanl -ljack
 
-# zzlua: low-level support for Lua libraries
-ZZ_LIB_C_SRC = $(wildcard lib/*.c)
-ZZ_LIB_C_OBJ = $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
-lib/buffer.o: lib/buffer.h $(CMP_OBJ)
-
-# zzlua: Lua libraries
+# Lua libraries
 ZZ_LIB_LUA_SRC = $(wildcard lib/*.lua)
 ZZ_LIB_LUA_OBJ = $(patsubst %.lua,%.lo,$(ZZ_LIB_LUA_SRC))
 
 # Lua libs are precompiled into object files
 # and then linked into the zzlua executable
-lib/%.lo : lib/%.lua $(LUAJIT_BIN)
+lib/%.lo: lib/%.lua $(LUAJIT_BIN)
 	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -bt o -g $< $@
+
+# low-level support for Lua libraries
+ZZ_LIB_C_SRC = $(wildcard lib/*.c)
+ZZ_LIB_C_OBJ = $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
+
+# header dependencies
+lib/buffer.o: lib/buffer.h
+lib/msgpack.o: lib/msgpack.h
 
 zzlua.o: $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
 
 # zzlua + libs + support
-ZZ_OBJ = zzlua.o $(ZZ_LIB_C_OBJ) $(ZZ_LIB_LUA_OBJ)
+ZZ_OBJ = zzlua.o $(ZZ_LIB_LUA_OBJ) $(ZZ_LIB_C_OBJ)
 
-# libraries and object files to be searched for missing externs
+# static libraries and object files to be searched for missing externs
 ZZ_LIB = $(LUAJIT_LIB) $(CMP_OBJ)
 
-# libraries and object files to be linked in as a whole
+# static libraries and object files to be linked in as a whole
 ZZ_LIB_WHOLE = $(NANOMSG_LIB)
 
 zzlua: $(ZZ_OBJ) $(ZZ_LIB) $(ZZ_LIB_WHOLE)

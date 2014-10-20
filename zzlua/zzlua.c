@@ -9,10 +9,10 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-#include "msgpack.h"
+#include "nanomsg/nn.h"
+#include "nanomsg/pubsub.h"
 
-#include "nn.h"
-#include "pubsub.h"
+#include "msgpack.h"
 
 /* most of this comes from LuaJIT */
 
