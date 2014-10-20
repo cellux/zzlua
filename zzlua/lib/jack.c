@@ -25,18 +25,18 @@ static unsigned char scratch[SCRATCH_SIZE];
 
 static cmp_ctx_t* get_shared_cmp_ctx() {
   static cmp_ctx_t cmp_ctx;
-  static buffer_t cmp_buf;
-  buffer_init(&cmp_buf, scratch, 0, SCRATCH_SIZE, false);
-  static cmp_buffer_state cmp_buf_state;
+  static zz_buffer_t cmp_buf;
+  zz_buffer_init(&cmp_buf, scratch, 0, SCRATCH_SIZE, false);
+  static zz_cmp_buffer_state cmp_buf_state;
   cmp_buf_state.buffer = &cmp_buf;
   cmp_buf_state.pos = 0;
-  cmp_init(&cmp_ctx, &cmp_buf_state, cmp_buffer_reader, cmp_buffer_writer);
+  cmp_init(&cmp_ctx, &cmp_buf_state, zz_cmp_buffer_reader, zz_cmp_buffer_writer);
   return &cmp_ctx;
 }
 
 /* send an event to the zzlua scheduler */
 
-static bool send_event(const char *msg_type, int socket, buffer_t *buffer) {
+static bool send_event(const char *msg_type, int socket, zz_buffer_t *buffer) {
   if (buffer->size == buffer->capacity) {
     /* we handle this as an overflow */
     fprintf(stderr, "scratch overflow while serializing %s event!\n", msg_type);
@@ -74,14 +74,14 @@ int zz_jack_process_callback (jack_nframes_t nframes, void *arg) {
       }
       else {
         /* process midi messages (send them out) */
-        /* WARNING: this code cannot handle ZZ_PORTS_MAX > 32 */
+        /* WARNING: this code cannot handle ZZ_JACK_PORTS_MAX > 32 */
         uint32_t port_initialized = 0;
-        void *port_buffers[ZZ_PORTS_MAX];
+        void *port_buffers[ZZ_JACK_PORTS_MAX];
         int i = 0;
         while (i < bytes_read) {
           unsigned char port_index = scratch[i++];
-          if (port_index >= ZZ_PORTS_MAX) {
-            fprintf(stderr, "midi out is not supported for ports with index >= %d\n", ZZ_PORTS_MAX);
+          if (port_index >= ZZ_JACK_PORTS_MAX) {
+            fprintf(stderr, "midi out is not supported for ports with index >= %d\n", ZZ_JACK_PORTS_MAX);
           }
           else if (port_index >= params->nports) {
             fprintf(stderr, "invalid port_index: %d, must be < %d\n", port_index, params->nports);
@@ -134,7 +134,7 @@ int zz_jack_process_callback (jack_nframes_t nframes, void *arg) {
       }
       if (!send_event("jack.midi",
                       params->event_socket,
-                      ((cmp_buffer_state*)cmp_ctx->buf)->buffer)) {
+                      ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer)) {
         break;
       }
     }
@@ -151,7 +151,7 @@ int zz_jack_xrun_callback(void *arg) {
   cmp_write_float(cmp_ctx, xrun_delayed_usecs);
   send_event("jack.xrun",
              params->event_socket,
-             ((cmp_buffer_state*)cmp_ctx->buf)->buffer);
+             ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
   return 0;
 }
 
@@ -167,7 +167,7 @@ void zz_jack_info_shutdown_callback(jack_status_t code,
   cmp_write_str(cmp_ctx, reason, strlen(reason));
   send_event("jack.shutdown",
              params->event_socket,
-             ((cmp_buffer_state*)cmp_ctx->buf)->buffer);
+             ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
 }
 
 int zz_jack_buffer_size_callback(jack_nframes_t nframes,
@@ -179,7 +179,7 @@ int zz_jack_buffer_size_callback(jack_nframes_t nframes,
   cmp_write_uint(cmp_ctx, nframes);
   send_event("jack.buffer-size",
              params->event_socket,
-             ((cmp_buffer_state*)cmp_ctx->buf)->buffer);
+             ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
   return 0;
 }
 
@@ -192,7 +192,7 @@ int zz_jack_sample_rate_callback(jack_nframes_t nframes,
   cmp_write_uint(cmp_ctx, nframes);
   send_event("jack.sample-rate",
              params->event_socket,
-             ((cmp_buffer_state*)cmp_ctx->buf)->buffer);
+             ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
   return 0;
 }
 
@@ -208,7 +208,7 @@ void zz_jack_port_registration_callback(jack_port_id_t port,
   cmp_write_sint(cmp_ctx, reg);
   send_event("jack.port-registration",
              params->event_socket,
-             ((cmp_buffer_state*)cmp_ctx->buf)->buffer);
+             ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
 }
 
 void zz_jack_client_registration_callback(const char* name,
@@ -223,7 +223,7 @@ void zz_jack_client_registration_callback(const char* name,
   cmp_write_sint(cmp_ctx, reg);
   send_event("jack.client-registration",
              params->event_socket,
-             ((cmp_buffer_state*)cmp_ctx->buf)->buffer);
+             ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
 }
 
 void zz_jack_port_connect_callback(jack_port_id_t a,
@@ -240,7 +240,7 @@ void zz_jack_port_connect_callback(jack_port_id_t a,
   cmp_write_sint(cmp_ctx, connect);
   send_event("jack.port-connect",
              params->event_socket,
-             ((cmp_buffer_state*)cmp_ctx->buf)->buffer);
+             ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
 }
 
 void zz_jack_port_rename_callback(jack_port_id_t port,
@@ -257,5 +257,5 @@ void zz_jack_port_rename_callback(jack_port_id_t port,
   cmp_write_str(cmp_ctx, new_name, strlen(new_name));
   send_event("jack.port-rename",
              params->event_socket,
-             ((cmp_buffer_state*)cmp_ctx->buf)->buffer);
+             ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
 }

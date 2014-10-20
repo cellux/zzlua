@@ -310,14 +310,14 @@ void  jack_reset_max_delayed_usecs (jack_client_t *client);
 static const int ZZ_JACK_PORT_AUDIO = 1;
 static const int ZZ_JACK_PORT_MIDI  = 2;
 
-static const int ZZ_PORTS_MAX = 32;
+static const int ZZ_JACK_PORTS_MAX  = 32;
 
 struct zz_jack_params {
   jack_client_t *client;
   jack_ringbuffer_t *midi_rb;
-  jack_port_t* ports[ZZ_PORTS_MAX];
-  int port_types[ZZ_PORTS_MAX];
-  int port_flags[ZZ_PORTS_MAX];
+  jack_port_t* ports[ZZ_JACK_PORTS_MAX];
+  int port_types[ZZ_JACK_PORTS_MAX];
+  int port_flags[ZZ_JACK_PORTS_MAX];
   int nports;
   int event_socket;
 };
@@ -336,7 +336,7 @@ void zz_jack_port_rename_callback(jack_port_id_t, const char *, const char *, vo
 
 local jack = ffi.load("jack")
 
-local ZZ_PORTS_MAX = jack.ZZ_PORTS_MAX
+local ZZ_JACK_PORTS_MAX  = jack.ZZ_JACK_PORTS_MAX
 
 local ZZ_JACK_PORT_AUDIO = jack.ZZ_JACK_PORT_AUDIO
 local ZZ_JACK_PORT_MIDI  = jack.ZZ_JACK_PORT_MIDI
@@ -440,8 +440,8 @@ function M.port_register(name, type, flags)
       error(sf("this port has been already registered: %s", name))
    end
    local port_index = g_params.nports
-   if port_index >= ZZ_PORTS_MAX then
-      error(sf("reached max number of Jack ports (%d)", ZZ_PORTS_MAX))
+   if port_index >= ZZ_JACK_PORTS_MAX then
+      error(sf("reached max number of Jack ports (%d)", ZZ_JACK_PORTS_MAX))
    end
    local port = jack.jack_port_register(g_client, name, type, flags, 0)
    if port == nil then

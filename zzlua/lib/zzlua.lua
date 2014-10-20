@@ -43,15 +43,13 @@ end
 
 sched.on_forever('signal', signal_handler)
 
-ffi.cdef [[
-void setup_signal_handler_thread();
-]]
+ffi.cdef "void zz_setup_signal_handler_thread();"
 
-ffi.C.setup_signal_handler_thread()
+ffi.C.zz_setup_signal_handler_thread()
 
 --[[ main ]]--
 
-local function zzlua_run(chunk, err)
+local function zz_run(chunk, err)
    if chunk then
       chunk()
    else
@@ -66,7 +64,7 @@ while arg_index <= #arg do
    if arg[arg_index] == '-e' then
       arg_index = arg_index + 1
       local script = arg[arg_index]
-      zzlua_run(loadstring(script))
+      zz_run(loadstring(script))
    else
       -- the first non-option arg is the path of the script to run
       break
@@ -82,4 +80,4 @@ for i=arg_index+1,#arg do
    table.insert(script_args, arg[i])
 end
 arg = script_args -- the script shall not see any zzlua options
-zzlua_run(loadfile(script_path)) -- loadfile(nil) loads from stdin
+zz_run(loadfile(script_path)) -- loadfile(nil) loads from stdin

@@ -16,26 +16,26 @@ struct Stat_ct {
   struct stat *buf;
 };
 
-struct stat *     zzlua_Stat_new();
-__dev_t           zzlua_Stat_dev(struct stat *);
-__ino_t           zzlua_Stat_ino(struct stat *);
-__mode_t          zzlua_Stat_mode(struct stat *);
-__mode_t          zzlua_Stat_type(struct stat *buf);
-__mode_t          zzlua_Stat_perms(struct stat *buf);
-__nlink_t         zzlua_Stat_nlink(struct stat *);
-__uid_t           zzlua_Stat_uid(struct stat *);
-__gid_t           zzlua_Stat_gid(struct stat *);
-__dev_t           zzlua_Stat_rdev(struct stat *);
-__off_t           zzlua_Stat_size(struct stat *);
-__blksize_t       zzlua_Stat_blksize(struct stat *);
-__blkcnt_t        zzlua_Stat_blocks(struct stat *);
-struct timespec * zzlua_Stat_atime(struct stat *);
-struct timespec * zzlua_Stat_mtime(struct stat *);
-struct timespec * zzlua_Stat_ctime(struct stat *);
-void              zzlua_Stat_free(struct stat *);
+struct stat *     zz_file_Stat_new();
+__dev_t           zz_file_Stat_dev(struct stat *);
+__ino_t           zz_file_Stat_ino(struct stat *);
+__mode_t          zz_file_Stat_mode(struct stat *);
+__mode_t          zz_file_Stat_type(struct stat *buf);
+__mode_t          zz_file_Stat_perms(struct stat *buf);
+__nlink_t         zz_file_Stat_nlink(struct stat *);
+__uid_t           zz_file_Stat_uid(struct stat *);
+__gid_t           zz_file_Stat_gid(struct stat *);
+__dev_t           zz_file_Stat_rdev(struct stat *);
+__off_t           zz_file_Stat_size(struct stat *);
+__blksize_t       zz_file_Stat_blksize(struct stat *);
+__blkcnt_t        zz_file_Stat_blocks(struct stat *);
+struct timespec * zz_file_Stat_atime(struct stat *);
+struct timespec * zz_file_Stat_mtime(struct stat *);
+struct timespec * zz_file_Stat_ctime(struct stat *);
+void              zz_file_Stat_free(struct stat *);
 
-void zzlua_stat(const char *pathname, struct stat *buf);
-void zzlua_lstat(const char *pathname, struct stat *buf);
+void zz_file_stat(const char *pathname, struct stat *buf);
+void zz_file_lstat(const char *pathname, struct stat *buf);
 
 struct File_ct {
   int fd;
@@ -51,7 +51,7 @@ DIR *opendir(const char *path);
 struct dirent * readdir (DIR *dir);
 int closedir (DIR *dir);
 
-char * zzlua_dirent_name(struct dirent *);
+char * zz_file_dirent_name(struct dirent *);
 
 ]]
 
@@ -120,58 +120,58 @@ local File = ffi.metatype("struct File_ct", File_mt)
 local Stat_mt = {}
 
 function Stat_mt:stat(path)
-   return ffi.C.zzlua_stat(path, self.buf)
+   return ffi.C.zz_file_stat(path, self.buf)
 end
 
 function Stat_mt:lstat(path)
-   return ffi.C.zzlua_lstat(path, self.buf)
+   return ffi.C.zz_file_lstat(path, self.buf)
 end
 
 local Stat_accessors = {
    dev = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_dev(buf))
+      return tonumber(ffi.C.zz_file_Stat_dev(buf))
    end,
    ino = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_ino(buf))
+      return tonumber(ffi.C.zz_file_Stat_ino(buf))
    end,
    mode = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_mode(buf))
+      return tonumber(ffi.C.zz_file_Stat_mode(buf))
    end,
    perms = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_perms(buf))
+      return tonumber(ffi.C.zz_file_Stat_perms(buf))
    end,
    type = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_type(buf))
+      return tonumber(ffi.C.zz_file_Stat_type(buf))
    end,
    nlink = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_nlink(buf))
+      return tonumber(ffi.C.zz_file_Stat_nlink(buf))
    end,
    uid = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_uid(buf))
+      return tonumber(ffi.C.zz_file_Stat_uid(buf))
    end,
    gid = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_gid(buf))
+      return tonumber(ffi.C.zz_file_Stat_gid(buf))
    end,
    rdev = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_rdev(buf))
+      return tonumber(ffi.C.zz_file_Stat_rdev(buf))
    end,
    size = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_size(buf))
+      return tonumber(ffi.C.zz_file_Stat_size(buf))
    end,
    blksize = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_blksize(buf))
+      return tonumber(ffi.C.zz_file_Stat_blksize(buf))
    end,
    blocks = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_blocks(buf))
+      return tonumber(ffi.C.zz_file_Stat_blocks(buf))
    end,
    atime = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_atime(buf).tv_sec)
+      return tonumber(ffi.C.zz_file_Stat_atime(buf).tv_sec)
    end,
    mtime = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_mtime(buf).tv_sec)
+      return tonumber(ffi.C.zz_file_Stat_mtime(buf).tv_sec)
    end,
    ctime = function(buf)
-      return tonumber(ffi.C.zzlua_Stat_ctime(buf).tv_sec)
+      return tonumber(ffi.C.zz_file_Stat_ctime(buf).tv_sec)
    end,
 }
 
@@ -190,7 +190,7 @@ function Stat_mt:__index(key)
 end
 
 function Stat_mt:__gc()
-   ffi.C.zzlua_Stat_free(self.buf)
+   ffi.C.zz_file_Stat_free(self.buf)
 end
 
 local Stat = ffi.metatype("struct Stat_ct", Stat_mt)
@@ -200,7 +200,7 @@ local Dir_mt = {}
 function Dir_mt:read()
    local entry = ffi.C.readdir(self.dir)
    if entry ~= nil then
-      return ffi.string(ffi.C.zzlua_dirent_name(entry))
+      return ffi.string(ffi.C.zz_file_dirent_name(entry))
    else
       return nil
    end
@@ -262,13 +262,13 @@ function M.is_executable(path)
 end
 
 function M.stat(path)
-   local s = Stat(ffi.C.zzlua_Stat_new())
+   local s = Stat(ffi.C.zz_file_Stat_new())
    s:stat(path)
    return s
 end
 
 function M.lstat(path)
-   local s = Stat(ffi.C.zzlua_Stat_new())
+   local s = Stat(ffi.C.zz_file_Stat_new())
    s:lstat(path)
    return s
 end

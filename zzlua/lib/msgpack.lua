@@ -330,12 +330,12 @@ local function Context(buf)
    local self = {
       buf = buf,
       ctx = ffi.new("cmp_ctx_t"),
-      state = ffi.new("cmp_buffer_state", buf.buf, 0),
+      state = ffi.new("zz_cmp_buffer_state", buf.buf, 0),
    }
    ffi.C.cmp_init(self.ctx,
                   self.state,
-                  ffi.C.cmp_buffer_reader,
-                  ffi.C.cmp_buffer_writer)
+                  ffi.C.zz_cmp_buffer_reader,
+                  ffi.C.zz_cmp_buffer_writer)
    return setmetatable(self, Context_mt)
 end
 

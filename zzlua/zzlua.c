@@ -27,12 +27,12 @@ static void *signal_handler_thread(void *arg) {
   int endpoint_id;
   unsigned char msg_buf[32];
   cmp_ctx_t cmp_ctx;
-  buffer_t cmp_buf;
-  cmp_buffer_state cmp_buf_state;
+  zz_buffer_t cmp_buf;
+  zz_cmp_buffer_state cmp_buf_state;
 
-  buffer_init(&cmp_buf, msg_buf, 0, 32, false);
+  zz_buffer_init(&cmp_buf, msg_buf, 0, 32, false);
   cmp_buf_state.buffer = &cmp_buf;
-  cmp_init(&cmp_ctx, &cmp_buf_state, cmp_buffer_reader, cmp_buffer_writer);
+  cmp_init(&cmp_ctx, &cmp_buf_state, zz_cmp_buffer_reader, zz_cmp_buffer_writer);
 
   event_socket = nn_socket(AF_SP, NN_PUB);
   if (event_socket < 0) {
@@ -74,7 +74,7 @@ static void *signal_handler_thread(void *arg) {
   return NULL;
 }
 
-void setup_signal_handler_thread() {
+void zz_setup_signal_handler_thread() {
   sigset_t ss;
   sigfillset(&ss);
   /* block all signals in main thread */
