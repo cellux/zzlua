@@ -26,7 +26,7 @@ static unsigned char scratch[SCRATCH_SIZE];
 static cmp_ctx_t* get_shared_cmp_ctx() {
   static cmp_ctx_t cmp_ctx;
   static zz_buffer_t cmp_buf;
-  zz_buffer_init(&cmp_buf, scratch, 0, SCRATCH_SIZE, false);
+  zz_buffer_init(&cmp_buf, scratch, 0, SCRATCH_SIZE, 0);
   static zz_cmp_buffer_state cmp_buf_state;
   cmp_buf_state.buffer = &cmp_buf;
   cmp_buf_state.pos = 0;

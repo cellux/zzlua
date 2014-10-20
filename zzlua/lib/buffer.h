@@ -12,14 +12,14 @@ typedef struct {
   uint8_t *data;
   uint32_t size;
   uint32_t capacity;
-  bool dynamic;
+  int dynamic;
 } zz_buffer_t;
 
 void zz_buffer_init(zz_buffer_t *self,
                     uint8_t *data,
                     uint32_t size,
                     uint32_t capacity,
-                    bool dynamic);
+                    int dynamic);
 
 zz_buffer_t * zz_buffer_new();
 zz_buffer_t * zz_buffer_new_with_capacity(uint32_t capacity);

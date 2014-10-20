@@ -30,7 +30,7 @@ static void *signal_handler_thread(void *arg) {
   zz_buffer_t cmp_buf;
   zz_cmp_buffer_state cmp_buf_state;
 
-  zz_buffer_init(&cmp_buf, msg_buf, 0, 32, false);
+  zz_buffer_init(&cmp_buf, msg_buf, 0, 32, 0);
   cmp_buf_state.buffer = &cmp_buf;
   cmp_init(&cmp_ctx, &cmp_buf_state, zz_cmp_buffer_reader, zz_cmp_buffer_writer);
 

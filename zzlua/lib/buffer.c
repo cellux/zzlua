@@ -14,7 +14,7 @@ void zz_buffer_init(zz_buffer_t *self,
                     uint8_t *data,
                     uint32_t size,
                     uint32_t capacity,
-                    bool dynamic) {
+                    int dynamic) {
   self->data = data;
   self->size = size;
   self->capacity = capacity;
@@ -36,7 +36,7 @@ zz_buffer_t * zz_buffer_new_with_capacity(uint32_t capacity) {
     return NULL;
   }
   uint32_t size = 0;
-  bool dynamic = true;
+  int dynamic = 1;
   zz_buffer_init(self, data, size, capacity, dynamic);
   return self;
 }
