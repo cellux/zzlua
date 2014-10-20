@@ -53,6 +53,8 @@ int closedir (DIR *dir);
 
 char * zz_file_dirent_name(struct dirent *);
 
+const char * zz_file_type(__mode_t mode);
+
 ]]
 
 local O_RDONLY = 0
@@ -278,6 +280,25 @@ function M.lstat(path)
       return nil
    end
 end
+
+function M.type(path)
+   local s = M.lstat(path)
+   return s and ffi.string(ffi.C.zz_file_type(s.mode))
+end
+
+local function create_type_checker(typ)
+   M["is_"..typ] = function(path)
+      return M.type(path)==typ
+   end
+end
+
+create_type_checker("reg")
+create_type_checker("dir")
+create_type_checker("lnk")
+create_type_checker("chr")
+create_type_checker("blk")
+create_type_checker("fifo")
+create_type_checker("sock")
 
 function M.chmod(path, mode)
    return ffi.C.chmod(path, mode)

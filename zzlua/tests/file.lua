@@ -7,7 +7,7 @@ local sf = string.format
 assert(file.exists('testdata/hello.txt'))
 assert(not file.exists('non-existing-file'))
 
--- chmod
+-- chmod, stat, is_executable
 local function oct(s) return tonumber(s, 8) end
 file.chmod("testdata/hello.txt", oct("755"))
 assert.equals(file.stat("testdata/hello.txt").perms, oct("755"))
@@ -15,6 +15,32 @@ assert(file.is_executable("testdata/hello.txt"))
 file.chmod("testdata/hello.txt", oct("644"))
 assert(file.stat("testdata/hello.txt").perms == oct("644"))
 assert(not file.is_executable("testdata/hello.txt"))
+
+-- readable, writable
+assert(file.is_readable("testdata/hello.txt"))
+assert(file.is_writable("testdata/hello.txt"))
+local orig_perms = file.stat("testdata/hello.txt").perms
+
+file.chmod("testdata/hello.txt", 0)
+assert(not file.is_readable("testdata/hello.txt"))
+assert(not file.is_writable("testdata/hello.txt"))
+
+file.chmod("testdata/hello.txt", oct("400"))
+assert(file.is_readable("testdata/hello.txt"))
+assert(not file.is_writable("testdata/hello.txt"))
+assert(not file.is_executable("testdata/hello.txt"))
+
+file.chmod("testdata/hello.txt", oct("200"))
+assert(not file.is_readable("testdata/hello.txt"))
+assert(file.is_writable("testdata/hello.txt"))
+assert(not file.is_executable("testdata/hello.txt"))
+
+file.chmod("testdata/hello.txt", oct("100"))
+assert(not file.is_readable("testdata/hello.txt"))
+assert(not file.is_writable("testdata/hello.txt"))
+assert(file.is_executable("testdata/hello.txt"))
+
+file.chmod("testdata/hello.txt", orig_perms)
 
 -- stat
 local s = file.stat("testdata/hello.txt")
@@ -35,6 +61,34 @@ assert.type(s.blocks, 'number')
 assert.type(s.atime, 'number')
 assert.type(s.mtime, 'number')
 assert.type(s.ctime, 'number')
+
+-- stat for non-existent file returns nil
+assert.equals(file.stat("non-existent"), nil, "file.stat() result for non-existent file")
+
+-- type
+assert(file.type("testdata/hello.txt")=="reg")
+assert(file.is_reg("testdata/hello.txt"))
+
+assert(file.type("testdata")=="dir")
+assert(file.is_dir("testdata"))
+
+assert(file.type("testdata/hello.txt.symlink")=="lnk")
+assert(file.is_lnk("testdata/hello.txt.symlink"))
+-- TODO: chr, blk, fifo, sock
+
+-- type of symlink pointing to non-existing file is "lnk"
+assert(file.type("testdata/bad.symlink")=="lnk")
+assert(file.is_lnk("testdata/bad.symlink"))
+
+-- but exists() returns false for such symlinks
+assert(file.exists("testdata/hello.txt.symlink"))
+assert(not file.exists("testdata/bad.symlink"))
+
+-- just like is_readable and is_writable
+assert(file.is_readable("testdata/hello.txt.symlink"))
+assert(file.is_writable("testdata/hello.txt.symlink"))
+assert(not file.is_readable("testdata/bad.symlink"))
+assert(not file.is_writable("testdata/bad.symlink"))
 
 -- "The field st_ctime is changed by writing or by setting inode
 -- information (i.e., owner, group, link count, mode, etc.)."
@@ -79,6 +133,15 @@ assert(contents=="world")
 f:close()
 
 -- reading directories
+local expected_entries = {
+   '.',
+   '..',
+   'hello.txt',
+   'hello.txt.symlink',
+   'bad.symlink',
+}
+table.sort(expected_entries)
+
 local entries = {}
 local dir = file.opendir("testdata")
 local function add_entry()
@@ -89,10 +152,10 @@ local function add_entry()
    end
    return e
 end
-for i=1,3 do add_entry() end
+for i=1,#expected_entries do add_entry() end
 assert(dir:read()==nil)
 table.sort(entries)
-assert.equals(entries, {'.', '..', 'hello.txt'})
+assert.equals(entries, expected_entries)
 assert.equals(dir:close(), 0)
 
 local entries = {}
@@ -100,4 +163,4 @@ for f in file.readdir("testdata") do
    table.insert(entries, f)
 end
 table.sort(entries)
-assert.equals(entries, {'.','..','hello.txt'})
+assert.equals(entries, expected_entries)

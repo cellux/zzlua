@@ -38,3 +38,22 @@ int zz_file_lstat(const char *pathname, struct stat *buf) {
 char * zz_file_dirent_name(struct dirent *entry) {
   return entry->d_name;
 }
+
+const char * zz_file_type(__mode_t mode) {
+  if (S_ISREG(mode))
+    return "reg";
+  else if (S_ISDIR(mode))
+    return "dir";
+  else if (S_ISLNK(mode))
+    return "lnk";
+  else if (S_ISCHR(mode))
+    return "chr";
+  else if (S_ISBLK(mode))
+    return "blk";
+  else if (S_ISFIFO(mode))
+    return "fifo";
+  else if (S_ISSOCK(mode))
+    return "sock";
+  else
+    return NULL;
+}
