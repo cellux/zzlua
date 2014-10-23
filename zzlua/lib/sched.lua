@@ -159,11 +159,12 @@ local function tick()
       local ok, rv = coroutine.resume(t, data)
       local status = coroutine.status(t)
       if status == "suspended" then
-         if type(rv) == "number" then
+         if type(rv) == "number" and rv > 0 then
             -- the coroutine shall be resumed at the given time
             sleeping:push(SleepingThread(t, rv))
          elseif rv then
             -- rv is the event which shall wake up this coroutine
+            -- (might be a negative number -> used for async work)
             add_listener(rv, t)
             add_waiting(t)
          else
