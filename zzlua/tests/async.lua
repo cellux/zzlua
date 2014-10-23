@@ -27,7 +27,8 @@ for i=1,10 do
       table.insert(payload, payloads[math.random(#payloads)])
    end
    -- we scale down delay a bit so that the test doesn't take too long
-   sched(make_async_echo_requester(delay*0.01, payload))
+   -- (which also makes the test fragile if the system has high load)
+   sched(make_async_echo_requester(delay*0.02, payload))
    expected_replies[delay] = payload
 end
 
