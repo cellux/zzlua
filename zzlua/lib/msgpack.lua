@@ -141,11 +141,11 @@ function Context_mt:error()
    return ffi.string(ffi.C.cmp_strerror(self.ctx))
 end
 
-function Context_mt:write_sint(d)
-   ffi.C.cmp_write_sint(self.ctx, d)
+function Context_mt:write_sint(i)
+   ffi.C.cmp_write_sint(self.ctx, i)
 end
 
-function Context_mt:write_uint(d)
+function Context_mt:write_uint(u)
    ffi.C.cmp_write_uint(self.ctx, u)
 end
 
@@ -249,7 +249,7 @@ readers[CMP_TYPE_UINT64] = function(ctx, obj)
 end
 
 readers[CMP_TYPE_SINT8] = function(ctx, obj)
-   return obj.as.S8
+   return obj.as.s8
 end
 
 readers[CMP_TYPE_SINT16] = function(ctx, obj)
