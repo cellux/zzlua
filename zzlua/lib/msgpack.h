@@ -20,4 +20,19 @@ typedef struct {
 bool zz_cmp_buffer_reader(struct cmp_ctx_s *ctx, void *data, size_t limit);
 size_t zz_cmp_buffer_writer(struct cmp_ctx_s *ctx, const void *data, size_t count);
 
+/* some handy cmp extensions */
+
+/* these all accept doubles without a fractional part */
+
+bool zz_cmp_read_size_t(cmp_ctx_t *ctx, size_t *s);
+bool zz_cmp_write_size_t(cmp_ctx_t *ctx, size_t s);
+
+bool zz_cmp_read_ssize_t(cmp_ctx_t *ctx, ssize_t *s);
+bool zz_cmp_write_ssize_t(cmp_ctx_t *ctx, ssize_t s);
+
+bool zz_cmp_read_ptr(cmp_ctx_t *ctx, void **ptr);
+bool zz_cmp_write_ptr(cmp_ctx_t *ctx, void *ptr);
+
+bool zz_cmp_read_int(cmp_ctx_t *ctx, int32_t *i);
+
 #endif
