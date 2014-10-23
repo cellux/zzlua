@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local async = require('async')
 local util = require('util')
 local sf = string.format
 
@@ -55,6 +56,15 @@ char * zz_file_dirent_name(struct dirent *);
 
 const char * zz_file_type(__mode_t mode);
 
+/* async workers */
+
+void zz_file_lseek_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
+
+void zz_file_stat_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
+void zz_file_lstat_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
+void zz_file_read_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
+void zz_file_close_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
+
 ]]
 
 local O_RDONLY = 0
@@ -70,16 +80,32 @@ local X_OK = 1
 local W_OK = 2
 local R_OK = 4
 
+-- file
+
+local ASYNC_LSEEK  = async.register_worker(ffi.C.zz_file_lseek_worker)
+local ASYNC_READ  = async.register_worker(ffi.C.zz_file_read_worker)
+local ASYNC_CLOSE  = async.register_worker(ffi.C.zz_file_close_worker)
+
 local File_mt = {}
 
+local function lseek(fd, offset, whence)
+   local rv
+   if coroutine.running() then
+      rv = async.request(ASYNC_LSEEK, fd, offset, whence)
+   else
+      rv = ffi.C.lseek(fd, offset, whence)
+   end
+   return util.check_bad("lseek", -1, rv)
+end
+
 function File_mt:pos()
-   return util.check_bad("lseek", -1, ffi.C.lseek(self.fd, 0, SEEK_CUR))
+   return lseek(self.fd, 0, SEEK_CUR)
 end
 
 function File_mt:size()
    local pos = self:pos()
-   local size = util.check_bad("lseek", -1, ffi.C.lseek(self.fd, 0, SEEK_END))
-   util.check_bad("lseek", -1, ffi.C.lseek(self.fd, pos, SEEK_SET))
+   local size = lseek(self.fd, 0, SEEK_END)
+   lseek(self.fd, pos, SEEK_SET)
    return size
 end
 
@@ -89,7 +115,15 @@ function File_mt:read(rsize)
       rsize = self:size() - self:pos()
    end
    local buf = ffi.new("uint8_t[?]", rsize)
-   local bytes_read = ffi.C.read(self.fd, buf, rsize)
+   local bytes_read
+   if coroutine.running() then
+      bytes_read = async.request(ASYNC_READ,
+                                 self.fd,
+                                 ffi.cast("size_t", ffi.cast("void*", buf)),
+                                 rsize)
+   else
+      bytes_read = ffi.C.read(self.fd, buf, rsize)
+   end
    if bytes_read ~= rsize then
       error(sf("read() failed: expected to read %d bytes, got %d bytes", rsize, bytes_read))
    end
@@ -98,17 +132,23 @@ end
 
 function File_mt:seek(offset, relative)
    if relative then
-      return util.check_bad("lseek", -1, ffi.C.lseek(self.fd, offset, SEEK_CUR))
+      return lseek(self.fd, offset, SEEK_CUR)
    elseif offset >= 0 then
-      return util.check_bad("lseek", -1, ffi.C.lseek(self.fd, offset, SEEK_SET))
+      return lseek(self.fd, offset, SEEK_SET)
    else
-      return util.check_bad("lseek", -1, ffi.C.lseek(self.fd, offset, SEEK_END))
+      return lseek(self.fd, offset, SEEK_END)
    end
 end
 
 function File_mt:close()
    if self.fd >= 0 then
-      util.check_ok("close", 0, ffi.C.close(self.fd))
+      local rv
+      if coroutine.running() then
+         rv = async.request(ASYNC_CLOSE, self.fd)
+      else
+         rv = ffi.C.close(self.fd)
+      end
+      util.check_ok("close", 0, rv)
       self.fd = -1
    end
    return 0
@@ -119,14 +159,31 @@ File_mt.__gc = File_mt.close
 
 local File = ffi.metatype("struct File_ct", File_mt)
 
+-- stat
+
+local ASYNC_STAT  = async.register_worker(ffi.C.zz_file_stat_worker)
+local ASYNC_LSTAT = async.register_worker(ffi.C.zz_file_lstat_worker)
+
 local Stat_mt = {}
 
 function Stat_mt:stat(path)
-   return ffi.C.zz_file_stat(path, self.buf)
+   if coroutine.running() then
+      return async.request(ASYNC_STAT,
+                           ffi.cast("size_t", ffi.cast("char*", path)),
+                           ffi.cast("size_t", ffi.cast("struct stat*", self.buf)))
+   else
+      return ffi.C.zz_file_stat(path, self.buf)
+   end
 end
 
 function Stat_mt:lstat(path)
-   return ffi.C.zz_file_lstat(path, self.buf)
+   if coroutine.running() then
+      return async.request(ASYNC_LSTAT,
+                           ffi.cast("size_t", ffi.cast("char*", path)),
+                           ffi.cast("size_t", ffi.cast("struct stat*", self.buf)))
+   else
+      return ffi.C.zz_file_lstat(path, self.buf)
+   end
 end
 
 local Stat_accessors = {
