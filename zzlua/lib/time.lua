@@ -36,23 +36,23 @@ end
 
 function M.sleep(seconds)
    -- sleep for the given number of seconds
-   local requested_time = ffi.new("struct timespec")
-   local integer_part = math.floor(seconds)
-   requested_time.tv_sec = integer_part
-   local float_part = seconds - integer_part
-   local ns = float_part * 1e9
-   requested_time.tv_nsec = ns
-   local remaining = ffi.new("struct timespec")
-   if ffi.C.nanosleep(requested_time, remaining) ~= 0 then
-      error("nanosleep() failed")
+   if coroutine.running() then
+      -- required here to avoid circular dependency
+      -- between sched and time
+      local sched = require('sched')
+      sched.yield(M.time()+seconds)
+   else
+      local requested_time = ffi.new("struct timespec")
+      local integer_part = math.floor(seconds)
+      requested_time.tv_sec = integer_part
+      local float_part = seconds - integer_part
+      local ns = float_part * 1e9
+      requested_time.tv_nsec = ns
+      local remaining = ffi.new("struct timespec")
+      if ffi.C.nanosleep(requested_time, remaining) ~= 0 then
+         error("nanosleep() failed")
+      end
    end
-end
-
-function M.async_sleep(seconds)
-   -- required here to avoid circular dependency
-   -- between sched and time
-   local sched = require('sched')
-   sched.yield(M.time()+seconds)
 end
 
 return M
