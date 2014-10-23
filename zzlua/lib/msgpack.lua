@@ -211,6 +211,11 @@ function Context_mt:write(o)
       self:write_str(o)
    elseif type(o) == "table" then
       self:write_table(o, "map")
+   elseif ffi.istype("size_t", o) then
+      -- pack pointers by casting them to size_t
+      self:write_uint(o)
+   else
+      error(sf("cannot serialize object %s", o))
    end
 end
 

@@ -1,3 +1,4 @@
+local ffi = require('ffi')
 local msgpack = require('msgpack')
 local assert = require('assert')
 
@@ -25,3 +26,16 @@ assert.equals(string.byte(packed,1), 0x94, "initial byte of msgpacked {1,2,\"abc
 -- pack() packs numbers as doubles
 local packed = msgpack.pack(1234)
 assert.equals(string.byte(packed,1), 0xcb, "initial byte of msgpacked 1234")
+
+-- packing pointers
+local hello = "hello"
+ffi.cdef "struct zz_test_msgpack_t { int x; };"
+local test_struct = ffi.new("struct zz_test_msgpack_t", 42)
+-- pointers must be cast to size_t
+local packed = msgpack.pack({ffi.cast("size_t", ffi.cast("char*", hello)),
+                             ffi.cast("size_t", ffi.cast("struct zz_test_msgpack_t*", test_struct))})
+local unpacked = msgpack.unpack(packed)
+-- and cast back to their original ptr type when unpacking
+assert.equals(ffi.string(ffi.cast("char*", unpacked[1])), hello)
+local unpacked_test_struct = ffi.cast("struct zz_test_msgpack_t*", unpacked[2])
+assert.equals(unpacked_test_struct.x, 42)
