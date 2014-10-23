@@ -359,6 +359,12 @@ function M.pack(obj)
    return ctx.buf:data()
 end
 
+function M.pack_array(obj)
+   local ctx = Context()
+   ctx:write_table(obj, "array")
+   return ctx.buf:data()
+end
+
 function M.unpack(data)
    local buf = buffer(data)
    local ctx = Context(buf)
