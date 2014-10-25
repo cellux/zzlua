@@ -34,7 +34,7 @@ function Parser_mt:eat(regex, what)
    local m = regex and self:match(regex) or self.m
    if not m then
       if what then
-         error(sf("parse error: expected a %s matching %s at position %d: %s",
+         error(sf("parse error: expected %s matching %s at position %d: %s",
                   what, regex, self.pos, re.match(".+\n", self.source, self.pos)))
       else
          error(sf("parse error: expected a match for %s at position %d: %s",
