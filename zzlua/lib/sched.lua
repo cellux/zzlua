@@ -117,7 +117,7 @@ local function tick()
    if msg then
       local unpacked = msgpack.unpack(msg)
       assert(type(unpacked) == "table")
-      assert(#unpacked == 2)
+      assert(#unpacked == 2, "event shall be a table of two elements, but it is "..inspect(unpacked))
       local msg_type = unpacked[1]
       local msg_data = unpacked[2]
       --print(sf("got event: %s: %s", msg_type, inspect(msg_data)))
