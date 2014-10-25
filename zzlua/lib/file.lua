@@ -304,7 +304,11 @@ end
 function M.readdir(path)
    local dir = M.opendir(path)
    local function next()
-      return dir:read()
+      local entry = dir:read()
+      if not entry then
+         dir:close()
+      end
+      return entry
    end
    return next
 end
