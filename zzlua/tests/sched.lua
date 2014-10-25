@@ -39,7 +39,7 @@ for i=1,#expected do
    assert(coll[i] == expected[i])
 end
 
--- data passed to sched gets forwarded to coroutine
+-- a single data item passed to sched gets forwarded to the coroutine
 
 local output
 sched(function(x) output = x end, 42)
@@ -49,7 +49,10 @@ assert(output == 42)
 -- emit
 
 local output = nil
-sched.on('my-signal', function(my_signal_data) output = my_signal_data end)
+sched.on('my-signal',
+         function(my_signal_data)
+            output = my_signal_data
+         end)
 sched.emit('my-signal', 42.5)
 sched()
 assert(output == 42.5)
