@@ -41,6 +41,38 @@ local SIG_SETMASK = 2
 
 local M = {}
 
+M.SIGHUP    = 1
+M.SIGINT    = 2
+M.SIGQUIT   = 3
+M.SIGILL    = 4
+M.SIGTRAP   = 5
+M.SIGABRT   = 6
+M.SIGBUS    = 7
+M.SIGFPE    = 8
+M.SIGKILL   = 9
+M.SIGUSR1   = 10
+M.SIGSEGV   = 11
+M.SIGUSR2   = 12
+M.SIGPIPE   = 13
+M.SIGALRM   = 14
+M.SIGTERM   = 15
+M.SIGSTKFLT = 16
+M.SIGCHLD   = 17
+M.SIGCONT   = 18
+M.SIGSTOP   = 19
+M.SIGTSTP   = 20
+M.SIGTTIN   = 21
+M.SIGTTOU   = 22
+M.SIGURG    = 23
+M.SIGXCPU   = 24
+M.SIGXFSZ   = 25
+M.SIGVTALRM = 26
+M.SIGPROF   = 27
+M.SIGWINCH  = 28
+M.SIGIO     = 29
+M.SIGPWR    = 30
+M.SIGSYS    = 31
+
 local function sigmask(how, signum)
    local ss = ffi.new('sigset_t')
    if signum then
