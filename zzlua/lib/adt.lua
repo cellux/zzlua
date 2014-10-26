@@ -1,66 +1,108 @@
 local M = {}
 
-local List = {}
+local List_mt = {}
 
-function List:push(item)
-   table.insert(self.items, item)
+function List_mt:push(item)
+   table.insert(self._items, item)
 end
 
-function List:shift()
-   return table.remove(self.items, 1)
+function List_mt:shift()
+   return table.remove(self._items, 1)
 end
 
-function List:size()
-   return #self.items
+function List_mt:size()
+   return #self._items
 end
 
-function List:empty()
-   return #self.items == 0
+function List_mt:empty()
+   return #self._items == 0
 end
 
-function List:__index(pos)
+function List_mt:clear()
+   self._items = {}
+end
+
+function List_mt:__index(pos)
    if type(pos) == "number" then
-      return self.items[pos+1]
+      return self._items[pos+1]
    else
-      return List[pos]
+      return rawget(List_mt, pos)
    end
+end
+
+function List_mt:iterkeys()
+   local index = 0
+   local function next()
+      if index >= self:size() then
+         return nil
+      else
+         local rv = index
+         index = index + 1
+         return rv
+      end
+   end
+   return next
+end
+
+function List_mt:itervalues()
+   local index = 0
+   local function next()
+      if index >= self:size() then
+         return nil
+      else
+         local rv = self[index]
+         index = index + 1
+         return rv
+      end
+   end
+   return next
+end
+
+function List_mt:iteritems()
+   local index = 0
+   local function next()
+      if index >= self:size() then
+         return nil
+      else
+         local k,v = index, self[index]
+         index = index + 1
+         return k,v
+      end
+   end
+   return next
 end
 
 function M.List()
    local self = {
-      items = {}
+      _items = {}
    }
-   return setmetatable(self, List)
+   return setmetatable(self, List_mt)
 end
 
-local OrderedList = {}
+local OrderedList_mt = {}
 
-function OrderedList:push(item)
+function OrderedList_mt:push(item)
    local i = 1
-   while i <= #self.items and self.key_fn(item) > self.key_fn(self.items[i]) do
+   while i <= #self._items and self.key_fn(item) > self.key_fn(self._items[i]) do
       i = i + 1
    end
-   table.insert(self.items, i, item)
+   table.insert(self._items, i, item)
 end
 
-function OrderedList:__index(pos)
+function OrderedList_mt:__index(pos)
    if type(pos) == "number" then
-      return self.items[pos+1]
+      return self._items[pos+1]
    else
-      return OrderedList[pos]
+      return rawget(OrderedList_mt, pos) or rawget(List_mt, pos)
    end
 end
-
-OrderedList.shift = List.shift
-OrderedList.size = List.size
-OrderedList.empty = List.empty
 
 function M.OrderedList(key_fn)
    local self = {
-      items = {},
+      _items = {},
       key_fn = key_fn or function(x) return x end,
    }
-   return setmetatable(self, OrderedList)
+   return setmetatable(self, OrderedList_mt)
 end
 
 return M
