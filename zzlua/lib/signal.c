@@ -14,12 +14,12 @@ void *zz_signal_handler_thread(void *arg) {
   int signum;
   int event_socket;
   int endpoint_id;
-  unsigned char msg_buf[32];
+  unsigned char evbuf[32];
   cmp_ctx_t cmp_ctx;
   zz_buffer_t cmp_buf;
   zz_cmp_buffer_state cmp_buf_state;
 
-  zz_buffer_init(&cmp_buf, msg_buf, 0, 32, 0);
+  zz_buffer_init(&cmp_buf, evbuf, 0, 32, 0);
   cmp_buf_state.buffer = &cmp_buf;
   cmp_init(&cmp_ctx, &cmp_buf_state, zz_cmp_buffer_reader, zz_cmp_buffer_writer);
 

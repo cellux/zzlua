@@ -47,10 +47,10 @@ static cmp_ctx_t* get_shared_cmp_ctx() {
 
 /* send an event to the zzlua scheduler */
 
-static bool send_event(const char *msg_type, int socket, zz_buffer_t *buffer) {
+static bool send_event(const char *evtype, int socket, zz_buffer_t *buffer) {
   if (buffer->size == buffer->capacity) {
     /* we handle this as an overflow */
-    fprintf(stderr, "scratch overflow while serializing %s event!\n", msg_type);
+    fprintf(stderr, "scratch overflow while serializing %s event!\n", evtype);
     return false;
   }
   else {
@@ -59,7 +59,7 @@ static bool send_event(const char *msg_type, int socket, zz_buffer_t *buffer) {
                              buffer->size,
                              0);
     if (bytes_sent != buffer->size) {
-      fprintf(stderr, "nn_send() failed when sending %s event!\n", msg_type);
+      fprintf(stderr, "nn_send() failed when sending %s event!\n", evtype);
     }
     return bytes_sent == buffer->size;
   }

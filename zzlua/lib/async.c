@@ -118,7 +118,7 @@ void *zz_async_worker_thread(void *arg) {
     zz_async_worker worker = registered_workers[worker_id-1];
     /* msg_id is a unique identifier (a negative int) for this request.
        
-       we use this value as the msg_type of the event we send back to
+       we use this value as the evtype of the event we send back to
        the scheduler so that it can find the Lua thread to wake up */
     double msg_id_dbl;
     if (! cmp_read_double(&req_ctx, &msg_id_dbl)) {
