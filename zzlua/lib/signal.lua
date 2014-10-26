@@ -94,7 +94,7 @@ function M.unblock(signum)
 end
 
 function M.kill(pid, sig)
-   return util.check_bad("kill", 0, ffi.C.kill(pid, sig))
+   return ffi.C.kill(pid, sig)
 end
 
 function M.setup_signal_handler_thread()
