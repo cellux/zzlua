@@ -39,6 +39,7 @@ pid_t waitpid (pid_t PID, int *STATUSPTR, int OPTIONS);
 /* process state */
 
 int chdir (const char *path);
+void exit (int);
 
 ]]
 
@@ -79,6 +80,10 @@ end
 
 function M.chdir(path)
    return util.check_ok("chdir", 0, ffi.C.chdir(path))
+end
+
+function M.exit(status)
+   ffi.C.exit(status or 0)
 end
 
 return M
