@@ -32,6 +32,13 @@ bool zz_cmp_read_size_t(cmp_ctx_t *ctx, size_t *s) {
     return false;
   }
   switch (obj.type) {
+  case CMP_TYPE_POSITIVE_FIXNUM:
+  case CMP_TYPE_UINT8:
+    *s = (size_t) obj.as.u8;
+    return true;
+  case CMP_TYPE_UINT16:
+    *s = (size_t) obj.as.u16;
+    return true;
   case CMP_TYPE_UINT32:
     *s = (size_t) obj.as.u32;
     return true;
@@ -46,7 +53,7 @@ bool zz_cmp_read_size_t(cmp_ctx_t *ctx, size_t *s) {
     }
     return true;
   default:
-    fprintf(stderr, "zz_cmp_read_size_t: value must be serialized as u32, u64 or double\n");
+    fprintf(stderr, "zz_cmp_read_size_t: value must be serialized as uint or double, but got cmp type marker %d\n", obj.type);
     return false;
   }
 }
@@ -70,6 +77,34 @@ bool zz_cmp_read_ssize_t(cmp_ctx_t *ctx, ssize_t *s) {
     return false;
   }
   switch (obj.type) {
+  case CMP_TYPE_POSITIVE_FIXNUM:
+  case CMP_TYPE_UINT8:
+    *s = (ssize_t) obj.as.u8;
+    return true;
+  case CMP_TYPE_UINT16:
+    *s = (ssize_t) obj.as.u16;
+    return true;
+  case CMP_TYPE_UINT32:
+    *s = (ssize_t) obj.as.u32;
+    if (*s != obj.as.u32) {
+      fprintf(stderr, "zz_cmp_read_ssize_t: u32 value for ssize_t doesn't fit into 31 bits\n");
+      return false;
+    }
+    return true;
+  case CMP_TYPE_UINT64:
+    *s = (ssize_t) obj.as.u64;
+    if (*s != obj.as.u64) {
+      fprintf(stderr, "zz_cmp_read_ssize_t: u64 value for ssize_t doesn't fit into 63 bits\n");
+      return false;
+    }
+    return true;
+  case CMP_TYPE_NEGATIVE_FIXNUM:
+  case CMP_TYPE_SINT8:
+    *s = (ssize_t) obj.as.s8;
+    return true;
+  case CMP_TYPE_SINT16:
+    *s = (ssize_t) obj.as.s16;
+    return true;
   case CMP_TYPE_SINT32:
     *s = (ssize_t) obj.as.s32;
     return true;
@@ -84,7 +119,7 @@ bool zz_cmp_read_ssize_t(cmp_ctx_t *ctx, ssize_t *s) {
     }
     return true;
   default:
-    fprintf(stderr, "zz_cmp_read_ssize_t: value must be serialized as s32, s64 or double\n");
+    fprintf(stderr, "zz_cmp_read_ssize_t: value must be serialized as int or double, but got cmp type marker %d\n", obj.type);
     return false;
   }
 }
@@ -134,18 +169,22 @@ bool zz_cmp_read_int(cmp_ctx_t *ctx, int32_t *i) {
   case CMP_TYPE_SINT32:
     *i = obj.as.s32;
     return true;
-  case CMP_TYPE_DOUBLE:
-    *i = (int32_t) obj.as.dbl;
-    if (*i != obj.as.dbl) {
+  case CMP_TYPE_UINT32:
+    *i = (int32_t) obj.as.u32;
+    if (*i != obj.as.u32) {
+      fprintf(stderr, "zz_cmp_read_int: u32 value doesn't fit into 31 bits\n");
       return false;
     }
     return true;
-  case CMP_TYPE_UINT32:
-    if (obj.as.u32 <= 2147483647) {
-      *i = obj.as.u32;
-      return true;
+  case CMP_TYPE_DOUBLE:
+    *i = (int32_t) obj.as.dbl;
+    if (*i != obj.as.dbl) {
+      fprintf(stderr, "zz_cmp_read_int: double value for i32 has fractional part\n");
+      return false;
     }
+    return true;
   default:
+    fprintf(stderr, "zz_cmp_read_int: value must be serialized as int or double, but got cmp type marker %d\n", obj.type);
     return false;
   }
 }
