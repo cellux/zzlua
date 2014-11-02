@@ -35,16 +35,6 @@ sched.on('jack.port-connect',
          end)
 
 sched(function()
-         local client_name = sf("zzlua-jack-test-%d", sys.getpid())
-         local client, status = jack.client_open(client_name)
-         if not client then
-            if bit.band(status, jack.JackServerFailed) ~= 0 then
-               print("Jack server not running, skipping test")
-               return
-            else
-               error("jack.open() failed")
-            end
-         end
          jack.port_register("midi_out",
                             jack.DEFAULT_MIDI_TYPE,
                             jack.JackPortIsOutput)
@@ -59,6 +49,17 @@ sched(function()
                   jack.send_midi("midi_out", {0x90, 60, 100})
                end)
       end)
+
+local client_name = sf("zzlua-jack-test-%d", sys.getpid())
+local client, status = jack.client_open(client_name)
+if not client then
+   if bit.band(status, jack.JackServerFailed) ~= 0 then
+      print("Jack server not running, skipping test")
+      return
+   else
+      error("jack.open() failed")
+   end
+end
 
 sched()
 
