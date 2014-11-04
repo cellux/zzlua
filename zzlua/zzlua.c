@@ -1,12 +1,32 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
 
 /* most of this comes from LuaJIT */
+
+static lua_State *globalL = NULL; /* needed by laction */
+
+static void lstop(lua_State *L, lua_Debug *ar)
+{
+  (void)ar;  /* unused arg. */
+  lua_sethook(L, NULL, 0, 0);
+  /* Avoid luaL_error -- a C hook doesn't add an extra frame. */
+  luaL_where(L, 0);
+  lua_pushfstring(L, "%sinterrupted!", lua_tostring(L, -1));
+  lua_error(L);
+}
+
+static void laction(int i)
+{
+  signal(i, SIG_DFL); /* if another SIGINT happens before lstop,
+			 terminate process (default action) */
+  lua_sethook(globalL, lstop, LUA_MASKCALL | LUA_MASKRET | LUA_MASKCOUNT, 1);
+}
 
 static void l_message(const char *msg)
 {
@@ -44,7 +64,9 @@ static int docall(lua_State *L, int narg, int clear)
   int base = lua_gettop(L) - narg;  /* function index */
   lua_pushcfunction(L, traceback);  /* push traceback function */
   lua_insert(L, base);  /* put it under chunk and args */
+  signal(SIGINT, laction);
   status = lua_pcall(L, narg, (clear ? 0 : LUA_MULTRET), base);
+  signal(SIGINT, SIG_DFL);
   lua_remove(L, base);  /* remove traceback function */
   /* force a complete garbage collection in case of errors */
   if (status != 0) lua_gc(L, LUA_GCCOLLECT, 0);
@@ -71,7 +93,8 @@ static void set_arg(lua_State *L, int argc, char **argv)
   lua_setglobal(L, "arg");
 }
 
-static struct Smain {
+static struct Smain
+{
   char **argv;
   int argc;
   int status;
@@ -80,6 +103,7 @@ static struct Smain {
 static int pmain(lua_State *L)
 {
   struct Smain *s = &smain;
+  globalL = L;
   /* stop collector during initialization */
   lua_gc(L, LUA_GCSTOP, 0); 
   /* open the libraries we need */
