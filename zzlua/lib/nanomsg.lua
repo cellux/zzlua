@@ -96,7 +96,11 @@ function M.socket(domain, protocol)
 end
 
 function M.close(s)
-   return ffi.C.nn_close(s)
+   local rv = ffi.C.nn_close(s)
+   if rv ~= 0 then
+      error(sf("nn_close() failed: %s", nn_error()))
+   end
+   return rv
 end
 
 function M.setsockopt(s, level, option, optval, optvallen)
