@@ -52,6 +52,20 @@ local function add_listener(evtype, l)
    table.insert(listeners[evtype], l)
 end
 
+local function del_listener(evtype, l)
+   local ls = listeners[evtype]
+   if ls then
+      local i = 1
+      while i <= #ls do
+         if ls[i] == l then
+            table.remove(ls, i)
+         else
+            i = i + 1
+         end
+      end
+   end
+end
+
 -- event_sub: the socket we receive events from
 local event_sub = nn.socket(nn.AF_SP, nn.SUB)
 nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
