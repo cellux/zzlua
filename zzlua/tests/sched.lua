@@ -96,7 +96,10 @@ assert.equals(counter, 42.5)
 
 -- event callbacks registered with sched.on() keep on waiting
 -- (no matter how many times the callback has been invoked)
-sched.emit('my-signal-forever', 10)
+sched(function()
+         sched.emit('my-signal-forever', 10)
+         sched.yield()
+      end)
 sched()
 assert.equals(counter, 52.5)
 
