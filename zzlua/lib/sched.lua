@@ -8,8 +8,7 @@ local sf = string.format
 
 local M = {}
 
--- a 'quit' event makes this false, causing the scheduler to exit
-local running = true
+local running = false
 
 -- runnable threads
 local runnable = adt.List()
