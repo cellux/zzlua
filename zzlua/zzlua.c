@@ -51,7 +51,15 @@ static int docall(lua_State *L, int narg, int clear)
   return status;
 }
 
-static void set_arg(lua_State *L, int argc, char **argv) {
+static int dolibrary(lua_State *L, const char *name)
+{
+  lua_getglobal(L, "require");
+  lua_pushstring(L, name);
+  return report(L, docall(L, 1, 1));
+}
+
+static void set_arg(lua_State *L, int argc, char **argv)
+{
   /* set the global Lua variable "arg" to the list of command line
    * arguments */
   int i;
@@ -90,9 +98,7 @@ static int pmain(lua_State *L)
   /* collect command line arguments into _G.arg */
   set_arg(L, s->argc, s->argv);
   /* to be continued in Lua... */
-  lua_getglobal(L, "require");
-  lua_pushstring(L, "zzlua");
-  s->status = report(L, docall(L, 1, 1));
+  s->status = dolibrary(L, "zzlua");
   return s->status;
 }
 
