@@ -2,6 +2,7 @@ local ffi = require('ffi')
 local msgpack = require('msgpack')
 local nn = require('nanomsg')
 local sched = require('sched')
+local pthread = require('pthread')
 local inspect = require('inspect')
 local sf = string.format
 
@@ -12,6 +13,7 @@ typedef void (*zz_async_worker)(cmp_ctx_t *request,
                                 int nargs);
 
 int   zz_register_worker(zz_async_worker worker);
+
 void *zz_async_worker_thread(void *arg);
 
 void  zz_async_echo_worker(cmp_ctx_t *request,
@@ -49,6 +51,17 @@ local function create_worker_thread()
    function self:send(msg)
       nn.send(self.socket, msg)
    end
+   function self:stop()
+      local exit_msg = msgpack.pack_array({})
+      nn.send(self.socket, exit_msg)
+      local retval = ffi.new("void*[1]")
+      local rv = ffi.C.pthread_join(self.thread_id[0], retval)
+      if rv ~=0 then
+         error("cannot join async worker thread: pthread_join() failed")
+      end
+      nn.close(self.socket)
+      worker_thread_count = worker_thread_count - 1
+   end
    return self
 end
 
@@ -70,6 +83,15 @@ end
 local function release_thread(t)
    table.insert(reservable_threads, t)
    active_threads = active_threads - 1
+end
+
+local function stop_all_threads()
+   assert(active_threads == 0)
+   for _,t in ipairs(reservable_threads) do
+      t:stop()
+   end
+   assert(worker_thread_count == 0)
+   reservable_threads = {}
 end
 
 local msg_id = 0
