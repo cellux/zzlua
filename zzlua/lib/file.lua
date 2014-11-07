@@ -1,5 +1,6 @@
 local ffi = require('ffi')
 local async = require('async')
+local time = require('time') -- for struct timespec
 local util = require('util')
 local sf = string.format
 

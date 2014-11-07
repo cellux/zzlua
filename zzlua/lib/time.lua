@@ -1,6 +1,15 @@
 local ffi = require('ffi')
 
 ffi.cdef [[
+
+typedef long int __time_t;
+typedef long int __syscall_slong_t;
+
+struct timespec {
+  __time_t tv_sec;
+  __syscall_slong_t tv_nsec;
+};
+
 typedef long int __suseconds_t;
 
 struct timeval {

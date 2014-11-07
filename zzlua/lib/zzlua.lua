@@ -5,27 +5,21 @@ local ffi = require('ffi')
 -- some commonly used C types
 
 ffi.cdef [[
-  typedef long int ssize_t;
 
-  /* types of struct stat fields */
+typedef long int ssize_t;
 
-  typedef unsigned long long int __dev_t;
-  typedef unsigned long int __ino_t;
-  typedef unsigned int __mode_t;
-  typedef unsigned int __nlink_t;
-  typedef unsigned int __uid_t;
-  typedef unsigned int __gid_t;
-  typedef long int __off_t;
-  typedef long int __blksize_t;
-  typedef long int __blkcnt_t;
+/* types of struct stat fields */
 
-  typedef long int __time_t;
-  typedef long int __syscall_slong_t;
+typedef unsigned long long int __dev_t;
+typedef unsigned long int __ino_t;
+typedef unsigned int __mode_t;
+typedef unsigned int __nlink_t;
+typedef unsigned int __uid_t;
+typedef unsigned int __gid_t;
+typedef long int __off_t;
+typedef long int __blksize_t;
+typedef long int __blkcnt_t;
 
-  struct timespec {
-    __time_t tv_sec;
-    __syscall_slong_t tv_nsec;
-  };
 ]]
 
 local sched = require('sched')
