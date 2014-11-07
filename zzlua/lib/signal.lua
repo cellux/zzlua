@@ -1,6 +1,8 @@
 local ffi = require('ffi')
 local sys = require('sys') -- for pid_t
 local util = require('util')
+local sched = require('sched')
+local pthread = require('pthread')
 
 ffi.cdef [[
 
@@ -18,18 +20,6 @@ int sigismember (const sigset_t *__set, int __signo);
 int pthread_sigmask(int how, const sigset_t *set, sigset_t *oldset);
 
 int kill (pid_t __pid, int __sig);
-
-typedef unsigned long int pthread_t;
-
-typedef union {
-  char __size[56];
-  long int __align;
-} pthread_attr_t;
-
-int pthread_create(pthread_t *thread,
-                   const pthread_attr_t *attr,
-                   void *(*start_routine) (void *),
-                   void *arg);
 
 void *zz_signal_handler_thread(void *arg);
 
@@ -97,19 +87,61 @@ function M.kill(pid, sig)
    return ffi.C.kill(pid, sig)
 end
 
-function M.setup_signal_handler_thread()
-   -- block all signals in the main thread
-   M.block()
-   -- signals are handled in a dedicated thread which sends an event
-   -- to the Lua scheduler when a signal arrives
-   local thread_id = ffi.new("pthread_t[1]")
-   local rv = ffi.C.pthread_create(thread_id,
-                                   nil,
-                                   ffi.C.zz_signal_handler_thread,
-                                   nil)
-   if rv ~= 0 then
-      error("cannot create signal handler thread: pthread_create() failed")
+local function SignalModule(sched)
+   local self = {}
+
+   local signal_handler_thread_id = ffi.new("pthread_t[1]")
+   signal_handler_thread_id[0] = 0
+
+   local function start_signal_handler_thread()
+      assert(signal_handler_thread_id[0] == 0)
+      -- we handle signals in a dedicated thread which sends an event to
+      -- the Lua scheduler when a signal arrives
+      local rv = ffi.C.pthread_create(signal_handler_thread_id,
+                                      nil,
+                                      ffi.C.zz_signal_handler_thread,
+                                      nil)
+      if rv ~= 0 then
+         error("cannot create signal handler thread: pthread_create() failed")
+      end
+      assert(signal_handler_thread_id[0] ~= 0)
    end
+
+   local function stop_signal_handler_thread()
+      assert(signal_handler_thread_id[0] ~= 0)
+      -- signal handler thread exits upon receiving SIGALRM
+      ffi.C.kill(sys.getpid(), M.SIGALRM)
+      local retval = ffi.new("void*[1]")
+      local rv = ffi.C.pthread_join(signal_handler_thread_id[0], retval)
+      if rv ~=0 then
+         error("cannot join signal handler thread: pthread_join() failed")
+      end
+      signal_handler_thread_id[0] = 0
+   end
+
+   local function signal_handler(data)
+      local signum, pid = unpack(data)
+      --print(sf("got signal %d from pid %d", signum, pid))
+      if signum == M.SIGTERM or signum == M.SIGINT then
+         sched.emit('quit', 0)
+      end
+   end
+
+   function self.init()
+      M.block()
+      sched.on('signal', signal_handler)
+      start_signal_handler_thread()
+   end
+
+   function self.done()
+      stop_signal_handler_thread()
+      sched.off('signal', signal_handler)
+      M.unblock()
+   end
+
+   return self
 end
+
+sched.register_module(SignalModule)
 
 return M

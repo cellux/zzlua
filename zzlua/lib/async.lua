@@ -118,4 +118,20 @@ function M.request(worker_id, ...)
    return rv
 end
 
+local function AsyncModule(sched)
+   local self = {}
+   function self.init()
+      reservable_threads = {}
+      active_threads = 0
+      worker_thread_count = 0
+      msg_id = 0
+   end
+   function self.done()
+      stop_all_threads()
+   end
+   return self
+end
+
+sched.register_module(AsyncModule)
+
 return M

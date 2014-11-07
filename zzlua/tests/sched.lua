@@ -5,6 +5,13 @@ local signal = require('signal')
 local assert = require('assert')
 local sf = string.format
 
+-- stress-test scheduler creation and release
+
+for i=1,10 do
+   sched(function() sched.yield() end)
+   sched()
+end
+
 -- coroutines
 
 local coll = {}
@@ -48,6 +55,7 @@ end
 -- pass data as a single arg when the thread is first resumed
 
 local output = nil
+
 sched(function(x) output = x end, 42)
 sched()
 assert(output == 42)
@@ -90,18 +98,13 @@ sched.on('my-signal-forever',
 sched(function()
          sched.emit('my-signal-forever', 42.5)
          sched.yield() -- give a chance to the signal handler
-      end)
-sched()
-assert.equals(counter, 42.5)
-
--- event callbacks registered with sched.on() keep on waiting
--- (no matter how many times the callback has been invoked)
-sched(function()
+         -- event callbacks registered with sched.on() keep on waiting
+         -- (no matter how many times the callback has been invoked)
          sched.emit('my-signal-forever', 10)
-         sched.yield()
+         sched.yield() -- give another chance to the signal handler
       end)
 sched()
-assert.equals(counter, 52.5)
+assert.equals(counter, 42.5+10)
 
 -- if you want to stop listening, return sched.OFF from the callback
 local counter = 0
@@ -174,8 +177,6 @@ assert(diff < 1e-3, "diff > 1e-3: "..tostring(diff))
 -- a thread sleeping in sched.wait() keeps the event loop alive
 local pid = sys.fork()
 if pid == 0 then
-   -- start signal handler thread (only this thread survived the fork)
-   signal.setup_signal_handler_thread()
    sched(function()
             sched.wait('quit')
          end)
@@ -205,11 +206,62 @@ sched(function()
 sched()
 assert.equals(wont_change, false)
 
--- upon a `quit' event, the scheduler invokes all quit listeners
+-- all handlers registered with sched.on() wait for their event in a
+-- background thread. if the number of foreground threads goes down to
+-- zero, the scheduler will exit, even if there are pending events.
+local output = {}
+sched.on('my-signal',
+         function()
+            table.insert(output, "signal-handler-1")
+         end)
+sched(function()
+         table.insert(output, "signal-sent")
+         sched.emit('my-signal', 0)
+         -- this thread will now exit, so the number of foreground
+         -- threads goes down to zero. as a result, neither of the
+         -- registered my-signal handlers will be called.
+      end)
+sched.on('my-signal',
+         function()
+            table.insert(output, "signal-handler-2")
+         end)
+sched()
+assert.equals(output, {"signal-sent"})
+
+-- one way to ensure that no signal gets lost is to register a
+-- foreground thread which keeps the event loop alive while
+-- necessary. for example, one could make a simple thread which waits
+-- for the 'quit' signal and then exits. this of course assumes that
+-- some other thread will call sched.quit() at some point.
+local output = {}
+sched.on('my-signal',
+         function()
+            table.insert(output, "signal-handler-1")
+         end)
+sched(function()
+         table.insert(output, "signal-sent")
+         sched.emit('my-signal', 0)
+         sched.quit()
+      end)
+sched.on('my-signal',
+         function()
+            table.insert(output, "signal-handler-2")
+         end)
+sched(function()
+         -- keep-alive thread
+         sched.wait('quit')
+      end)
+sched()
+assert.equals(output, {"signal-sent", "signal-handler-1", "signal-handler-2"})
+
+-- note that the above behaviour also applies to the 'quit' signal. if
+-- you want to ensure that all quit handlers are properly called, you
+-- must keep at least one foreground thread running until the quit
+-- event gets processed.
 local output = {}
 sched.on('quit',
          function()
-            table.insert(output, "quit-handler")
+            table.insert(output, "quit-handler-1")
          end)
 sched(function()
          table.insert(output, "sched.quit")
@@ -220,4 +272,27 @@ sched.on('quit',
             table.insert(output, "quit-handler-2")
          end)
 sched()
-assert.equals(output, {"sched.quit", "quit-handler", "quit-handler-2"})
+assert.equals(output, {"sched.quit"})
+
+local output = {}
+sched.on('quit',
+         function()
+            table.insert(output, "quit-handler-1")
+         end)
+sched(function()
+         table.insert(output, "sched.quit")
+         sched.quit()
+         -- without another foreground thread, the scheduler would
+         -- post the quit event to the queue, then exit, so the
+         -- processing of the event would never happen
+      end)
+sched.on('quit',
+         function()
+            table.insert(output, "quit-handler-2")
+         end)
+sched(function()
+         -- keep-alive
+         sched.wait('quit')
+      end)
+sched()
+assert.equals(output, {"sched.quit", "quit-handler-1", "quit-handler-2"})

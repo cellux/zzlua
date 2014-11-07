@@ -42,6 +42,10 @@ void *zz_signal_handler_thread(void *arg) {
       fprintf(stderr, "sigwait() failed\n");
       exit(1);
     }
+    if (signum == SIGALRM) {
+      /* we use SIGALRM as the exit signal */
+      break;
+    }
     zz_buffer_reset(&cmp_buf);
     cmp_buf_state.pos = 0;
     cmp_write_array(&cmp_ctx, 2);
@@ -56,9 +60,10 @@ void *zz_signal_handler_thread(void *arg) {
     if (bytes_sent != cmp_buf.size) {
       fprintf(stderr, "nn_send() failed when sending signal event!\n");
     }
-    if (signum == SIGTERM || signum == SIGINT) {
-      break;
-    }
+  }
+  if (nn_close(event_socket) != 0) {
+    fprintf(stderr, "Cannot close event socket, nn_close() failed\n");
+    exit(1);
   }
   return NULL;
 }

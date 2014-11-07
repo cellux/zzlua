@@ -22,21 +22,7 @@ typedef long int __blkcnt_t;
 
 ]]
 
-local sched = require('sched')
-local signal = require('signal')
 local sf = string.format
-
--- setup signal handler
-
-local function signal_handler(data)
-   local signum, pid = unpack(data)
-   --print(sf("got signal %d from pid %d", signum, pid))
-   if signum == signal.SIGTERM or signum == signal.SIGINT then
-      sched.quit()
-   end
-end
-sched.on('signal', signal_handler)
-signal.setup_signal_handler_thread()
 
 --[[ main ]]--
 
