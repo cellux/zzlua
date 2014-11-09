@@ -32,7 +32,10 @@ end
 
 function Parser_mt:eat(regex, what)
    local m = regex and self:match(regex) or self.m
-   if not m then
+   if m then
+      self.pos = self.pos + #m[0]
+      return m.stringcount == 1 and m[0] or m
+   else
       if what then
          error(sf("parse error: expected %s matching %s at position %d: %s",
                   what, regex, self.pos, re.match(".+\n", self.source, self.pos)))
@@ -40,9 +43,6 @@ function Parser_mt:eat(regex, what)
          error(sf("parse error: expected a match for %s at position %d: %s",
                   regex, self.pos, re.match(".+\n", self.source, self.pos)))
       end
-   else
-      self.pos = self.pos + #m[0]
-      return m.stringcount == 1 and m[0] or m
    end
 end
 
