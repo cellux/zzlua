@@ -1,6 +1,7 @@
 local re = require('re')
 local parser = require('parser')
 local sf = string.format
+local assert = require('assert')
 
 local p = parser.Parser("hello, world!\n")
 assert(p)
@@ -19,7 +20,8 @@ assert(not p:eof())
 assert(p:eat("[!\n]{2}")=="!\n")
 assert(p:eof())
 
-local p = parser.Parser("hello, world!\n")
+-- parser() <=> parser.Parser()
+local p = parser("hello, world!\n")
 p:skip("\\w+")
 assert(not p:match(" "))
 assert(p:match(", ([a-z])"))

@@ -48,7 +48,7 @@ end
 
 Parser_mt.__index = Parser_mt
 
-function M.Parser(source)
+local function Parser(source)
    local self = {
       source = source,
       len = #source,
@@ -57,4 +57,12 @@ function M.Parser(source)
    return setmetatable(self, Parser_mt)
 end
 
-return M
+M.Parser = Parser
+
+local M_mt = {}
+
+function M_mt:__call(...)
+   return Parser(...)
+end
+
+return setmetatable(M, M_mt)
