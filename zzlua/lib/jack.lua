@@ -449,6 +449,7 @@ function M.port_register(name, type, flags)
    end
    ports_by_name[name] = { port, port_index }
    g_params.ports[port_index] = port
+   type = ffi.string(type)
    if type == M.DEFAULT_AUDIO_TYPE then
       g_params.port_types[port_index] = ZZ_JACK_PORT_AUDIO
    elseif type == M.DEFAULT_MIDI_TYPE then
