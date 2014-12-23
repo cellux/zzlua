@@ -68,9 +68,15 @@ void zz_file_close_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
 
 ]]
 
+local M = {}
+
 local O_RDONLY = 0
 local O_WRONLY = 1
 local O_RDWR = 2
+
+M.O_RDONLY = O_RDONLY
+M.O_WRONLY = O_WRONLY
+M.O_RDWR = O_RDWR
 
 local SEEK_SET = 0
 local SEEK_CUR = 1
@@ -283,8 +289,6 @@ Dir_mt.__index = Dir_mt
 Dir_mt.__gc = Dir_mt.close
 
 local Dir = ffi.metatype("struct Dir_ct", Dir_mt)
-
-local M = {}
 
 function M.open(path)
    local fd = ffi.C.open(path, O_RDONLY)
