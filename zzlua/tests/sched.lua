@@ -5,7 +5,7 @@ local signal = require('signal')
 local assert = require('assert')
 local sf = string.format
 
--- stress-test scheduler creation and release
+-- "stress-test" scheduler creation and release
 
 for i=1,10 do
    sched(function() sched.yield() end)
@@ -73,6 +73,7 @@ sched(function()
          local status, evtype = coroutine.resume(t)
          assert(status == true)
          assert(evtype == 'my-message')
+         -- sched.listen(evtype, t, is_background)
          sched.listen(evtype, t, true)
          sched.emit('my-message', 42)
          sched.yield() -- give t a chance to run
@@ -148,7 +149,7 @@ sched(function()
          assert(wake_up_data.value == 43)
          output = wake_up_data.value
       end)
--- we emit after the previous thread has executed sched.wait()
+-- we emit after the previous thread had executed sched.wait()
 -- otherwise sched() would exit immediately
 sched(function()
          sched.emit('wake-up', { value = 43 })
@@ -188,8 +189,6 @@ else
    assert(signal.kill(pid, 0)==0)
    -- let's send it a SIGTERM (which will cause a sched.quit())
    signal.kill(pid, signal.SIGTERM)
-   -- wait 100 ms again
-   time.sleep(0.1)
    -- wait for it
    assert(sys.waitpid(pid)==pid)
    -- now it should not exist any more

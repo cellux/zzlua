@@ -6,11 +6,24 @@ local sched = require('sched')
 local assert = require('assert')
 local time = require('time')
 
-local sample_rate
-local buffer_size
+local sample_rate = nil
+local buffer_size = nil
 local ports = {}
-local connected_a, connected_b
+local connected_a = nil
+local connected_b = nil
 local midi_data = {}
+
+local function open_jack(client_name)
+   local client, status = jack.client_open(client_name)
+   if not client then
+      if bit.band(status, jack.JackServerFailed) ~= 0 then
+         print("Jack server not running, skipping test")
+         sys.exit(0)
+      else
+         error("jack.open() failed")
+      end
+   end
+end
 
 sched.on('jack.sample-rate',
          function(data)
@@ -53,15 +66,7 @@ sched(function()
       end)
 
 local client_name = sf("zzlua-jack-test-%d", sys.getpid())
-local client, status = jack.client_open(client_name)
-if not client then
-   if bit.band(status, jack.JackServerFailed) ~= 0 then
-      print("Jack server not running, skipping test")
-      return
-   else
-      error("jack.open() failed")
-   end
-end
+open_jack(client_name)
 
 sched()
 
@@ -79,4 +84,7 @@ end
 assert.equals(midi_data, { {0x90, 60, 100},
                            {0x80, 60, 100} })
 
+assert(jack.client_close()==0)
+
+open_jack(client_name)
 assert(jack.client_close()==0)

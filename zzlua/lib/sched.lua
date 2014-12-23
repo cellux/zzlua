@@ -131,7 +131,7 @@ local function Scheduler()
    nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
    local event_sub_id = nn.bind(event_sub, "inproc://events")
 
-   -- a poller for event_sub (used when we want to wait for events)
+   -- a poller for event_sub (used when we wait for events)
    local sub_poll = nn.Poll()
    sub_poll:add(event_sub, nn.POLLIN)
 
