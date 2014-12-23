@@ -10,7 +10,7 @@ local sample_rate
 local buffer_size
 local ports = {}
 local connected_a, connected_b
-local midi_data
+local midi_data = {}
 
 sched.on('jack.sample-rate',
          function(data)
@@ -43,10 +43,12 @@ sched(function()
                             jack.JackPortIsInput)
          jack.connect("midi_out", "midi_in")
          sched(function()
-                  midi_data = sched.wait('jack.midi')
+                  table.insert(midi_data, sched.wait('jack.midi'))
+                  table.insert(midi_data, sched.wait('jack.midi'))
                end)
          sched(function()
                   jack.send_midi("midi_out", {0x90, 60, 100})
+                  jack.send_midi("midi_out", {0x80, 60, 100})
                end)
       end)
 
@@ -74,6 +76,7 @@ else
    assert.equals(connected_a, ports[2])
    assert.equals(connected_b, ports[1])
 end
-assert.equals(midi_data, { 0x90, 60, 100 })
+assert.equals(midi_data, { {0x90, 60, 100},
+                           {0x80, 60, 100} })
 
 assert(jack.client_close()==0)
