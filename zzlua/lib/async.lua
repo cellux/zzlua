@@ -113,7 +113,7 @@ function M.request(worker_id, ...)
    local msg = msgpack.pack_array({worker_id, msg_id, ...})
    local t = reserve_thread()
    t:send(msg)
-   local rv = sched.yield(msg_id)
+   local rv = sched.wait(msg_id)
    release_thread(t)
    return rv
 end
