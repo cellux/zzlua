@@ -6,7 +6,7 @@ CURL = curl -k -L
 
 # LuaJIT
 
-LUAJIT_VER = 2.0.3
+LUAJIT_VER = 2.0.4
 LUAJIT_TGZ = LuaJIT-$(LUAJIT_VER).tar.gz
 LUAJIT_URL = http://luajit.org/download/$(LUAJIT_TGZ)
 LUAJIT_DIR = deps/LuaJIT-$(LUAJIT_VER)
