@@ -6,6 +6,12 @@ local sf = string.format
 
 ffi.cdef [[
 
+enum {
+  O_RDONLY = 0,
+  O_WRONLY = 1,
+  O_RDWR = 2
+};
+
 int     open (const char *__file, int __oflag, ...);
 ssize_t read (int __fd, void *__buf, size_t __nbytes);
 __off_t lseek (int __fd, __off_t __offset, int __whence);
@@ -70,9 +76,9 @@ void zz_file_close_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
 
 local M = {}
 
-local O_RDONLY = 0
-local O_WRONLY = 1
-local O_RDWR = 2
+local O_RDONLY = ffi.C.O_RDONLY
+local O_WRONLY = ffi.C.O_WRONLY
+local O_RDWR = ffi.C.O_RDWR
 
 M.O_RDONLY = O_RDONLY
 M.O_WRONLY = O_WRONLY
