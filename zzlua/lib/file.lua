@@ -1,6 +1,7 @@
 local ffi = require('ffi')
 local async = require('async')
 local time = require('time') -- for struct timespec
+local env = require('env')
 local util = require('util')
 local sf = string.format
 
@@ -14,11 +15,13 @@ enum {
 
 int     open (const char *__file, int __oflag, ...);
 ssize_t read (int __fd, void *__buf, size_t __nbytes);
+ssize_t write (int __fd, const void *__buf, size_t __n);
 __off_t lseek (int __fd, __off_t __offset, int __whence);
 int     close (int __fd);
 
 int     access (const char *pathname, int mode);
 int     chmod (const char *__file, __mode_t __mode);
+int     unlink (const char *name);
 
 struct Stat_ct {
   struct stat *buf;
@@ -63,26 +66,27 @@ char * zz_file_dirent_name(struct dirent *);
 
 const char * zz_file_type(__mode_t mode);
 
-/* async workers */
+/* creation of temporary files/directories */
 
-void zz_file_lseek_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
+int mkstemp (char *template);
+char *mkdtemp (char *template);
 
-void zz_file_stat_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
-void zz_file_lstat_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
-void zz_file_read_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
-void zz_file_close_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
+/* async worker */
+
+enum {
+  ZZ_ASYNC_FILE_STAT = 1,
+  ZZ_ASYNC_FILE_LSTAT,
+  ZZ_ASYNC_FILE_LSEEK,
+  ZZ_ASYNC_FILE_READ,
+  ZZ_ASYNC_FILE_WRITE,
+  ZZ_ASYNC_FILE_CLOSE
+};
+
+void zz_file_worker(int handler_id, cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
 
 ]]
 
 local M = {}
-
-local O_RDONLY = ffi.C.O_RDONLY
-local O_WRONLY = ffi.C.O_WRONLY
-local O_RDWR = ffi.C.O_RDWR
-
-M.O_RDONLY = O_RDONLY
-M.O_WRONLY = O_WRONLY
-M.O_RDWR = O_RDWR
 
 local SEEK_SET = 0
 local SEEK_CUR = 1
@@ -95,16 +99,14 @@ local R_OK = 4
 
 -- file
 
-local ASYNC_LSEEK  = async.register_worker(ffi.C.zz_file_lseek_worker)
-local ASYNC_READ  = async.register_worker(ffi.C.zz_file_read_worker)
-local ASYNC_CLOSE  = async.register_worker(ffi.C.zz_file_close_worker)
+local ASYNC_FILE  = async.register_worker(ffi.C.zz_file_worker)
 
 local File_mt = {}
 
 local function lseek(fd, offset, whence)
    local rv
    if coroutine.running() then
-      rv = async.request(ASYNC_LSEEK, fd, offset, whence)
+      rv = async.request(ASYNC_FILE, ffi.C.ZZ_ASYNC_FILE_LSEEK, fd, offset, whence)
    else
       rv = ffi.C.lseek(fd, offset, whence)
    end
@@ -130,7 +132,8 @@ function File_mt:read(rsize)
    local buf = ffi.new("uint8_t[?]", rsize)
    local bytes_read
    if coroutine.running() then
-      bytes_read = async.request(ASYNC_READ,
+      bytes_read = async.request(ASYNC_FILE,
+                                 ffi.C.ZZ_ASYNC_FILE_READ,
                                  self.fd,
                                  ffi.cast("size_t", ffi.cast("void*", buf)),
                                  rsize)
@@ -141,6 +144,18 @@ function File_mt:read(rsize)
       error(sf("read() failed: expected to read %d bytes, got %d bytes", rsize, bytes_read))
    end
    return ffi.string(buf, rsize)
+end
+
+function File_mt:write(data)
+   if coroutine.running() then
+      return async.request(ASYNC_FILE,
+                           ffi.C.ZZ_ASYNC_FILE_WRITE,
+                           self.fd,
+                           ffi.cast("size_t", ffi.cast("void*", data)),
+                           #data)
+   else
+      return util.check_ok("write", #data, ffi.C.write(self.fd, data, #data))
+   end
 end
 
 function File_mt:seek(offset, relative)
@@ -157,7 +172,7 @@ function File_mt:close()
    if self.fd >= 0 then
       local rv
       if coroutine.running() then
-         rv = async.request(ASYNC_CLOSE, self.fd)
+         rv = async.request(ASYNC_FILE, ffi.C.ZZ_ASYNC_FILE_CLOSE, self.fd)
       else
          rv = ffi.C.close(self.fd)
       end
@@ -174,14 +189,12 @@ local File = ffi.metatype("struct File_ct", File_mt)
 
 -- stat
 
-local ASYNC_STAT  = async.register_worker(ffi.C.zz_file_stat_worker)
-local ASYNC_LSTAT = async.register_worker(ffi.C.zz_file_lstat_worker)
-
 local Stat_mt = {}
 
 function Stat_mt:stat(path)
    if coroutine.running() then
-      return async.request(ASYNC_STAT,
+      return async.request(ASYNC_FILE,
+                           ffi.C.ZZ_ASYNC_FILE_STAT,
                            ffi.cast("size_t", ffi.cast("char*", path)),
                            ffi.cast("size_t", ffi.cast("struct stat*", self.buf)))
    else
@@ -191,7 +204,8 @@ end
 
 function Stat_mt:lstat(path)
    if coroutine.running() then
-      return async.request(ASYNC_LSTAT,
+      return async.request(ASYNC_FILE,
+                           ffi.C.ZZ_ASYNC_FILE_LSTAT,
                            ffi.cast("size_t", ffi.cast("char*", path)),
                            ffi.cast("size_t", ffi.cast("struct stat*", self.buf)))
    else
@@ -297,7 +311,7 @@ Dir_mt.__gc = Dir_mt.close
 local Dir = ffi.metatype("struct Dir_ct", Dir_mt)
 
 function M.open(path)
-   local fd = ffi.C.open(path, O_RDONLY)
+   local fd = ffi.C.open(path, ffi.C.O_RDONLY)
    return File(fd)
 end
 
@@ -378,10 +392,29 @@ create_type_checker("fifo")
 create_type_checker("sock")
 
 function M.chmod(path, mode)
-   return ffi.C.chmod(path, mode)
+   return util.check_bad("chmod", -1, ffi.C.chmod(path, mode))
+end
+
+function M.unlink(path)
+   return util.check_bad("unlink", -1, ffi.C.unlink(path))
+end
+
+function M.mkstemp(template, tmpdir)
+   template = template or "XXXXXX"
+   tmpdir = tmpdir or env.TMPDIR or '/tmp'
+   local full_template = sf("%s/%s", tmpdir, template)
+   local buf = ffi.new("char[?]", #full_template+1)
+   ffi.copy(buf, full_template)
+   local fd = util.check_bad("mkstemp", -1, ffi.C.mkstemp(buf))
+   local self = {
+      fd = fd,
+      path = ffi.string(buf)
+   }
+   return setmetatable(self, File_mt)
 end
 
 local M_mt = {
+   __index = ffi.C,
    __call = function(self, ...)
       return M.open(...)
    end

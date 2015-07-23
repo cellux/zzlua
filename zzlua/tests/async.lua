@@ -15,7 +15,8 @@ local function make_async_echo_requester(delay, payload)
    return function()
       -- zz_async_echo_worker takes a delay and returns the rest of
       -- its arguments packed into an array after delay seconds
-      local reply = async.request(ASYNC_ECHO, delay, unpack(payload))
+      local dummy_handler_id = 1
+      local reply = async.request(ASYNC_ECHO, dummy_handler_id, delay, unpack(payload))
       table.insert(actual_replies, reply)
    end
 end

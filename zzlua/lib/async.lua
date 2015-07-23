@@ -8,7 +8,8 @@ local sf = string.format
 
 ffi.cdef [[
 
-typedef void (*zz_async_worker)(cmp_ctx_t *request,
+typedef void (*zz_async_worker)(int handler_id,
+                                cmp_ctx_t *request,
                                 cmp_ctx_t *reply,
                                 int nargs);
 
@@ -16,7 +17,8 @@ int   zz_register_worker(zz_async_worker worker);
 
 void *zz_async_worker_thread(void *arg);
 
-void  zz_async_echo_worker(cmp_ctx_t *request,
+void  zz_async_echo_worker(int handler_id,
+                           cmp_ctx_t *request,
                            cmp_ctx_t *reply,
                            int nargs);
 
@@ -108,9 +110,9 @@ function M.register_worker(worker)
    return ffi.C.zz_register_worker(worker)
 end
 
-function M.request(worker_id, ...)
+function M.request(worker_id, handler_id, ...)
    local msg_id = next_msg_id()
-   local msg = msgpack.pack_array({worker_id, msg_id, ...})
+   local msg = msgpack.pack_array({worker_id, handler_id, msg_id, ...})
    local t = reserve_thread()
    t:send(msg)
    local rv = sched.wait(msg_id)

@@ -3,6 +3,7 @@ local time = require('time')
 local sched = require('sched')
 local assert = require('assert')
 local sf = string.format
+local re = require('re')
 
 local function oct(s)
    return tonumber(s, 8)
@@ -186,6 +187,23 @@ local function test_readdir()
    assert.equals(entries, expected_entries)
 end
 
+local function test_mkstemp()
+   local f = file.mkstemp()
+   local path = f.path
+   assert(type(path)=="string")
+   assert(file.exists(path))
+   assert(re.match("^/tmp/.+$", path))
+   f:write("stuff\n")
+   f:close()
+   -- temp file should be still there
+   assert(file.exists(path))
+   local f = file(path)
+   assert.equals(f:read(), "stuff\n")
+   f:close()
+   file.unlink(path)
+   assert(not file.exists(path))
+end
+
 local function test()
    test_exists()
    test_chmod()
@@ -195,6 +213,7 @@ local function test()
    test_read()
    test_seek()
    test_readdir()
+   test_mkstemp()
 end
 
 -- sync

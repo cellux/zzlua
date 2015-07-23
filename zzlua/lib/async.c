@@ -8,7 +8,8 @@
 #include "nanomsg/pair.h"
 #include "nanomsg/pubsub.h"
 
-typedef void (*zz_async_worker)(cmp_ctx_t *request,
+typedef void (*zz_async_worker)(int handler_id,
+                                cmp_ctx_t *request,
                                 cmp_ctx_t *reply,
                                 int nargs);
 
@@ -99,8 +100,8 @@ void *zz_async_worker_thread(void *arg) {
       /* exit signal */
       break;
     }
-    if (elements < 2) {
-      fprintf(stderr, "invalid async request: should be an array of at least two elements: {worker_id, msg_id, ...}\n");
+    if (elements < 3) {
+      fprintf(stderr, "invalid async request: should be an array of at least three elements: {worker_id, handler_id, msg_id, ...}\n");
       exit(1);
     }
     /* worker_id is an index to the registered_workers array */
@@ -116,6 +117,17 @@ void *zz_async_worker_thread(void *arg) {
     }
     /* worker_id is 1-based */
     zz_async_worker worker = registered_workers[worker_id-1];
+    /* handler id identifies the handler within the selected worker */
+    double handler_id_dbl;
+    if (! cmp_read_double(&req_ctx, &handler_id_dbl)) {
+      fprintf(stderr, "invalid async request: handler_id not found\n");
+      exit(1);
+    }
+    uint32_t handler_id = (uint32_t) handler_id_dbl;
+    if (handler_id == 0) {
+      fprintf(stderr, "invalid async request: handler_id (%u) should be non-zero\n", handler_id);
+      exit(1);
+    }
     /* msg_id is a unique identifier (a negative int) for this request.
        
        we use this value as the evtype of the event we send back to
@@ -135,7 +147,7 @@ void *zz_async_worker_thread(void *arg) {
     /* first element is the msg_id */
     cmp_write_sint(&rep_ctx, msg_id);
     /* the second element must be written by the worker */
-    worker(&req_ctx, &rep_ctx, elements-2);
+    worker(handler_id, &req_ctx, &rep_ctx, elements-3);
     if (rep_buf->size == rep_buf->capacity) {
       fprintf(stderr, "rep_buf overflow\n");
       exit(1);
@@ -156,7 +168,7 @@ void *zz_async_worker_thread(void *arg) {
 
 /* a pre-defined worker for testing purposes */
 
-void zz_async_echo_worker(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
+void zz_async_echo_worker(int handler_id, cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
   /* (delay, ...)
      @return ... packed into an array after delay seconds
   */
