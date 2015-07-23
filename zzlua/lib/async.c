@@ -30,12 +30,12 @@ int zz_register_worker(zz_async_worker worker) {
 void *zz_async_worker_thread(void *arg) {
   /* arg: the id of this thread on the Lua side */
 
-  zz_buffer_t *req_buf = zz_buffer_new_with_capacity(64);
   cmp_ctx_t req_ctx;
+  zz_buffer_t *req_buf = zz_buffer_new_with_capacity(128);
   zz_cmp_buffer_state req_state = { req_buf, 0 };
 
-  zz_buffer_t *rep_buf = zz_buffer_new_with_capacity(64);
   cmp_ctx_t rep_ctx;
+  zz_buffer_t *rep_buf = zz_buffer_new_with_capacity(128);
   zz_cmp_buffer_state rep_state = { rep_buf, 0 };
 
   char sockaddr[20];
