@@ -23,6 +23,8 @@ int     access (const char *pathname, int mode);
 int     chmod (const char *__file, __mode_t __mode);
 int     unlink (const char *name);
 
+int     dup2 (int old, int new);
+
 struct Stat_ct {
   struct stat *buf;
 };
