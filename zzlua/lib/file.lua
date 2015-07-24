@@ -2,6 +2,7 @@ local ffi = require('ffi')
 local async = require('async')
 local time = require('time') -- for struct timespec
 local env = require('env')
+local sys = require('sys')
 local util = require('util')
 local sf = string.format
 
@@ -401,12 +402,12 @@ function M.unlink(path)
    return util.check_bad("unlink", -1, ffi.C.unlink(path))
 end
 
-function M.mkstemp(template, tmpdir)
-   template = template or "XXXXXX"
+function M.mkstemp(filename_prefix, tmpdir)
+   filename_prefix = filename_prefix or sf("%u", sys.getpid())
    tmpdir = tmpdir or env.TMPDIR or '/tmp'
-   local full_template = sf("%s/%s", tmpdir, template)
-   local buf = ffi.new("char[?]", #full_template+1)
-   ffi.copy(buf, full_template)
+   local template = sf("%s/%s-XXXXXX", tmpdir, filename_prefix)
+   local buf = ffi.new("char[?]", #template+1)
+   ffi.copy(buf, template)
    local fd = util.check_bad("mkstemp", -1, ffi.C.mkstemp(buf))
    local self = {
       fd = fd,
