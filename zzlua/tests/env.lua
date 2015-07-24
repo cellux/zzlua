@@ -1,6 +1,9 @@
 local env = require('env')
 local assert = require('assert')
 local sys = require('sys')
+local ffi = require('ffi')
+local file = require('file')
+local socket = require('socket')
 
 assert.type(env.PATH, "string")
 assert(env.NONEXISTENT==nil)
@@ -8,19 +11,19 @@ env.ZZ_ENV_TEST=5
 assert.type(env.ZZ_ENV_TEST, "string")
 assert.equals(env.ZZ_ENV_TEST, "5")
 
---[[ this works, but I commented it out until I have a proper
-     mechanism for communicating with child processes so I can capture
-     the printed value in the parent
-
+local sp, sc = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM, 0)
 local pid = sys.fork()
 if pid == 0 then
    -- child
+   sp:close()
+   assert.equals(ffi.C.dup2(sc.fd, 1), 1)
    env.ZZ_ENV_TEST=6
-   sys.execvp("sh", {"sh", "-c", 'echo "in the child, ZZ_ENV_TEST=$ZZ_ENV_TEST"'}) -- prints 6
+   sys.execvp("sh", {"sh", "-c", 'echo "in the child, ZZ_ENV_TEST=$ZZ_ENV_TEST"'})
 else
    -- parent
-   print("in the parent, ZZ_ENV_TEST="..env.ZZ_ENV_TEST) -- prints 5
+   sc:close()
+   assert.equals(env.ZZ_ENV_TEST, "5")
+   assert.equals(sp:read(), "in the child, ZZ_ENV_TEST=6\n")
+   sp:close()
    sys.waitpid(pid)
 end
-
-]]--
