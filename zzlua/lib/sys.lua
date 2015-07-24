@@ -38,6 +38,7 @@ pid_t waitpid (pid_t PID, int *STATUSPTR, int OPTIONS);
 
 /* process state */
 
+char *getcwd (char *buf, size_t size);
 int chdir (const char *path);
 void exit (int);
 
@@ -76,6 +77,13 @@ function M.waitpid(pid, options)
    local status = ffi.new("int[1]")
    local rv = util.check_bad("waitpid", -1, ffi.C.waitpid(pid, status, options))
    return rv, tonumber(status[0])
+end
+
+function M.getcwd()
+   local buf = ffi.C.getcwd(nil, 0)
+   local cwd = ffi.string(buf)
+   ffi.C.free(buf)
+   return cwd
 end
 
 function M.chdir(path)
