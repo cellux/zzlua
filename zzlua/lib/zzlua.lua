@@ -2,7 +2,7 @@
 
 local ffi = require('ffi')
 
--- some commonly used C types
+-- commonly used C types and functions
 
 ffi.cdef [[
 
@@ -19,6 +19,9 @@ typedef unsigned int __gid_t;
 typedef long int __off_t;
 typedef long int __blksize_t;
 typedef long int __blkcnt_t;
+
+void *malloc (size_t size);
+void free (void *ptr);
 
 ]]
 
