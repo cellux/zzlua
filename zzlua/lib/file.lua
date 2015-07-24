@@ -22,7 +22,8 @@ int     close (int __fd);
 
 int     access (const char *pathname, int mode);
 int     chmod (const char *__file, __mode_t __mode);
-int     unlink (const char *name);
+int     unlink (const char *filename);
+int     rmdir (const char *filename);
 
 int     dup2 (int old, int new);
 
@@ -400,6 +401,10 @@ end
 
 function M.unlink(path)
    return util.check_bad("unlink", -1, ffi.C.unlink(path))
+end
+
+function M.rmdir(path)
+   return util.check_bad("rmdir", -1, ffi.C.rmdir(path))
 end
 
 function M.mkstemp(filename_prefix, tmpdir)
