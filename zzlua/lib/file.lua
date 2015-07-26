@@ -25,6 +25,7 @@ int     chmod (const char *__file, __mode_t __mode);
 int     unlink (const char *filename);
 int     rmdir (const char *filename);
 
+int     dup (int old);
 int     dup2 (int old, int new);
 
 struct Stat_ct {
