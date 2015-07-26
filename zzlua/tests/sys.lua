@@ -105,3 +105,15 @@ if pid == 0 then
 else
    sys.waitpid(pid)
 end
+
+-- atexit
+
+local pid, sp = sys.fork(function(sc)
+      sys.atexit(function()
+            sc:write("atexited\n")
+      end)
+      error("let's die with an error - atexit should be still called")
+end)
+assert.equals(sp:readline(), "atexited")
+sp:close()
+sys.waitpid(pid)

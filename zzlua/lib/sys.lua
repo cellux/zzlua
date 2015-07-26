@@ -43,6 +43,11 @@ char *getcwd (char *buf, size_t size);
 int chdir (const char *path);
 void exit (int);
 
+/* trying to call the libc atexit() directly results in an "undefined
+   symbol" error, so we use a trampoline.  */
+
+int zz_sys_atexit (void (*fn)(void));
+
 ]]
 
 local M = {}
@@ -59,7 +64,11 @@ function M.fork(child_fn)
       local pid = util.check_bad("fork", -1, ffi.C.fork())
       if pid == 0 then
          sp:close()
-         child_fn(sc)
+         pcall(child_fn, sc)
+         -- we don't close sc here because it may be used in an atexit
+         -- function. when the child exits, it will be closed anyway.
+         --
+         -- sc:close()
          M.exit(0)
       else
          sc:close()
@@ -108,6 +117,22 @@ end
 
 function M.exit(status)
    ffi.C.exit(status or 0)
+end
+
+local atexit_fns
+
+local function atexit_handler()
+   for i=1,#atexit_fns do
+      pcall(atexit_fns[i])
+   end
+end
+
+function M.atexit(fn)
+   if not atexit_fns then
+      atexit_fns = {}
+      util.check_ok("atexit", 0, ffi.C.zz_sys_atexit(atexit_handler))
+   end
+   table.insert(atexit_fns, fn)
 end
 
 return M
