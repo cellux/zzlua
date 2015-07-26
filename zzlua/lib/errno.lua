@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local err = require('err')
 
 ffi.cdef [[
 
@@ -157,6 +158,11 @@ function M.strerror(errnum)
    local buf = ffi.new("char[?]", buflen)
    local s = ffi.C.strerror_r(errnum, buf, buflen)
    return ffi.string(s)
+end
+
+function M.err()
+   local errnum = M.errno()
+   return err(errnum, M.strerror(errnum))
 end
 
 return M
