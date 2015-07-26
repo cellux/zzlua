@@ -32,6 +32,19 @@ else
    assert.equals(sys.waitpid(pid), pid)
 end
 
+-- the same, using some sugar
+
+local pid, sp = sys.fork(function(sc)
+      sc:write(sf("%u\n", sys.getpid()))
+      sc:close()
+      assert(sys.getpid() ~= ppid)
+end)
+assert(sys.getpid() == ppid)
+local child_pid = tonumber(sp:readline())
+sp:close()
+assert.equals(child_pid, pid)
+assert.equals(sys.waitpid(pid), pid)
+
 -- system
 
 local sp, sc = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM, 0)

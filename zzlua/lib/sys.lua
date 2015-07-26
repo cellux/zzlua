@@ -1,5 +1,6 @@
 local ffi = require('ffi')
 local util = require('util')
+local socket = require('socket')
 
 ffi.cdef [[
 
@@ -50,8 +51,23 @@ function M.getpid()
    return ffi.C.getpid()
 end
 
-function M.fork()
-   return util.check_bad("fork", -1, ffi.C.fork())
+function M.fork(child_fn)
+   if child_fn then
+      local sp, sc = socket.socketpair(socket.PF_LOCAL,
+                                       socket.SOCK_STREAM,
+                                       0)
+      local pid = util.check_bad("fork", -1, ffi.C.fork())
+      if pid == 0 then
+         sp:close()
+         child_fn(sc)
+         M.exit(0)
+      else
+         sc:close()
+         return pid, sp
+      end
+   else
+      return util.check_bad("fork", -1, ffi.C.fork())
+   end
 end
 
 function M.system(command)
