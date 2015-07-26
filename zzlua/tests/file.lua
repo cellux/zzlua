@@ -188,8 +188,7 @@ local function test_readdir()
 end
 
 local function test_mkstemp()
-   local f = file.mkstemp()
-   local path = f.path
+   local f, path = file.mkstemp()
    assert(type(path)=="string")
    assert(file.exists(path))
    assert(re.match("^/tmp/.+$", path))

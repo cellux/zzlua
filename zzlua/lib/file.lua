@@ -415,11 +415,7 @@ function M.mkstemp(filename_prefix, tmpdir)
    local buf = ffi.new("char[?]", #template+1)
    ffi.copy(buf, template)
    local fd = util.check_bad("mkstemp", -1, ffi.C.mkstemp(buf))
-   local self = {
-      fd = fd,
-      path = ffi.string(buf)
-   }
-   return setmetatable(self, File_mt)
+   return File(fd), ffi.string(buf)
 end
 
 local M_mt = {
