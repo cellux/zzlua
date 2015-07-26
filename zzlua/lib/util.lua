@@ -1,3 +1,4 @@
+local errno = require('errno')
 local sf = string.format
 
 local M = {}
@@ -12,7 +13,7 @@ end
 
 function M.check_bad(funcname, badvalue, rv)
    if rv == badvalue then
-      error(sf("%s() failed", funcname), 2)
+      error(sf("%s() failed: %s", funcname, errno.strerror()), 2)
    else
       return rv
    end
