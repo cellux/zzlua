@@ -418,6 +418,13 @@ function M.mkstemp(filename_prefix, tmpdir)
    return File(fd), ffi.string(buf)
 end
 
+function M.mktemp(...)
+   local fd, path = M.mkstemp(...)
+   fd:close()
+   M.unlink(path)
+   return path
+end
+
 local M_mt = {
    __index = ffi.C,
    __call = function(self, ...)
