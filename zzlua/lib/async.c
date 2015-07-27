@@ -40,8 +40,8 @@ void *zz_async_worker_thread(void *arg) {
   zz_cmp_buffer_state rep_state = { rep_buf, 0 };
 
   char sockaddr[20];
-  uint32_t thread_no = (uint32_t) arg;
-  snprintf(sockaddr, sizeof(sockaddr), "inproc://async_%04x", thread_no);
+  size_t thread_no = (size_t) arg;
+  snprintf(sockaddr, sizeof(sockaddr), "inproc://async_%04zx", thread_no);
 
   /* we get requests (from async.request) on the req socket */
   int req_socket = nn_socket(AF_SP, NN_PAIR);
