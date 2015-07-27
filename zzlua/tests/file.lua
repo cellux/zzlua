@@ -80,7 +80,8 @@ local function test_stat()
    -- "The field st_ctime is changed by writing or by setting inode
    -- information (i.e., owner, group, link count, mode, etc.)."
    file.chmod("testdata/hello.txt", s.perms)
-   assert(math.abs(time.time()-s.ctime) < 1, sf("time.time()=%s, s.ctime=%s, difference > 1 seconds", time.time(), s.ctime))
+   local now = math.floor(time.time())
+   assert(math.abs(now-s.ctime) <= 1.0, sf("time.time()=%d, s.ctime=%d, difference > 1.0 seconds", now, s.ctime))
 end
 
 local function test_type()
