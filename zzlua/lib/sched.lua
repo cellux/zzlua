@@ -126,6 +126,8 @@ local function Scheduler()
       del_waiting(t)
    end
 
+   local event_queue = adt.List()
+
    -- event_sub: the socket we receive events from
    local event_sub = nn.socket(nn.AF_SP, nn.SUB)
    nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
@@ -134,10 +136,6 @@ local function Scheduler()
    -- a poller for event_sub (used when we wait for events)
    local sub_poll = nn.Poll()
    sub_poll:add(event_sub, nn.POLLIN)
-
-   -- event_pub: the socket we send events to (via sched.emit)
-   local event_pub = nn.socket(nn.AF_SP, nn.PUB)
-   local event_pub_id = nn.connect(event_pub, "inproc://events")
 
    -- tick: one iteration of the event loop
    local function tick() 
@@ -155,11 +153,10 @@ local function Scheduler()
 
       module_registry:invoke('tick')
 
-      local function fetch_event()
-         -- fetch next event from the queue
+      local function poll_event()
          local event
-         if runnable:size() == 0 then
-            -- there are no runnable threads
+         if runnable:size() == 0 and event_queue:empty() then
+            -- there are no runnable threads, the event queue is empty
             -- we poll for events using a timeout to avoid busy-waiting
             local wait_until = now + 1 -- default timeout: 1 second
             if sleeping:size() > 0 then
@@ -179,19 +176,30 @@ local function Scheduler()
             end
          else
             -- there are runnable threads waiting for execution
-            -- we just peek into the event queue in a non-blocking way
-            -- nn.recv() returns nil if the queue was empty
+            -- or the event queue is not empty
+            --
+            -- we poll in a non-blocking way
+            -- nn.recv() returns nil if it doesn't find any event
             event = nn.recv(event_sub, nn.DONTWAIT)
+         end
+         if event then
+            local unpacked = msgpack.unpack(event)
+            assert(type(unpacked) == "table")
+            assert(#unpacked == 2, "event shall be a table of two elements, but it is "..inspect(unpacked))
+            event = unpacked
          end
          return event
       end
 
+      -- poll for events, transfer them to the event queue
+      while true do
+         local event = poll_event()
+         if not event then break end
+         event_queue:push(event)
+      end
+
       local function process_event(event)
-         local unpacked = msgpack.unpack(event)
-         assert(type(unpacked) == "table")
-         assert(#unpacked == 2, "event shall be a table of two elements, but it is "..inspect(unpacked))
-         local evtype = unpacked[1]
-         local evdata = unpacked[2]
+         local evtype, evdata = unpack(event)
          --print(sf("got event: evtype=%s, evdata=%s", evtype, inspect(evdata)))
          if evtype == 'quit' then
             running = false
@@ -215,10 +223,11 @@ local function Scheduler()
          end
       end
 
-      -- don't try to process all pending events at once here
-      -- (the current scheduling model doesn't support it)
-      local event = fetch_event()
-      if event then
+      -- warning: do not try to process all events at once here
+      --
+      -- it won't work
+      if not event_queue:empty() then
+         local event = event_queue:shift()
          process_event(event)
       end
 
@@ -276,7 +285,6 @@ local function Scheduler()
          module_registry:invoke('init')
          self.loop()
          module_registry:invoke('done')
-         nn.close(event_pub)
          nn.close(event_sub)
          scheduler_singleton = nil
          -- after this function returns, we will be garbage-collected
@@ -324,8 +332,7 @@ local function Scheduler()
 
    function self.emit(evtype, evdata)
       assert(evdata ~= nil, "evdata must be non-nil")
-      local msg = msgpack.pack({evtype, evdata})
-      nn.send(event_pub, msg)
+      event_queue:push({ evtype, evdata })
    end
 
    function self.quit()
