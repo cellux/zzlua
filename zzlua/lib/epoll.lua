@@ -1,0 +1,111 @@
+local ffi = require('ffi')
+local util = require('util')
+
+ffi.cdef [[
+enum EPOLL_EVENTS {
+  EPOLLIN      = 0x0001,
+  EPOLLPRI     = 0x0002,
+  EPOLLOUT     = 0x0004,
+  EPOLLRDNORM  = 0x0040,
+  EPOLLRDBAND  = 0x0080,
+  EPOLLWRNORM  = 0x0100,
+  EPOLLWRBAND  = 0x0200,
+  EPOLLMSG     = 0x0400,
+  EPOLLERR     = 0x0008,
+  EPOLLHUP     = 0x0010,
+  EPOLLRDHUP   = 0x2000,
+  EPOLLWAKEUP  = 1u << 29,
+  EPOLLONESHOT = 1u << 30,
+  EPOLLET      = 1u << 31
+};
+
+enum {
+  EPOLL_CTL_ADD = 1,
+  EPOLL_CTL_DEL = 2,
+  EPOLL_CTL_MOD = 3
+};
+
+typedef union epoll_data {
+  void *ptr;
+  int fd;
+  uint32_t u32;
+  uint64_t u64;
+} epoll_data_t;
+
+struct epoll_event {
+  uint32_t events;	/* Epoll events */
+  epoll_data_t data;	/* User data variable */
+};
+
+extern int epoll_create (int size);
+extern int epoll_create1 (int flags);
+extern int epoll_ctl (int epfd, int op, int fd, struct epoll_event *event);
+extern int epoll_wait (int epfd, struct epoll_event *events, int maxevents, int timeout);
+extern int close (int fd);
+
+]]
+
+local Poller_mt = {}
+
+function Poller_mt:ctl(op, fd, events)
+   local event = ffi.new("struct epoll_event")
+   epoll_event.events = events or 0
+   epoll_event.data.fd = fd
+   return util.check_bad("epoll_ctl", -1, ffi.C.epoll_ctl(self.fd, op, fd, event))
+end
+
+function Poller_mt:add(fd, events)
+   return self:ctl(ffi.C.EPOLL_CTL_ADD, fd, events)
+end
+
+function Poller_mt:mod(fd, events)
+   return self:ctl(ffi.C.EPOLL_CTL_MOD, fd, events)
+end
+
+function Poller_mt:del(fd, events)
+   return self:ctl(ffi.C.EPOLL_CTL_DEL, fd, events)
+end
+
+function Poller_mt:wait(timeout, process)
+   local rv = util.check_bad("epoll_wait", -1,
+                             ffi.C.epoll_wait(self.fd, self.events,
+                                              self.maxevents, timeout))
+   if rv > 0 then
+      for i = 1,rv do
+         local event = self.events[i-1]
+         process(event.events, event.data.fd)
+      end
+   end
+end
+
+function Poller_mt:close()
+   if self.fd >= 0 then
+      local rv
+      rv = ffi.C.close(self.fd)
+      util.check_ok("close", 0, rv)
+      self.fd = -1
+   end
+   return 0
+end
+
+Poller_mt.__index = Poller_mt
+Poller_mt.__gc = Poller_mt.close
+
+local function Poller(fd, maxevents)
+   maxevents = maxevents or 64
+   local self = {
+      fd = fd,
+      maxevents = maxevents,
+      events = ffi.new("struct epoll_event[?]", maxevents),
+   }
+   return setmetatable(self, Poller_mt)
+end
+
+local M = {}
+
+function M.create()
+   local fd = util.check_bad("epoll_create", -1, ffi.C.epoll_create(1))
+   return Poller(fd)
+end
+
+return M
