@@ -107,7 +107,7 @@ server:listen()
 sp:write("server-ready\n")
 while true do
    local client, addr = server:accept()
-   assert.equals(addr, "")
+   assert.equals(addr, "") -- no remote address for PF_LOCAL connections
    local msg = client:readline()
    client:write(sf("%s\n", msg))
    client:close()
