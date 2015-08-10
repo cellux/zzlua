@@ -86,12 +86,13 @@ end
 -- listen, accept, connect (with local sockets)
 
 local socket_path = file.mktemp("zzlua-test-socket")
+local socket_addr = socket.sockaddr(socket.AF_LOCAL, socket_path)
 
 local pid, sp = sys.fork(function(sc)
       assert.equals(sc:readline(), "server-ready")
       function send(msg)
          local client = socket(socket.PF_LOCAL, socket.SOCK_STREAM, 0)
-         client:connect(socket_path)
+         client:connect(socket_addr)
          client:write(sf("%s\n", msg))
          assert.equals(client:readline(), msg)
          client:close()
@@ -102,7 +103,7 @@ end)
 
 local server = socket(socket.PF_LOCAL, socket.SOCK_STREAM, 0)
 server.SO_REUSEADDR = true
-server:bind(socket_path)
+server:bind(socket_addr)
 server:listen()
 sp:write("server-ready\n")
 while true do
@@ -125,12 +126,13 @@ end
 -- listen, accept, connect (with TCP sockets)
 
 local server_host, server_port = "127.0.0.1", 54321
+local server_addr = socket.sockaddr(socket.AF_INET, server_host, server_port)
 
 local pid, sp = sys.fork(function(sc)
       assert.equals(sc:readline(), "server-ready")
       function send(msg)
          local client = socket(socket.PF_INET, socket.SOCK_STREAM, 0)
-         client:connect(server_host, server_port)
+         client:connect(server_addr)
          client:write(sf("%s\n", msg))
          assert.equals(client:readline(), msg)
          client:close()
@@ -141,7 +143,7 @@ end)
 
 local server = socket(socket.PF_INET, socket.SOCK_STREAM, 0)
 server.SO_REUSEADDR = true
-server:bind(server_host, server_port)
+server:bind(server_addr)
 server:listen()
 sp:write("server-ready\n")
 while true do
