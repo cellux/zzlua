@@ -114,6 +114,7 @@ while true do
       break
    end
 end
+server:close()
 sp:close()
 sys.waitpid(pid)
 
@@ -152,5 +153,6 @@ while true do
       break
    end
 end
+server:close()
 sp:close()
 sys.waitpid(pid)
