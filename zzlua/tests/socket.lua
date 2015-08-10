@@ -83,7 +83,7 @@ else
    sp:close()
 end
 
--- listen, accept, connect
+-- listen, accept, connect (with local sockets)
 
 local socket_path = file.mktemp("zzlua-test-socket")
 
@@ -106,8 +106,7 @@ server:bind(socket_path)
 server:listen()
 sp:write("server-ready\n")
 while true do
-   local client, addr = server:accept()
-   assert.equals(addr, "") -- no remote address for PF_LOCAL connections
+   local client = server:accept()
    local msg = client:readline()
    client:write(sf("%s\n", msg))
    client:close()
@@ -121,3 +120,37 @@ sys.waitpid(pid)
 if file.exists(socket_path) then
    file.unlink(socket_path)
 end
+
+-- listen, accept, connect (with TCP sockets)
+
+local server_host, server_port = "127.0.0.1", 54321
+
+local pid, sp = sys.fork(function(sc)
+      assert.equals(sc:readline(), "server-ready")
+      function send(msg)
+         local client = socket(socket.PF_INET, socket.SOCK_STREAM, 0)
+         client:connect(server_host, server_port)
+         client:write(sf("%s\n", msg))
+         assert.equals(client:readline(), msg)
+         client:close()
+      end
+      send("hello, world!")
+      send("quit")
+end)
+
+local server = socket(socket.PF_INET, socket.SOCK_STREAM, 0)
+server.SO_REUSEADDR = true
+server:bind(server_host, server_port)
+server:listen()
+sp:write("server-ready\n")
+while true do
+   local client = server:accept()
+   local msg = client:readline()
+   client:write(sf("%s\n", msg))
+   client:close()
+   if msg == "quit" then
+      break
+   end
+end
+sp:close()
+sys.waitpid(pid)

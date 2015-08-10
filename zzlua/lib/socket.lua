@@ -187,19 +187,8 @@ int gethostbyname_r (const char *name,
 
 ]]
 
-local Socket_mt = {}
-
-local function Socket(fd, domain)
-   local self = {
-      fd = fd,
-      domain = domain,
-      readbuf = ""
-   }
-   return setmetatable(self, Socket_mt)
-end
-
-function Socket_mt:bind(address)
-   if self.domain == ffi.C.PF_LOCAL then
+local function sockaddr(af, address, port)
+   if af == ffi.C.AF_LOCAL then
       if #address > 107 then
          error(sf("address too long: %s", address))
       end
@@ -211,12 +200,33 @@ function Socket_mt:bind(address)
       -- 'sun_family' component and the string length (_not_ the
       -- allocation size!)  of the file name string."
       local addr_size = ffi.offsetof("struct sockaddr_un", "sun_path") + #address
-      return util.check_bad("bind", -1, ffi.C.bind(self.fd, ffi.cast("struct sockaddr *", addr), addr_size))
-   elseif self.domain == ffi.C.PF_INET then
-      error("unimplemented")
+      return addr, addr_size
+   elseif af == ffi.C.AF_INET then
+      assert(type(port) == "number" and port >= 0 and port <= 65535)
+      local addr = ffi.new("struct sockaddr_in")
+      addr.sin_family = ffi.C.AF_INET
+      addr.sin_port = port
+      util.check_ok("inet_pton", 1, ffi.C.inet_pton(ffi.C.AF_INET, address, addr.sin_addr))
+      return addr, ffi.sizeof("struct sockaddr_in")
    else
-      error(sf("Unsupported socket domain: %u", self.domain))
+      error("Unsupported address family: %u", af)
    end
+end
+
+local Socket_mt = {}
+
+local function Socket(fd, domain)
+   local self = {
+      fd = fd,
+      domain = domain,
+      readbuf = ""
+   }
+   return setmetatable(self, Socket_mt)
+end
+
+function Socket_mt:bind(address, port)
+   local addr, addr_size = sockaddr(self.domain, address, port)
+   return util.check_bad("bind", -1, ffi.C.bind(self.fd, ffi.cast("struct sockaddr *", addr), addr_size))
 end
 
 function Socket_mt:listen(n)
@@ -244,29 +254,16 @@ function Socket_mt:accept()
       -- client_addr.sun_family to zero
       return Socket(client_fd, self.domain), ffi.string(client_addr.sun_path, client_addr_size[0] - ffi.offsetof("struct sockaddr_un", "sun_path"))
    elseif self.domain == ffi.C.PF_INET then
-      error("unimplemented")
+      local bufsize = 128
+      local buf = ffi.new("char[?]", bufsize)
+      local rv = util.check_bad("inet_ntop", nil, ffi.C.inet_ntop(ffi.C.AF_INET, ffi.cast("const void *", client_addr), buf, bufsize))
+      return Socket(client_fd, self.domain), ffi.string(rv)
    end
 end
 
-function Socket_mt:connect(address)
-   if self.domain == ffi.C.PF_LOCAL then
-      if #address > 107 then
-         error(sf("address too long: %s", address))
-      end
-      local addr = ffi.new("struct sockaddr_un")
-      addr.sun_family = ffi.C.AF_LOCAL
-      ffi.copy(addr.sun_path, address)
-      -- "You should compute the LENGTH parameter for a socket address
-      -- in the local namespace as the sum of the size of the
-      -- 'sun_family' component and the string length (_not_ the
-      -- allocation size!)  of the file name string."
-      local addr_size = ffi.offsetof("struct sockaddr_un", "sun_path") + #address
-      return util.check_bad("connect", -1, ffi.C.connect(self.fd, ffi.cast("struct sockaddr *", addr), addr_size))
-   elseif self.domain == ffi.C.PF_INET then
-      error("unimplemented")
-   else
-      error(sf("Unsupported socket domain: %u", self.domain))
-   end
+function Socket_mt:connect(address, port)
+   local addr, addr_size = sockaddr(self.domain, address, port)
+   return util.check_bad("connect", -1, ffi.C.connect(self.fd, ffi.cast("struct sockaddr *", addr), addr_size))
 end
 
 function Socket_mt:read(size)
