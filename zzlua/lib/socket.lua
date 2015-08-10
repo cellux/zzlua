@@ -215,7 +215,7 @@ local function sockaddr(af, address, port)
       self.addr_size = ffi.sizeof("struct sockaddr_in")
       return self
    else
-      error("Unsupported address family: %u", af)
+      error(sf("Unsupported address family: %u", af))
    end
 end
 
