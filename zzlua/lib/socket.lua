@@ -205,7 +205,7 @@ local function sockaddr(af, address, port)
       assert(type(port) == "number" and port >= 0 and port <= 65535)
       local addr = ffi.new("struct sockaddr_in")
       addr.sin_family = ffi.C.AF_INET
-      addr.sin_port = port
+      addr.sin_port = ffi.C.htons(port)
       util.check_ok("inet_pton", 1, ffi.C.inet_pton(ffi.C.AF_INET, address, addr.sin_addr))
       return addr, ffi.sizeof("struct sockaddr_in")
    else
