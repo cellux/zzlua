@@ -4,6 +4,7 @@ local sys = require('sys')
 local file = require('file')
 local ffi = require('ffi')
 local sf = string.format
+local sched = require('sched')
 
 -- open/close
 
@@ -224,3 +225,76 @@ end
 server:close()
 sp:close()
 sys.waitpid(pid)
+
+--[[
+
+-- a TCP server
+
+local server_host, server_port = "127.0.0.1", 54321
+local server_addr = socket.sockaddr(socket.AF_INET, server_host, server_port)
+
+local n_req = 10 -- number of requests to send in one second
+
+local requests = {}
+
+-- generate a bunch of numerical expressions
+--
+-- the server will read the expression and reply with the evaluated result
+
+local function make_expr(sub_expr)
+   if not sub_expr then
+      return make_expr(tostring(math.random(100)))
+   elseif #sub_expr > 20 then
+      return sub_expr
+   else
+      local ops = "+-*"
+      local i = math.random(#ops)
+      local op = string.sub(ops,i,i)
+      return make_expr(sf("(%s%s%s)", sub_expr, op, tostring(math.random(100))))
+   end
+end
+
+for i=1,n_req do
+   table.insert(requests, make_expr())
+end
+
+local responses = {}
+
+local function server()
+   local socket = socket.socket(socket.PF_INET, socket.SOCK_STREAM)
+   socket.SO_REUSEADDR = true
+   socket:bind(server_addr)
+   socket:listen()
+   for i=1,n_req do
+      local client = socket:accept()
+      local expr = client:readline()
+      local value = tostring(assert(loadstring("return "..expr))())
+      client:write(sf("%s\n", value))
+      client:close()
+   end
+   socket:close()
+end
+
+sched(server)
+
+local function client(expr)
+   sched.sleep(math.random())
+   local client = socket.socket(socket.PF_INET, socket.SOCK_STREAM)
+   client:connect(server_addr)
+   client:write(sf("%s\n", expr))
+   local response = client:readline()
+   client:close()
+   responses[expr] = response
+end
+
+for i=1,n_req do
+   sched(client, requests[i])
+end
+
+sched()
+
+for e,v in pairs(responses) do
+   assert.equals(tostring(assert(loadstring("return "..e))()), v)
+end
+
+]]--
