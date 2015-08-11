@@ -18,11 +18,10 @@ if [ -n "$1" ]; then
     fi
   done
 else
-  TESTS="$(find tests -type f -name '*.lua')"
+  TESTS="$(find tests -type f -name '*.lua' | sort)"
 fi
 
 for f in $TESTS; do
   echo -n "$f: "
   ./zzlua "$f" && echo "PASS"
 done
-
