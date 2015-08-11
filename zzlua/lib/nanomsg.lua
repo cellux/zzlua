@@ -114,6 +114,16 @@ function M.setsockopt(s, level, option, optval, optvallen)
    return rv
 end
 
+function M.getsockopt(s, level, option)
+   local optval = ffi.new("int[1]")
+   local optvallen = ffi.new("size_t[1]", ffi.sizeof("int"))
+   local rv = ffi.C.nn_getsockopt(s, level, option, optval, optvallen)
+   if rv ~= 0 then
+      error(sf("nn_getsockopt() failed: %s", nn_error()))
+   end
+   return optval[0]
+end
+
 function M.bind(s, addr)
    local endpoint = ffi.C.nn_bind(s, addr)
    if endpoint < 0 then
