@@ -96,26 +96,16 @@ local function stop_all_threads()
    reservable_threads = {}
 end
 
-local msg_id = 0
-local function next_msg_id()
-   msg_id = msg_id - 1
-   -- naive attempt to handle wraparound
-   if msg_id > 0 then
-      msg_id = -1
-   end
-   return msg_id
-end
-
 function M.register_worker(worker)
    return ffi.C.zz_register_worker(worker)
 end
 
 function M.request(worker_id, handler_id, ...)
-   local msg_id = next_msg_id()
-   local msg = msgpack.pack_array({worker_id, handler_id, msg_id, ...})
+   local event_id = sched.make_event_id()
+   local msg = msgpack.pack_array({worker_id, handler_id, event_id, ...})
    local t = reserve_thread()
    t:send(msg)
-   local rv = sched.wait(msg_id)
+   local rv = sched.wait(event_id)
    release_thread(t)
    return rv
 end
@@ -126,7 +116,6 @@ local function AsyncModule(sched)
       reservable_threads = {}
       active_threads = 0
       worker_thread_count = 0
-      msg_id = 0
    end
    function self.done()
       stop_all_threads()

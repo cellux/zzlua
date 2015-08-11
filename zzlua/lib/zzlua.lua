@@ -2,6 +2,10 @@
 
 local ffi = require('ffi')
 
+local sched = require('sched')
+local epoll = require('epoll')
+sched.poller_factory = epoll.poller_factory
+
 -- commonly used C types and functions
 
 ffi.cdef [[

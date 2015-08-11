@@ -128,24 +128,25 @@ void *zz_async_worker_thread(void *arg) {
       fprintf(stderr, "invalid async request: handler_id (%u) should be non-zero\n", handler_id);
       exit(1);
     }
-    /* msg_id is a unique identifier (a negative int) for this request.
+    /* event_id is a unique identifier (a negative int) for this
+       request.
        
        we use this value as the evtype of the event we send back to
        the scheduler so that it can find the Lua thread to wake up */
-    double msg_id_dbl;
-    if (! cmp_read_double(&req_ctx, &msg_id_dbl)) {
-      fprintf(stderr, "invalid async request: msg_id not found\n");
+    double event_id_dbl;
+    if (! cmp_read_double(&req_ctx, &event_id_dbl)) {
+      fprintf(stderr, "invalid async request: event_id not found\n");
       exit(1);
     }
-    int32_t msg_id = (int32_t) msg_id_dbl;
-    if (msg_id >= 0) {
-      fprintf(stderr, "invalid async request: msg_id (%d) should be a negative number\n", msg_id);
+    int32_t event_id = (int32_t) event_id_dbl;
+    if (event_id >= 0) {
+      fprintf(stderr, "invalid async request: event_id (%d) should be a negative number\n", event_id);
       exit(1);
     }
     /* reply is an array of two elements */
     cmp_write_array(&rep_ctx, 2);
-    /* first element is the msg_id */
-    cmp_write_sint(&rep_ctx, msg_id);
+    /* first element is the event_id */
+    cmp_write_sint(&rep_ctx, event_id);
     /* the second element must be written by the worker */
     worker(handler_id, &req_ctx, &rep_ctx, elements-3);
     if (rep_buf->size == rep_buf->capacity) {

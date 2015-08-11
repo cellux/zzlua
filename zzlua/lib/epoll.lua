@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local bit = require('bit')
 local util = require('util')
 
 ffi.cdef [[
@@ -47,23 +48,46 @@ extern int close (int fd);
 
 local Poller_mt = {}
 
-function Poller_mt:ctl(op, fd, events)
-   local event = ffi.new("struct epoll_event")
-   epoll_event.events = events or 0
-   epoll_event.data.fd = fd
-   return util.check_bad("epoll_ctl", -1, ffi.C.epoll_ctl(self.fd, op, fd, event))
+local event_values = {
+   r = ffi.C.EPOLLIN,
+   w = ffi.C.EPOLLOUT,
+   e = ffi.C.EPOLLERR,
+}
+
+local function parse_events(events)
+   if type(events)=="string" then
+      local rv = 0
+      for i=1,#events do
+         local e = events:sub(i,i)
+         local ev = event_values[e]
+         if not ev then
+            error(sf("unknown event code: '%s' in '%s'", e, events))
+         end
+         rv = bit.bor(rv, ev)
+      end
+      return rv
+   else
+      return events
+   end
 end
 
-function Poller_mt:add(fd, events)
-   return self:ctl(ffi.C.EPOLL_CTL_ADD, fd, events)
+function Poller_mt:ctl(op, fd, events, data)
+   local epoll_event = ffi.new("struct epoll_event")
+   epoll_event.events = events and parse_events(events) or 0
+   epoll_event.data.fd = data or 0
+   return util.check_bad("epoll_ctl", -1, ffi.C.epoll_ctl(self.fd, op, fd, epoll_event))
 end
 
-function Poller_mt:mod(fd, events)
-   return self:ctl(ffi.C.EPOLL_CTL_MOD, fd, events)
+function Poller_mt:add(fd, events, data)
+   return self:ctl(ffi.C.EPOLL_CTL_ADD, fd, events, data)
 end
 
-function Poller_mt:del(fd, events)
-   return self:ctl(ffi.C.EPOLL_CTL_DEL, fd, events)
+function Poller_mt:mod(fd, events, data)
+   return self:ctl(ffi.C.EPOLL_CTL_MOD, fd, events, data)
+end
+
+function Poller_mt:del(fd, events, data)
+   return self:ctl(ffi.C.EPOLL_CTL_DEL, fd, events, data)
 end
 
 function Poller_mt:wait(timeout, process)
@@ -107,5 +131,7 @@ function M.create()
    local fd = util.check_bad("epoll_create", -1, ffi.C.epoll_create(1))
    return Poller(fd)
 end
+
+M.poller_factory = M.create
 
 return M

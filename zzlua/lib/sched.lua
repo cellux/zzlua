@@ -8,6 +8,9 @@ local sf = string.format
 
 local M = {}
 
+-- must be set to a platform-specific implementation at startup
+M.poller_factory = nil
+
 local module_constructors = {}
 
 function M.register_module(mc)
@@ -45,6 +48,37 @@ M.OFF = OFF
 
 local function Scheduler()
    local self = {}
+
+   local next_event_id = { -1, -1000 }
+
+   function self.make_event_id(persistent)
+      local index = persistent and 1 or 2
+      local rv = next_event_id[index]
+      next_event_id[index] = next_event_id[index] - 1
+      -- naive attempt to handle wraparound
+      if next_event_id[index] > 0 then
+         if persistent then
+            error("persistent event id overflow")
+         else
+            next_event_id[index] = -1000
+         end
+      end
+      return rv
+   end
+
+   if not M.poller_factory then
+      error("sched.poller_factory is not set")
+   end
+
+   local poller = M.poller_factory()
+
+   function self.poll(fd, events)
+      local event_id = self.make_event_id()
+      poller:add(fd, events, event_id)
+      local rv = self.wait(event_id)
+      poller:del(fd, events, event_id)
+      return rv
+   end
 
    local module_registry = ModuleRegistry(self)
 
@@ -134,8 +168,8 @@ local function Scheduler()
    local event_sub_id = nn.bind(event_sub, "inproc://events")
 
    -- a poller for event_sub (used when we wait for events)
-   local sub_poll = nn.Poll()
-   sub_poll:add(event_sub, nn.POLLIN)
+   local event_sub_fd = nn.getsockopt(event_sub, 0, nn.RCVFD)
+   local event_sub_id = self.make_event_id(true)
 
    -- tick: one iteration of the event loop
    local function tick() 
@@ -153,8 +187,19 @@ local function Scheduler()
 
       module_registry:invoke('tick')
 
-      local function poll_event()
-         local event
+      local function handle_poll_event(events, event_id)
+         if event_id == event_sub_id then
+            local event = nn.recv(event_sub)
+            local unpacked = msgpack.unpack(event)
+            assert(type(unpacked) == "table")
+            assert(#unpacked == 2, "event shall be a table of two elements, but it is "..inspect(unpacked))
+            event_queue:push(unpacked)
+         else
+            event_queue:push({event_id, events})
+         end
+      end
+
+      local function poll_events()
          if runnable:size() == 0 and event_queue:empty() then
             -- there are no runnable threads, the event queue is empty
             -- we poll for events using a timeout to avoid busy-waiting
@@ -170,33 +215,18 @@ local function Scheduler()
                end
             end
             local timeout = wait_until - now
-            local nevents = sub_poll(timeout * 1000) -- ms
-            if nevents > 0 then
-               event = nn.recv(event_sub)
-            end
+            poller:wait(timeout*1000, handle_poll_event)
          else
             -- there are runnable threads waiting for execution
             -- or the event queue is not empty
             --
             -- we poll in a non-blocking way
-            -- nn.recv() returns nil if it doesn't find any event
-            event = nn.recv(event_sub, nn.DONTWAIT)
+            poller:wait(0, handle_poll_event)
          end
-         if event then
-            local unpacked = msgpack.unpack(event)
-            assert(type(unpacked) == "table")
-            assert(#unpacked == 2, "event shall be a table of two elements, but it is "..inspect(unpacked))
-            event = unpacked
-         end
-         return event
       end
 
       -- poll for events, transfer them to the event queue
-      while true do
-         local event = poll_event()
-         if not event then break end
-         event_queue:push(event)
-      end
+      poll_events()
 
       local function process_event(event)
          local evtype, evdata = unpack(event)
@@ -282,9 +312,12 @@ local function Scheduler()
          -- enter the event loop, continue scheduling until there is
          -- work to do. when the event loop exits, cleanup and destroy
          -- this Scheduler instance.
+         poller:add(event_sub_fd, "r", event_sub_id)
          module_registry:invoke('init')
          self.loop()
          module_registry:invoke('done')
+         poller:del(event_sub_fd, "r", event_sub_id)
+         poller:close()
          nn.close(event_sub)
          scheduler_singleton = nil
          -- after this function returns, we will be garbage-collected
