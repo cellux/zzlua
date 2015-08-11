@@ -145,10 +145,12 @@ int bind (int fd, const struct sockaddr * addr, socklen_t len);
 int getsockname (int fd, struct sockaddr * addr, socklen_t * len);
 int connect (int fd, const struct sockaddr * addr, socklen_t len);
 int getpeername (int fd, struct sockaddr * addr, socklen_t * len);
-ssize_t write (int fd, const void *buf, size_t n);
-ssize_t send (int fd, const void *buf, size_t n, int flags);
 ssize_t read (int fd, void *buf, size_t n);
+ssize_t write (int fd, const void *buf, size_t n);
 ssize_t recv (int fd, void *buf, size_t n, int flags);
+ssize_t send (int fd, const void *buf, size_t n, int flags);
+ssize_t recvfrom (int fd, void *buf, size_t n, int flags, struct sockaddr *address, socklen_t *address_len);
+ssize_t sendto (int fd, const void *buf, size_t n, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
 int getsockopt (int fd, int level, int optname, void * optval, socklen_t * optlen);
 int setsockopt (int fd, int level, int optname, const void *optval, socklen_t optlen);
 int listen (int fd, int n);
@@ -187,13 +189,42 @@ int gethostbyname_r (const char *name,
 
 ]]
 
+local sockaddr_mt = {}
+
+function sockaddr_mt:__index(k)
+   if k == "address" then
+      if self.af == ffi.C.AF_LOCAL then
+         local sun_path_offset = ffi.offsetof("struct sockaddr_un", "sun_path")
+         local sun_path_len = self.addr_size - sun_path_offset
+         local rv = ffi.string(self.addr.sun_path, sun_path_len)
+         -- if the string contains a zero-terminator, strip it off
+         if sun_path_len > 0 and rv:byte(sun_path_len) == 0 then
+            rv = rv:sub(1, sun_path_len-1)
+         end
+         return rv
+      elseif self.af == ffi.C.AF_INET then
+         local bufsize = 128
+         local buf = ffi.new("char[?]", bufsize)
+         local rv = util.check_bad("inet_ntop", nil, ffi.C.inet_ntop(self.af, ffi.cast("const void *", self.addr.sin_addr), buf, bufsize))
+         return ffi.string(rv)
+      else
+         error("Unsupported address family")
+      end
+   elseif k == "port" then
+      if self.af == ffi.C.AF_INET then
+         return ffi.C.ntohs(self.addr.sin_port)
+      else
+         error(sf("socket address with address family %u has no port", self.af))
+      end
+   else
+      return rawget(self, k)
+   end
+end
+
 local function sockaddr(af, address, port)
-   local self = {
-      af = af,
-      address = address,
-      port = port,
-   }
+   local self = { af = af }
    if af == ffi.C.AF_LOCAL then
+      address = address or ""
       if #address > 107 then
          error(sf("address too long: %s", address))
       end
@@ -205,18 +236,19 @@ local function sockaddr(af, address, port)
       -- 'sun_family' component and the string length (_not_ the
       -- allocation size!)  of the file name string."
       self.addr_size = ffi.offsetof("struct sockaddr_un", "sun_path") + #address
-      return self
    elseif af == ffi.C.AF_INET then
+      address = address or "0.0.0.0"
+      port = port or 0
       assert(type(port) == "number" and port >= 0 and port <= 65535)
       self.addr = ffi.new("struct sockaddr_in")
       self.addr.sin_family = ffi.C.AF_INET
       self.addr.sin_port = ffi.C.htons(port)
       util.check_ok("inet_pton", 1, ffi.C.inet_pton(ffi.C.AF_INET, address, self.addr.sin_addr))
       self.addr_size = ffi.sizeof("struct sockaddr_in")
-      return self
    else
       error(sf("Unsupported address family: %u", af))
    end
+   return setmetatable(self, sockaddr_mt)
 end
 
 local Socket_mt = {}
@@ -239,31 +271,31 @@ function Socket_mt:listen(n)
    return util.check_bad("listen", -1, ffi.C.listen(self.fd, n))
 end
 
+function Socket_mt:getsockname()
+   if self.domain == ffi.C.PF_LOCAL then
+      error("getsockname() not supported for local sockets")
+   end
+   local sock_addr = sockaddr(self.domain)
+   local sock_addr_size = ffi.new("socklen_t[1]", ffi.sizeof(sock_addr.addr))
+   util.check_bad("getsockname", -1, ffi.C.getsockname(self.fd, ffi.cast("struct sockaddr *", sock_addr.addr), sock_addr_size))
+   sock_addr.addr_size = sock_addr_size[0]
+   return sock_addr
+end
+
+function Socket_mt:getpeername()
+   if self.domain == ffi.C.PF_LOCAL then
+      error("getpeername() not supported for local sockets")
+   end
+   local peer_addr = sockaddr(self.domain)
+   local peer_addr_size = ffi.new("socklen_t[1]", ffi.sizeof(peer_addr.addr))
+   util.check_bad("getpeername", -1, ffi.C.getpeername(self.fd, ffi.cast("struct sockaddr *", peer_addr.addr), peer_addr_size))
+   peer_addr.addr_size = peer_addr_size[0]
+   return peer_addr
+end
+
 function Socket_mt:accept()
-   local client_addr
-   if self.domain == ffi.C.PF_LOCAL then
-      client_addr = ffi.new("struct sockaddr_un")
-   elseif self.domain == ffi.C.PF_INET then
-      client_addr = ffi.new("struct sockaddr_in")
-   else
-      error(sf("Unsupported socket domain: %u", self.domain))
-   end
-   local client_addr_size = ffi.new("socklen_t[1]")
-   local client_fd = util.check_bad("accept", -1,
-                                    ffi.C.accept(self.fd,
-                                                 ffi.cast("struct sockaddr *", client_addr),
-                                                 client_addr_size))
-   if self.domain == ffi.C.PF_LOCAL then
-      -- my experiments seem to indicate that in the case of
-      -- Unix-domain sockets, accept() sets client_addr_size to 2 and
-      -- client_addr.sun_family to zero
-      return Socket(client_fd, self.domain), ffi.string(client_addr.sun_path, client_addr_size[0] - ffi.offsetof("struct sockaddr_un", "sun_path"))
-   elseif self.domain == ffi.C.PF_INET then
-      local bufsize = 128
-      local buf = ffi.new("char[?]", bufsize)
-      local rv = util.check_bad("inet_ntop", nil, ffi.C.inet_ntop(ffi.C.AF_INET, ffi.cast("const void *", client_addr), buf, bufsize))
-      return Socket(client_fd, self.domain), ffi.string(rv)
-   end
+   local client_fd = util.check_bad("accept", -1, ffi.C.accept(self.fd, nil, nil))
+   return Socket(client_fd, self.domain)
 end
 
 function Socket_mt:connect(sockaddr)
@@ -344,6 +376,26 @@ function Socket_mt:write(data)
    return nbytes
 end
 
+function Socket_mt:sendto(data, addr)
+   local rv = util.check_bad("sendto", -1, ffi.C.sendto(self.fd, data, #data, 0, ffi.cast("const struct sockaddr *", addr.addr), addr.addr_size))
+   return rv
+end
+
+function Socket_mt:recvfrom(buf)
+   local bufsize
+   if not buf then
+      bufsize = 4096
+      buf = ffi.new("uint8_t[?]", bufsize)
+   else
+      bufsize = #buf
+   end
+   local peer_addr = sockaddr(self.domain)
+   local address_len = ffi.new("socklen_t[1]", ffi.sizeof(peer_addr.addr))
+   local nbytes = util.check_bad("recvfrom", -1, ffi.C.recvfrom(self.fd, buf, bufsize, 0, ffi.cast("struct sockaddr *", peer_addr.addr), address_len))
+   peer_addr.addr_size = address_len[0]
+   return ffi.string(buf, nbytes), peer_addr
+end
+
 function Socket_mt:shutdown(how)
    return ffi.C.shutdown(self.fd, how)
 end
@@ -379,13 +431,13 @@ local M = {}
 M.sockaddr = sockaddr
 
 function M.socket(domain, type, protocol)
-   local fd = util.check_bad("socket", -1, ffi.C.socket(domain, type, protocol))
+   local fd = util.check_bad("socket", -1, ffi.C.socket(domain, type, protocol or 0))
    return Socket(fd, domain)
 end
 
 function M.socketpair(domain, type, protocol)
    local fds = ffi.new("int[2]")
-   local rv = util.check_bad("socketpair", -1, ffi.C.socketpair(domain, type, protocol, fds))
+   local rv = util.check_bad("socketpair", -1, ffi.C.socketpair(domain, type, protocol or 0, fds))
    return Socket(fds[0], domain), Socket(fds[1], domain)
 end
 
