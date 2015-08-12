@@ -50,6 +50,7 @@ local M_mt = {}
 
 function M_mt:__call(x, err)
    assert_true(x ~= nil and x ~= false, err, 3)
+   return x
 end
 
 return setmetatable(M, M_mt)
