@@ -249,7 +249,12 @@ local function make_expr(sub_expr)
       local ops = "+-*" -- no / to avoid division by zero
       local i = math.random(#ops)
       local op = string.sub(ops,i,i)
-      return make_expr(sf("(%s%s%s)", sub_expr, op, tostring(math.random(10))))
+      local lhs = sub_expr
+      local rhs = tostring(math.random(10))
+      if math.random() >= 0.5 then
+         lhs, rhs = rhs, lhs
+      end
+      return make_expr(sf("(%s%s%s)", lhs, op, rhs))
    end
 end
 
