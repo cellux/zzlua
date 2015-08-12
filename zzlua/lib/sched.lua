@@ -209,14 +209,16 @@ local function Scheduler()
                -- but may be shorter (or longer)
                -- if there are sleeping threads
                wait_until = sleeping[0].time
-               -- if the thread's time comes sooner than 1 ms,
-               -- we round up to 1 ms (the granularity of nn_poll)
-               if wait_until - now < 0.001 then
-                  wait_until = now + 0.001
-               end
             end
-            local timeout = wait_until - now
-            poller:wait(timeout*1000, handle_poll_event)
+            local timeout_ms = (wait_until - now) * 1000 -- sec -> ms
+            -- if the thread's time comes sooner than 1 ms,
+            -- we round up to 1 ms (the granularity of epoll)
+            if timeout_ms < 1 then
+               timeout_ms = 1
+            end
+            -- round up to a whole number
+            timeout_ms = math.ceil(timeout_ms)
+            poller:wait(timeout_ms, handle_poll_event)
          else
             -- there are runnable threads waiting for execution
             -- or the event queue is not empty
