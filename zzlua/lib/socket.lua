@@ -446,9 +446,9 @@ end
 function Socket_mt:close()
    local rv = 0
    -- double close is a noop
-   if self.fd ~= 0 then
+   if self.fd ~= -1 then
       rv = util.check_bad("close", -1, ffi.C.close(self.fd))
-      self.fd = 0
+      self.fd = -1
    end
    return rv
 end
