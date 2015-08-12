@@ -1,6 +1,9 @@
 local ffi = require('ffi')
+local bit = require('bit')
 local sf = string.format
 local util = require('util')
+local sched = require('sched')
+local errno = require('errno')
 
 ffi.cdef [[
 
@@ -294,12 +297,37 @@ function Socket_mt:getpeername()
 end
 
 function Socket_mt:accept()
+   if coroutine.running() then
+      sched.poll(self.fd, "r")
+   end
    local client_fd = util.check_bad("accept", -1, ffi.C.accept(self.fd, nil, nil))
    return Socket(client_fd, self.domain)
 end
 
 function Socket_mt:connect(sockaddr)
-   return util.check_bad("connect", -1, ffi.C.connect(self.fd, ffi.cast("struct sockaddr *", sockaddr.addr), sockaddr.addr_size))
+   local rv = ffi.C.connect(self.fd, ffi.cast("struct sockaddr *", sockaddr.addr), sockaddr.addr_size)
+   if rv == -1 then
+      local errno = errno.errno()
+      if errno == ffi.C.EINPROGRESS and coroutine.running() then
+         sched.poll(self.fd, "w")
+         local optval = ffi.new("int[1]")
+         local optlen = ffi.new("socklen_t[1]", ffi.sizeof("int"))
+         util.check_bad("getsockopt", -1,
+                        ffi.C.getsockopt(self.fd,
+                                         ffi.C.SOL_SOCKET,
+                                         ffi.C.SO_ERROR,
+                                         optval,
+                                         optlen))
+         if optval[0] ~= 0 then
+            error(sf("connect() failed: %s", errno.strerror(optval[0])))
+         end
+         return 0
+      else
+         error(sf("connect() failed: %s", errno.strerror(errno)))
+      end
+   else
+      return 0
+   end
 end
 
 function Socket_mt:read(size)
@@ -335,6 +363,9 @@ function Socket_mt:read(size)
             blocksize = remaining
          end
       end
+      if coroutine.running() then
+         sched.poll(self.fd, "r")
+      end
       local nbytes = util.check_bad("read", -1, ffi.C.read(self.fd, buf, blocksize))
       if nbytes == 0 then
          break
@@ -360,6 +391,9 @@ function Socket_mt:readline()
             return line
          end
       end
+      if coroutine.running() then
+         sched.poll(self.fd, "r")
+      end
       local nbytes = util.check_bad("read", -1, ffi.C.read(self.fd, buf, blocksize))
       if nbytes == 0 then
          -- if self.readbuf is not empty, then the last line of the
@@ -372,11 +406,17 @@ function Socket_mt:readline()
 end
 
 function Socket_mt:write(data)
+   if coroutine.running() then
+      sched.poll(self.fd, "w")
+   end
    local nbytes = util.check_bad("write", -1, ffi.C.write(self.fd, data, #data))
    return nbytes
 end
 
 function Socket_mt:sendto(data, addr)
+   if coroutine.running() then
+      sched.poll(self.fd, "w")
+   end
    local rv = util.check_bad("sendto", -1, ffi.C.sendto(self.fd, data, #data, 0, ffi.cast("const struct sockaddr *", addr.addr), addr.addr_size))
    return rv
 end
@@ -391,20 +431,23 @@ function Socket_mt:recvfrom(buf)
    end
    local peer_addr = sockaddr(self.domain)
    local address_len = ffi.new("socklen_t[1]", ffi.sizeof(peer_addr.addr))
+   if coroutine.running() then
+      sched.poll(self.fd, "r")
+   end
    local nbytes = util.check_bad("recvfrom", -1, ffi.C.recvfrom(self.fd, buf, bufsize, 0, ffi.cast("struct sockaddr *", peer_addr.addr), address_len))
    peer_addr.addr_size = address_len[0]
    return ffi.string(buf, nbytes), peer_addr
 end
 
 function Socket_mt:shutdown(how)
-   return ffi.C.shutdown(self.fd, how)
+   return util.check_bad("shutdown", -1, ffi.C.shutdown(self.fd, how))
 end
 
 function Socket_mt:close()
    local rv = 0
    -- double close is a noop
    if self.fd ~= 0 then
-      rv = ffi.C.close(self.fd)
+      rv = util.check_bad("close", -1, ffi.C.close(self.fd))
       self.fd = 0
    end
    return rv
@@ -413,11 +456,12 @@ end
 Socket_mt.__newindex = function(self, k, v)
    if k == "SO_REUSEADDR" then
       local optval = ffi.new("int[1]", v and 1 or 0)
-      ffi.C.setsockopt(self.fd,
-                       ffi.C.SOL_SOCKET,
-                       ffi.C.SO_REUSEADDR,
-                       optval,
-                       ffi.sizeof("int"))
+      util.check_bad("setsockopt", -1,
+                     ffi.C.setsockopt(self.fd,
+                                      ffi.C.SOL_SOCKET,
+                                      ffi.C.SO_REUSEADDR,
+                                      optval,
+                                      ffi.sizeof("int")))
    else
       error(sf("invalid attempt to set field on socket: %s", k))
    end
@@ -431,11 +475,17 @@ local M = {}
 M.sockaddr = sockaddr
 
 function M.socket(domain, type, protocol)
+   if coroutine.running() then
+      type = bit.bor(type, ffi.C.SOCK_NONBLOCK)
+   end
    local fd = util.check_bad("socket", -1, ffi.C.socket(domain, type, protocol or 0))
    return Socket(fd, domain)
 end
 
 function M.socketpair(domain, type, protocol)
+   if coroutine.running() then
+      type = bit.bor(type, ffi.C.SOCK_NONBLOCK)
+   end
    local fds = ffi.new("int[2]")
    local rv = util.check_bad("socketpair", -1, ffi.C.socketpair(domain, type, protocol or 0, fds))
    return Socket(fds[0], domain), Socket(fds[1], domain)
