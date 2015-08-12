@@ -231,7 +231,7 @@ sys.waitpid(pid)
 local server_host, server_port = "127.0.0.1", 54321
 local server_addr = socket.sockaddr(socket.AF_INET, server_host, server_port)
 
-local n_req = 10 -- number of requests to send in one second
+local n_req = 500 -- number of requests to send in one second
 
 local requests = {}
 
