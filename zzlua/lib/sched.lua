@@ -73,6 +73,7 @@ local function Scheduler()
    local poller = M.poller_factory()
 
    function self.poll(fd, events)
+      events = events.."1" -- one shot
       local event_id = self.make_event_id()
       poller:add(fd, events, event_id)
       local rv = self.wait(event_id)
