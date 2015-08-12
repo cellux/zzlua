@@ -1,6 +1,7 @@
 local ffi = require('ffi')
 local bit = require('bit')
 local util = require('util')
+local sf = string.format
 
 ffi.cdef [[
 enum EPOLL_EVENTS {
@@ -49,9 +50,9 @@ extern int close (int fd);
 local Poller_mt = {}
 
 local event_values = {
-   r = ffi.C.EPOLLIN,
-   w = ffi.C.EPOLLOUT,
-   e = ffi.C.EPOLLERR,
+   ["r"] = ffi.C.EPOLLIN,
+   ["w"] = ffi.C.EPOLLOUT,
+   ["1"] = ffi.C.EPOLLONESHOT,
 }
 
 local function parse_events(events)
