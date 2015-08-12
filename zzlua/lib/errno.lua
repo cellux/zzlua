@@ -160,8 +160,8 @@ function M.strerror(errnum)
    return ffi.string(s)
 end
 
-function M.err()
-   local errnum = M.errno()
+function M.err(errnum)
+   errnum = errnum or M.errno()
    return err(errnum, M.strerror(errnum))
 end
 
