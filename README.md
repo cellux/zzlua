@@ -2,6 +2,8 @@
 
 A LuaJIT interpreter with a bunch of generally useful libraries pre-packaged into the binary.
 
+Might be used as a well-equipped script interpreter or as the starting point of a single-binary app.
+
 Currently Linux only.
 
 ## Internal dependencies
