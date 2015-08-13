@@ -19,7 +19,7 @@ test_pack_unpack({nil,true,false,0,123,123.25,"hello, world!"})
 test_pack_unpack({[0]=true,[1]=false,[123]={x=123.25,y=-123.5},str="hello, world!"})
 
 -- pack_array() ensures the table is packed as an array
--- it's the user's reponsibility that the array is valid
+-- it's the user's reponsibility to ensure that the array is valid
 local packed = msgpack.pack_array({1,2,"abc",4})
 assert.equals(string.byte(packed,1), 0x94, "initial byte of msgpacked {1,2,\"abc\",4}")
 
