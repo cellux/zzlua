@@ -14,6 +14,19 @@ enum {
   O_RDWR = 2
 };
 
+enum {
+  SEEK_SET = 0,
+  SEEK_CUR = 1,
+  SEEK_END = 2
+};
+
+enum {
+  R_OK = 4,
+  W_OK = 2,
+  X_OK = 1,
+  F_OK = 0
+};
+
 int     open (const char *__file, int __oflag, ...);
 ssize_t read (int __fd, void *__buf, size_t __nbytes);
 ssize_t write (int __fd, const void *__buf, size_t __n);
@@ -93,15 +106,6 @@ void *zz_async_file_handlers[];
 
 local M = {}
 
-local SEEK_SET = 0
-local SEEK_CUR = 1
-local SEEK_END = 2
-
-local F_OK = 0
-local X_OK = 1
-local W_OK = 2
-local R_OK = 4
-
 -- file
 
 local ASYNC_FILE  = async.register_worker(ffi.C.zz_async_file_handlers)
@@ -119,13 +123,13 @@ local function lseek(fd, offset, whence)
 end
 
 function File_mt:pos()
-   return lseek(self.fd, 0, SEEK_CUR)
+   return lseek(self.fd, 0, ffi.C.SEEK_CUR)
 end
 
 function File_mt:size()
    local pos = self:pos()
-   local size = lseek(self.fd, 0, SEEK_END)
-   lseek(self.fd, pos, SEEK_SET)
+   local size = lseek(self.fd, 0, ffi.C.SEEK_END)
+   lseek(self.fd, pos, ffi.C.SEEK_SET)
    return size
 end
 
@@ -165,11 +169,11 @@ end
 
 function File_mt:seek(offset, relative)
    if relative then
-      return lseek(self.fd, offset, SEEK_CUR)
+      return lseek(self.fd, offset, ffi.C.SEEK_CUR)
    elseif offset >= 0 then
-      return lseek(self.fd, offset, SEEK_SET)
+      return lseek(self.fd, offset, ffi.C.SEEK_SET)
    else
-      return lseek(self.fd, offset, SEEK_END)
+      return lseek(self.fd, offset, ffi.C.SEEK_END)
    end
 end
 
@@ -344,19 +348,19 @@ function M.readdir(path)
 end
 
 function M.exists(path)
-   return ffi.C.access(path, F_OK) == 0
+   return ffi.C.access(path, ffi.C.F_OK) == 0
 end
 
 function M.is_readable(path)
-   return ffi.C.access(path, R_OK) == 0
+   return ffi.C.access(path, ffi.C.R_OK) == 0
 end
 
 function M.is_writable(path)
-   return ffi.C.access(path, W_OK) == 0
+   return ffi.C.access(path, ffi.C.W_OK) == 0
 end
 
 function M.is_executable(path)
-   return ffi.C.access(path, X_OK) == 0
+   return ffi.C.access(path, ffi.C.X_OK) == 0
 end
 
 function M.stat(path)
