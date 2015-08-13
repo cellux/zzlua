@@ -31,7 +31,7 @@ void zz_buffer_reset(zz_buffer_t *self);
 
 void zz_buffer_free(zz_buffer_t *self);
 
-struct Buffer_ct {
+struct zz_buffer_Buffer_ct {
   zz_buffer_t * buf;
 };
 
@@ -107,7 +107,7 @@ end
 
 Buffer_mt.__gc = Buffer_mt.free
 
-local Buffer = ffi.metatype("struct Buffer_ct", Buffer_mt)
+local Buffer = ffi.metatype("struct zz_buffer_Buffer_ct", Buffer_mt)
 
 local M = {}
 
