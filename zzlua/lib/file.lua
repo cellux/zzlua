@@ -79,7 +79,7 @@ char *mkdtemp (char *template);
 /* async worker */
 
 enum {
-  ZZ_ASYNC_FILE_STAT = 1,
+  ZZ_ASYNC_FILE_STAT,
   ZZ_ASYNC_FILE_LSTAT,
   ZZ_ASYNC_FILE_LSEEK,
   ZZ_ASYNC_FILE_READ,
@@ -87,7 +87,7 @@ enum {
   ZZ_ASYNC_FILE_CLOSE
 };
 
-void zz_file_worker(int handler_id, cmp_ctx_t *request, cmp_ctx_t *reply, int nargs);
+void *zz_async_file_handlers[];
 
 ]]
 
@@ -104,7 +104,7 @@ local R_OK = 4
 
 -- file
 
-local ASYNC_FILE  = async.register_worker(ffi.C.zz_file_worker)
+local ASYNC_FILE  = async.register_worker(ffi.C.zz_async_file_handlers)
 
 local File_mt = {}
 

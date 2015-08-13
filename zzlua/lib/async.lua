@@ -8,19 +8,19 @@ local sf = string.format
 
 ffi.cdef [[
 
-typedef void (*zz_async_worker)(int handler_id,
-                                cmp_ctx_t *request,
-                                cmp_ctx_t *reply,
-                                int nargs);
+typedef void (*zz_async_handler)(cmp_ctx_t *request,
+                                 cmp_ctx_t *reply,
+                                 int nargs);
 
-int   zz_register_worker(zz_async_worker worker);
+int zz_async_register_worker(void *handlers[]);
 
 void *zz_async_worker_thread(void *arg);
 
-void  zz_async_echo_worker(int handler_id,
-                           cmp_ctx_t *request,
-                           cmp_ctx_t *reply,
-                           int nargs);
+enum {
+  ZZ_ASYNC_ECHO
+};
+
+void *zz_async_echo_handlers[];
 
 ]]
 
@@ -96,8 +96,8 @@ local function stop_all_threads()
    reservable_threads = {}
 end
 
-function M.register_worker(worker)
-   return ffi.C.zz_register_worker(worker)
+function M.register_worker(handlers)
+   return ffi.C.zz_async_register_worker(handlers)
 end
 
 function M.request(worker_id, handler_id, ...)

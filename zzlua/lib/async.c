@@ -8,23 +8,35 @@
 #include "nanomsg/pair.h"
 #include "nanomsg/pubsub.h"
 
-typedef void (*zz_async_worker)(int handler_id,
-                                cmp_ctx_t *request,
-                                cmp_ctx_t *reply,
-                                int nargs);
+typedef void (*zz_async_handler)(cmp_ctx_t *request,
+                                 cmp_ctx_t *reply,
+                                 int nargs);
 
 #define MAX_REGISTERED_WORKERS 256
 
-static zz_async_worker registered_workers[MAX_REGISTERED_WORKERS];
+struct zz_async_worker {
+  int handler_count;
+  zz_async_handler *handlers;
+};
+
+static struct zz_async_worker registered_workers[MAX_REGISTERED_WORKERS];
 static int registered_worker_count = 0;
 
-int zz_register_worker(zz_async_worker worker) {
+int zz_async_register_worker(void *handlers[]) {
   if (registered_worker_count == MAX_REGISTERED_WORKERS) {
     fprintf(stderr, "cannot register more workers, %d limit exceeded\n",
             MAX_REGISTERED_WORKERS);
     exit(1);
   }
-  registered_workers[registered_worker_count++] = worker;
+  struct zz_async_worker *z = &registered_workers[registered_worker_count++];
+  z->handlers = (zz_async_handler *) handlers;
+  z->handler_count = 0;
+  // list of handlers must be NULL-terminated
+  while (*handlers != NULL) {
+    z->handler_count++;
+    handlers++;
+  }
+  // worker id is 1-based
   return registered_worker_count;
 }
 
@@ -101,7 +113,7 @@ void *zz_async_worker_thread(void *arg) {
       break;
     }
     if (elements < 3) {
-      fprintf(stderr, "invalid async request: should be an array of at least three elements: {worker_id, handler_id, msg_id, ...}\n");
+      fprintf(stderr, "invalid async request: should be an array of at least three elements: {worker_id, handler_id, event_id, ...}\n");
       exit(1);
     }
     /* worker_id is an index to the registered_workers array */
@@ -116,7 +128,7 @@ void *zz_async_worker_thread(void *arg) {
       exit(1);
     }
     /* worker_id is 1-based */
-    zz_async_worker worker = registered_workers[worker_id-1];
+    struct zz_async_worker *worker = &registered_workers[worker_id-1];
     /* handler id identifies the handler within the selected worker */
     double handler_id_dbl;
     if (! cmp_read_double(&req_ctx, &handler_id_dbl)) {
@@ -124,10 +136,12 @@ void *zz_async_worker_thread(void *arg) {
       exit(1);
     }
     uint32_t handler_id = (uint32_t) handler_id_dbl;
-    if (handler_id == 0) {
-      fprintf(stderr, "invalid async request: handler_id (%u) should be non-zero\n", handler_id);
+    /* handler_id is 0-based */
+    if (handler_id >= worker->handler_count) {
+      fprintf(stderr, "invalid async request: handler_id is out of range (worker_id=%d, handler_id=%u, handler_count=%d)\n", worker_id, handler_id, worker->handler_count);
       exit(1);
     }
+    zz_async_handler handler = worker->handlers[handler_id];
     /* event_id is a unique identifier (a negative int) for this
        request.
        
@@ -148,7 +162,7 @@ void *zz_async_worker_thread(void *arg) {
     /* first element is the event_id */
     cmp_write_sint(&rep_ctx, event_id);
     /* the second element must be written by the worker */
-    worker(handler_id, &req_ctx, &rep_ctx, elements-3);
+    handler(&req_ctx, &rep_ctx, elements-3);
     if (rep_buf->size == rep_buf->capacity) {
       fprintf(stderr, "rep_buf overflow\n");
       exit(1);
@@ -167,15 +181,19 @@ void *zz_async_worker_thread(void *arg) {
   return NULL;
 }
 
-/* a pre-defined worker for testing purposes */
+/* a pre-defined handler for testing purposes */
 
-void zz_async_echo_worker(int handler_id, cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
-  /* (delay, ...)
-     @return ... packed into an array after delay seconds
+enum {
+  ZZ_ASYNC_ECHO
+};
+
+void zz_async_echo(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
+  /* @request delay, ...
+     @reply ... packed into an array after delay seconds
   */
   double delay;
   if (! cmp_read_double(request, &delay)) {
-    fprintf(stderr, "zz_async_echo_worker: got non-double first arg for delay\n");
+    fprintf(stderr, "zz_async_echo: got non-double first arg for delay\n");
     exit(1);
   }
   double fractional_part, integer_part;
@@ -184,7 +202,7 @@ void zz_async_echo_worker(int handler_id, cmp_ctx_t *request, cmp_ctx_t *reply, 
   rqtp.tv_sec = integer_part;
   rqtp.tv_nsec = fractional_part * 1e9;
   if (nanosleep(&rqtp, NULL) != 0) {
-    fprintf(stderr, "zz_async_echo_worker: nanosleep() failed\n");
+    fprintf(stderr, "zz_async_echo: nanosleep() failed\n");
   }
   /* return the rest of the arguments packed into an array */
   cmp_write_array(reply, nargs-1);
@@ -241,8 +259,13 @@ void zz_async_echo_worker(int handler_id, cmp_ctx_t *request, cmp_ctx_t *reply, 
         zz_cmp_ctx_pos(request) += obj.as.str_size;
         break;
       default:
-        fprintf(stderr, "zz_async_echo_worker: unsupported argument type\n");
+        fprintf(stderr, "zz_async_echo: unsupported argument type\n");
       }
     }
   }
 }
+
+void *zz_async_echo_handlers[] = {
+  zz_async_echo,
+  NULL
+};
