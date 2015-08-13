@@ -41,7 +41,7 @@ int     rmdir (const char *filename);
 int     dup (int old);
 int     dup2 (int old, int new);
 
-struct Stat_ct {
+struct zz_file_Stat_ct {
   struct stat *buf;
 };
 
@@ -66,13 +66,13 @@ void              zz_file_Stat_free(struct stat *);
 int zz_file_stat(const char *pathname, struct stat *buf);
 int zz_file_lstat(const char *pathname, struct stat *buf);
 
-struct File_ct {
+struct zz_file_File_ct {
   int fd;
 };
 
 typedef struct __dirstream DIR;
 
-struct Dir_ct {
+struct zz_file_Dir_ct {
   DIR *dir;
 };
 
@@ -194,7 +194,7 @@ end
 File_mt.__index = File_mt
 File_mt.__gc = File_mt.close
 
-local File = ffi.metatype("struct File_ct", File_mt)
+local File = ffi.metatype("struct zz_file_File_ct", File_mt)
 
 -- stat
 
@@ -293,7 +293,7 @@ end
 
 Stat_mt.__gc = Stat_mt.free
 
-local Stat = ffi.metatype("struct Stat_ct", Stat_mt)
+local Stat = ffi.metatype("struct zz_file_Stat_ct", Stat_mt)
 
 local Dir_mt = {}
 
@@ -317,7 +317,7 @@ end
 Dir_mt.__index = Dir_mt
 Dir_mt.__gc = Dir_mt.close
 
-local Dir = ffi.metatype("struct Dir_ct", Dir_mt)
+local Dir = ffi.metatype("struct zz_file_Dir_ct", Dir_mt)
 
 function M.open(path)
    local fd = ffi.C.open(path, ffi.C.O_RDONLY)
