@@ -37,7 +37,7 @@ typedef union epoll_data {
 struct epoll_event {
   uint32_t events;	/* Epoll events */
   epoll_data_t data;	/* User data variable */
-};
+} __attribute__((__packed__));
 
 extern int epoll_create (int size);
 extern int epoll_create1 (int flags);
