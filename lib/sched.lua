@@ -49,19 +49,14 @@ M.OFF = OFF
 local function Scheduler()
    local self = {}
 
-   local next_event_id = { -1, -1000 }
+   local next_event_id = -1
 
-   function self.make_event_id(persistent)
-      local index = persistent and 1 or 2
-      local rv = next_event_id[index]
-      next_event_id[index] = next_event_id[index] - 1
-      -- naive attempt to handle wraparound
-      if next_event_id[index] > 0 then
-         if persistent then
-            error("persistent event id overflow")
-         else
-            next_event_id[index] = -1000
-         end
+   function self.make_event_id()
+      local rv = next_event_id
+      next_event_id = next_event_id - 1
+      -- TODO: find a way to ensure that this never blows up
+      if next_event_id < -(2^31) then
+         error("event id overflow")
       end
       return rv
    end
@@ -170,7 +165,7 @@ local function Scheduler()
 
    -- a poller for event_sub (used when we wait for events)
    local event_sub_fd = nn.getsockopt(event_sub, 0, nn.RCVFD)
-   local event_sub_id = self.make_event_id(true)
+   local event_sub_id = self.make_event_id()
 
    -- tick: one iteration of the event loop
    local function tick() 
