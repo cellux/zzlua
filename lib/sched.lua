@@ -259,6 +259,13 @@ local function Scheduler()
       -- warning: do not try to process all events at once here
       --
       -- it won't work
+      --
+      -- why: event listeners are currently implemented as scheduled
+      -- threads. in one tick, a listener thread can be woken up
+      -- (resumed) only once. if the queue contained two events of
+      -- type T and we processed all events in the queue, a thread
+      -- waiting for T events would be resumed only once, with the
+      -- evdata of the first event. the second event would be lost.
       if not event_queue:empty() then
          local event = event_queue:shift()
          process_event(event)
@@ -352,7 +359,7 @@ local function Scheduler()
       -- register the waiting thread as a background listener
       self.listen(evtype, t, true)
       -- this - admittedly cumbersome - implementation ensures that
-      -- the callback will be primed when sched.on() returns
+      -- the listener will be primed when sched.on() returns
       event_cb_threads[callback] = t
    end
 
