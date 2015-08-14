@@ -233,7 +233,7 @@ local function Scheduler()
          if evtype == 'quit' then
             running = false
             -- after quit, only those threads shall be resumed which
-            -- have registered for this event
+            -- are waiting for this evtype ('quit')
             runnable:clear()
          end
          -- wake up threads waiting for this evtype
@@ -325,7 +325,7 @@ local function Scheduler()
          poller:close()
          nn.close(event_sub)
          scheduler_singleton = nil
-         -- after this function returns, we will be garbage-collected
+         -- after this function returns, self will be garbage-collected
       end
    end
 
@@ -340,6 +340,7 @@ local function Scheduler()
 
    function self.on(evtype, callback)
       assert(event_cb_threads[callback] == nil, "registering the same callback for several event types is not supported")
+      -- we create a new background thread to handle evtype events
       local function w()
          while true do
             local evdata = self.wait(evtype, true)
@@ -348,19 +349,21 @@ local function Scheduler()
             end
          end
       end
-      -- run w() until it waits (yields) for the first time
+      -- resume w() until it waits (yields) for the first time
       local t = coroutine.create(w)
       local status, evtype, is_background = coroutine.resume(t)
       -- register the waiting thread as a background listener
-      self.listen(evtype, t, true)
+      --
       -- this - admittedly cumbersome - implementation ensures that
       -- the listener will be primed when sched.on() returns
+      self.listen(evtype, t, true)
       event_cb_threads[callback] = t
    end
 
    function self.off(evtype, callback)
       local t = event_cb_threads[callback]
       assert(t)
+      -- resume the listener thread with an OFF so that it exits
       local status = coroutine.resume(t, OFF)
       assert(status)
       assert(coroutine.status(t)=="dead", sf("can't remove event handler, coroutine.status = %s (expected: dead)", coroutine.status(t)))
