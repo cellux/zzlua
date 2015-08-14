@@ -166,6 +166,7 @@ local function Scheduler()
    -- a poller for event_sub (used when we wait for events)
    local event_sub_fd = nn.getsockopt(event_sub, 0, nn.RCVFD)
    local event_sub_id = self.make_event_id()
+   poller:add(event_sub_fd, "r", event_sub_id)
 
    -- tick: one iteration of the event loop
    local function tick() 
@@ -317,7 +318,6 @@ local function Scheduler()
          -- enter the event loop, continue scheduling until there is
          -- work to do. when the event loop exits, cleanup and destroy
          -- this Scheduler instance.
-         poller:add(event_sub_fd, "r", event_sub_id)
          module_registry:invoke('init')
          self.loop()
          module_registry:invoke('done')
