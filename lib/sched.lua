@@ -94,66 +94,51 @@ local function Scheduler()
       return { t = t, time = time }
    end
 
-   -- threads waiting for an event to arrive
-   -- key: thread, value: background thread? (true/false)
-   local waiting = {}
-
-   -- number of threads waiting in the foreground
-   -- (foreground threads keep the event loop alive)
-   local waiting_fg = 0
-
-   local function add_waiting(t, is_background)
-      assert(waiting[t] == nil)
-      waiting[t] = is_background and true or false
-      if not is_background then
-         waiting_fg = waiting_fg + 1
-      end
-   end
-   
-   local function del_waiting(t)
-      local is_background = waiting[t]
-      assert(type(is_background) == 'boolean')
-      waiting[t] = nil
-      if not is_background then
-         waiting_fg = waiting_fg - 1
-      end
-   end
-
-   -- threads listening to various events
+   -- threads waiting for various events
    -- key: evtype, value: array of threads waiting
-   local listeners = {}
+   local waiting = {}
+   local n_waiting = 0
 
-   local function add_listener(evtype, l)
-      if not listeners[evtype] then
-         listeners[evtype] = {}
+   local function add_waiting(evtype, t)
+      if not waiting[evtype] then
+         waiting[evtype] = {}
+         n_waiting = n_waiting + 1
       end
-      table.insert(listeners[evtype], l)
+      table.insert(waiting[evtype], t)
    end
 
-   local function del_listener(evtype, l)
-      local ls = listeners[evtype]
-      if ls then
+   local function del_waiting(evtype)
+      if waiting[evtype] then
+         waiting[evtype] = nil
+         n_waiting = n_waiting - 1
+      end
+   end
+
+   -- callback functions to invoke when various events happen
+   --
+   -- when an event triggers, the corresponding callback functions are
+   -- scheduled as runnable threads
+   local callbacks = {}
+
+   function self.on(evtype, callback)
+      if not callbacks[evtype] then
+         callbacks[evtype] = {}
+      end
+      table.insert(callbacks[evtype], callback)
+   end
+
+   function self.off(evtype, callback)
+      local cbs = callbacks[evtype]
+      if cbs then
          local i = 1
-         while i <= #ls do
-            if ls[i] == l then
-               table.remove(ls, i)
+         while i <= #cbs do
+            if cbs[i] == callback then
+               table.remove(cbs, i)
             else
                i = i + 1
             end
          end
       end
-   end
-
-   function self.listen(evtype, t, is_background)
-      assert(type(t)=='thread')
-      add_listener(evtype, t)
-      add_waiting(t, is_background)
-   end
-
-   function self.unlisten(evtype, t)
-      assert(type(t)=='thread')
-      del_listener(evtype, t)
-      del_waiting(t)
    end
 
    local event_queue = adt.List()
@@ -237,32 +222,29 @@ local function Scheduler()
             runnable:clear()
          end
          -- wake up threads waiting for this evtype
-         local ls = listeners[evtype]
-         if ls then
-            for _,t in ipairs(ls) do
+         local threads = waiting[evtype]
+         if threads then
+            for _,t in ipairs(threads) do
                runnable:push(RunnableThread(t, evdata))
-               del_waiting(t)
             end
-            -- clear all listeners after they got woken up.
-            --
-            -- they must re-register if they want to get notified
-            -- again (this happens automatically for listeners
-            -- registered with sched.on())
-            listeners[evtype] = nil
+            del_waiting(evtype)
+         end
+         -- schedule threads for callbacks listening to this evtype
+         local cbs = callbacks[evtype]
+         if cbs then
+            for _,cb in ipairs(cbs) do
+               local function wrapper(evdata)
+                  -- remove the callback if it returns sched.OFF
+                  if cb(evdata) == OFF then
+                     self.off(evtype, cb)
+                  end
+               end
+               self.sched(wrapper, evdata)
+            end
          end
       end
 
-      -- warning: do not try to process all events at once here
-      --
-      -- it won't work
-      --
-      -- why: event listeners are currently implemented as scheduled
-      -- threads. in one tick, a listener thread can be woken up
-      -- (resumed) only once. if the queue contained two events of
-      -- type T and we processed all events in the queue, a thread
-      -- waiting for T events would be resumed only once, with the
-      -- evdata of the first event. the second event would be lost.
-      if not event_queue:empty() then
+      while not event_queue:empty() do
          local event = event_queue:shift()
          process_event(event)
       end
@@ -271,7 +253,7 @@ local function Scheduler()
          local runnable_next = adt.List()
          for rt in runnable:itervalues() do
             local t, data = rt.t, rt.data
-            local ok, rv, is_background = coroutine.resume(t, data)
+            local ok, rv = coroutine.resume(t, data)
             local status = coroutine.status(t)
             if status == "suspended" then
                if type(rv) == "number" and rv > 0 then
@@ -279,7 +261,7 @@ local function Scheduler()
                   sleeping:push(SleepingThread(t, rv))
                elseif rv then
                   -- rv is the evtype which shall wake up this thread
-                  self.listen(rv, t, is_background)
+                  add_waiting(rv, t)
                else
                   -- the coroutine shall be resumed in the next tick
                   runnable_next:push(RunnableThread(t, nil))
@@ -307,7 +289,7 @@ local function Scheduler()
       until not running or
          (runnable:size() == 0
              and sleeping:size() == 0
-             and waiting_fg == 0)
+             and n_waiting == 0)
    end
 
    function self.sched(fn, data)
@@ -336,48 +318,13 @@ local function Scheduler()
       return self.wait(time.time() + seconds)
    end
 
-   local event_cb_threads = {}
-
-   function self.on(evtype, callback)
-      assert(event_cb_threads[callback] == nil, "registering the same callback for several event types is not supported")
-      -- we create a new background thread to handle evtype events
-      local function w()
-         while true do
-            local evdata = self.wait(evtype, true)
-            if evdata == OFF or callback(evdata) == OFF then
-               break
-            end
-         end
-      end
-      -- resume w() until it waits (yields) for the first time
-      local t = coroutine.create(w)
-      local status, evtype, is_background = coroutine.resume(t)
-      -- register the waiting thread as a background listener
-      --
-      -- this - admittedly cumbersome - implementation ensures that
-      -- the listener will be primed when sched.on() returns
-      self.listen(evtype, t, true)
-      event_cb_threads[callback] = t
-   end
-
-   function self.off(evtype, callback)
-      local t = event_cb_threads[callback]
-      assert(t)
-      -- resume the listener thread with an OFF so that it exits
-      local status = coroutine.resume(t, OFF)
-      assert(status)
-      assert(coroutine.status(t)=="dead", sf("can't remove event handler, coroutine.status = %s (expected: dead)", coroutine.status(t)))
-      self.unlisten(evtype, t)
-      event_cb_threads[callback] = nil
-   end
-
    function self.emit(evtype, evdata)
       assert(evdata ~= nil, "evdata must be non-nil")
       event_queue:push({ evtype, evdata })
    end
 
-   function self.quit()
-      self.emit('quit', 0)
+   function self.quit(evdata)
+      self.emit('quit', evdata or 0)
    end
 
    return self
