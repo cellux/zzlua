@@ -1,5 +1,6 @@
 local adt = require('adt')
 local assert = require('assert')
+local sf = string.format
 
 local l = adt.List()
 assert(l:empty())
@@ -34,3 +35,33 @@ for k,v in l:iteritems() do
    items[k] = v
 end
 assert.equals(items, {[0]=10, [1]=20, [2]=30})
+
+local l = adt.List()
+for i=1,10 do
+   l:push(sf("item %d", i))
+end
+assert.equals(l:index("item 1"), 0)
+assert.equals(l:index("item 5"), 4)
+assert.equals(l:index("item 10"), 9)
+assert.equals(l:index("item 20"), nil)
+
+local l = adt.List()
+for i=1,10 do
+   l:push(sf("item %d", i))
+end
+l:remove_at(6)
+assert.equals(l:size(), 9)
+assert.equals(l[5], "item 6")
+assert.equals(l[6], "item 8")
+assert.equals(l[7], "item 9")
+assert.equals(l[8], "item 10")
+l:remove_at(8)
+assert.equals(l:size(), 8)
+assert.equals(l[7], "item 9")
+assert.equals(l[8], nil)
+l:remove_at(0)
+assert.equals(l:size(), 7)
+assert.equals(l[0], "item 2")
+assert.equals(l[1], "item 3")
+l:remove_at(10)
+assert.equals(l:size(), 7)

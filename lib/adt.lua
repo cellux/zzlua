@@ -10,6 +10,19 @@ function List_mt:shift()
    return table.remove(self._items, 1)
 end
 
+function List_mt:index(item)
+   for i=1, #self._items do
+      if self._items[i]==item then
+         return i-1
+      end
+   end
+   return nil
+end
+
+function List_mt:remove_at(index)
+   return table.remove(self._items, index+1)
+end
+
 function List_mt:size()
    return #self._items
 end
