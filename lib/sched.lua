@@ -94,52 +94,48 @@ local function Scheduler()
       return { t = t, time = time }
    end
 
-   -- threads waiting for various events
-   -- key: evtype, value: array of threads waiting
-   local waiting = {}
-   local n_waiting = 0
-
-   local function add_waiting(evtype, t)
-      if not waiting[evtype] then
-         waiting[evtype] = {}
-         n_waiting = n_waiting + 1
-      end
-      table.insert(waiting[evtype], t)
-   end
-
-   local function del_waiting(evtype)
-      if waiting[evtype] then
-         waiting[evtype] = nil
-         n_waiting = n_waiting - 1
-      end
-   end
-
-   -- callback functions to invoke when various events happen
+   -- threads and callback functions waiting for various events
    --
-   -- when an event triggers, the corresponding callback functions are
-   -- scheduled as runnable threads
-   local callbacks = {}
+   -- key: evtype, value: array of threads/functions waiting
+   --
+   -- if it's a thread, it will be woken up
+   --
+   -- if it's a function, it will be wrapped into a handler thread
+   -- which will be woken up
+   --
+   -- threads are removed once they have been serviced
+   -- functions remain
+   local waiting = {}
+   local n_waiting_threads = 0
 
-   function self.on(evtype, callback)
-      if not callbacks[evtype] then
-         callbacks[evtype] = {}
+   local function add_waiting(evtype, r) -- r for runnable
+      if not waiting[evtype] then
+         waiting[evtype] = adt.List()
       end
-      table.insert(callbacks[evtype], callback)
+      waiting[evtype]:push(r)
+      if type(r)=="thread" then
+         n_waiting_threads = n_waiting_threads + 1
+      end
    end
 
-   function self.off(evtype, callback)
-      local cbs = callbacks[evtype]
-      if cbs then
-         local i = 1
-         while i <= #cbs do
-            if cbs[i] == callback then
-               table.remove(cbs, i)
-            else
-               i = i + 1
+   local function del_waiting(evtype, r) -- r for runnable
+      if waiting[evtype] then
+         local rs = waiting[evtype]
+         local i = rs:index(r)
+         if i then
+            rs:remove_at(i)
+            if type(r)=="thread" then
+               n_waiting_threads = n_waiting_threads - 1
             end
+         end
+         if waiting[evtype]:empty() then
+            waiting[evtype] = nil
          end
       end
    end
+
+   self.on = add_waiting
+   self.off = del_waiting
 
    local event_queue = adt.List()
 
@@ -221,25 +217,35 @@ local function Scheduler()
             -- are waiting for this evtype ('quit')
             runnable:clear()
          end
-         -- wake up threads waiting for this evtype
-         local threads = waiting[evtype]
-         if threads then
-            for _,t in ipairs(threads) do
-               runnable:push(RunnableThread(t, evdata))
-            end
-            del_waiting(evtype)
-         end
-         -- schedule threads for callbacks listening to this evtype
-         local cbs = callbacks[evtype]
-         if cbs then
-            for _,cb in ipairs(cbs) do
-               local function wrapper(evdata)
-                  -- remove the callback if it returns sched.OFF
-                  if cb(evdata) == OFF then
-                     self.off(evtype, cb)
+         -- wake up threads/callbacks waiting for this evtype
+         local rs = waiting[evtype] -- runnables
+         if rs then
+            local rs_next = adt.List()
+            for r in rs:itervalues() do
+               if type(r)=="thread" then
+                  -- threads will be resumed and forgotten
+                  runnable:push(RunnableThread(r, evdata))
+                  n_waiting_threads = n_waiting_threads - 1
+               elseif type(r)=="function" then
+                  -- callback functions are wrapped into a handler
+                  -- thread which is then resumed
+                  local function wrapper(evdata)
+                     -- remove the callback if it returns sched.OFF
+                     if r(evdata) == OFF then
+                        del_waiting(evtype, r)
+                     end
                   end
+                  self.sched(wrapper, evdata)
+                  -- callbacks keep waiting
+                  rs_next:push(r)
+               else
+                  error(sf("invalid object in waiting[%s]: %s", evtype, r))
                end
-               self.sched(wrapper, evdata)
+            end
+            if rs_next:empty() then
+               waiting[evtype] = nil
+            else
+               waiting[evtype] = rs_next
             end
          end
       end
@@ -289,13 +295,14 @@ local function Scheduler()
       until not running or
          (runnable:size() == 0
              and sleeping:size() == 0
-             and n_waiting == 0)
+             and n_waiting_threads == 0)
    end
 
    function self.sched(fn, data)
       if fn then
          -- add fn to the list of runnable threads
-         runnable:push(RunnableThread(coroutine.create(fn), data))
+         local t = coroutine.create(fn)
+         runnable:push(RunnableThread(t, data))
       else
          -- enter the event loop, continue scheduling until there is
          -- work to do. when the event loop exits, cleanup and destroy
