@@ -335,6 +335,8 @@ local function tcp_server(s)
          end
       end)
    end
+   poller:del(s.fd, "r", s.fd)
+   poller:del(sp_recv.fd, "r", sp_recv.fd)
    poller:close()
    sp_recv:close()
    sp_send:close()
