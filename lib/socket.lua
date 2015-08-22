@@ -440,6 +440,7 @@ function Socket_mt:recvfrom(buf)
 end
 
 function Socket_mt:shutdown(how)
+   how = how or ffi.C.SHUT_RDWR
    return util.check_bad("shutdown", -1, ffi.C.shutdown(self.fd, how))
 end
 
