@@ -5,6 +5,7 @@ local file = require('file')
 local ffi = require('ffi')
 local sf = string.format
 local sched = require('sched')
+local epoll = require('epoll')
 
 -- open/close
 
@@ -303,3 +304,48 @@ sched()
 for e,v in pairs(responses) do
    assert.equals(tostring(assert(loadstring("return "..e))()), v)
 end
+
+-- graceful way to shut down a network server:
+
+local server_host, server_port = "127.0.0.1", 54321
+local server_addr = socket.sockaddr(socket.AF_INET, server_host, server_port)
+
+local tcp_server_gracefully_shut_down = false
+
+local function tcp_server(s)
+   s.SO_REUSEADDR = true
+   s:bind(server_addr)
+   s:listen()
+   local poller = epoll.create(2)
+   local sp_recv, sp_send = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM)
+   poller:add(sp_recv.fd, "r", sp_recv.fd)
+   poller:add(s.fd, "r", s.fd)
+   sched.on('stop-server', function()
+      sp_send:write("stop-server\n") 
+   end)
+   local running = true
+   while running do
+      sched.poll(poller.fd, "r")
+      poller:wait(0, function(events, fd)
+         if fd == s.fd then
+            local client_fd = s:accept()
+            -- handle connection
+         elseif fd == sp_recv.fd then
+            running = false
+         end
+      end)
+   end
+   poller:close()
+   sp_recv:close()
+   sp_send:close()
+   s:close()
+   tcp_server_gracefully_shut_down = true
+end
+
+local s = socket(socket.PF_INET, socket.SOCK_STREAM)
+sched(tcp_server, s)
+sched(function()
+   sched.emit('stop-server', 0)
+end)
+sched()
+assert.equals(tcp_server_gracefully_shut_down, true)
