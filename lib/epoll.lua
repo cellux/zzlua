@@ -128,9 +128,9 @@ end
 
 local M = {}
 
-function M.create()
+function M.create(maxevents)
    local fd = util.check_bad("epoll_create", -1, ffi.C.epoll_create(1))
-   return Poller(fd)
+   return Poller(fd, maxevents)
 end
 
 M.poller_factory = M.create
