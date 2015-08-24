@@ -213,11 +213,9 @@ sched.on('my-signal',
 sched()
 assert.equals(output, {"signal-sent", "signal-handler-1", "signal-handler-2"})
 
--- note that the above behaviour also applies to the 'quit' signal. if
--- you want to ensure that all quit handlers are properly called, you
--- must use sched.yield() after sched.quit().
+-- note that the above behaviour does not apply to the 'quit' signal:
+-- callbacks for 'quit' are always called at the end and then removed
 
--- the quit handlers won't be called:
 local output = {}
 sched.on('quit',
          function()
@@ -232,18 +230,20 @@ sched.on('quit',
             table.insert(output, "quit-handler-2")
          end)
 sched()
-assert.equals(output, {"sched.quit"})
+assert.equals(output, {"sched.quit", "quit-handler-1", "quit-handler-2"})
 
--- the quit handlers will be called:
+-- quit callbacks are called even if the code doesn't invoke
+-- sched.quit() explicitly. in that case, the scheduler makes an
+-- implicit call when all threads exit.
+
 local output = {}
 sched.on('quit',
          function()
             table.insert(output, "quit-handler-1")
          end)
 sched(function()
+         -- main thread
          table.insert(output, "sched.quit")
-         sched.quit()
-         sched.yield()
       end)
 sched.on('quit',
          function()

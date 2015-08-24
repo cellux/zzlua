@@ -98,13 +98,11 @@ local function Scheduler()
    --
    -- key: evtype, value: array of threads/functions waiting
    --
-   -- if it's a thread, it will be woken up
+   -- if it's a thread, it will be woken up, if it's a function, it
+   -- will be wrapped into a handler thread which will be woken up
    --
-   -- if it's a function, it will be wrapped into a handler thread
-   -- which will be woken up
-   --
-   -- threads are removed once they have been serviced
-   -- functions remain
+   -- threads are removed once they have been serviced, functions
+   -- remain
    local waiting = {}
    local n_waiting_threads = 0
 
@@ -231,7 +229,8 @@ local function Scheduler()
                   -- thread which is then resumed
                   local function wrapper(evdata)
                      -- remove the callback if it returns sched.OFF
-                     if r(evdata) == OFF then
+                     -- quit handlers are also automatically removed
+                     if r(evdata) == OFF or evtype == 'quit' then
                         del_waiting(evtype, r)
                      end
                   end
@@ -290,12 +289,29 @@ local function Scheduler()
 
    function self.loop()
       running = true
-      repeat
+
+      -- running phase
+      while running do
          tick()
-      until not running or
-         (runnable:size() == 0
-             and sleeping:size() == 0
-             and n_waiting_threads == 0)
+         if runnable:size() == 0
+            and sleeping:size() == 0
+            and n_waiting_threads == 0 then
+               -- all threads exited without anyone calling
+               -- sched.quit(), so we have to do it
+               self.quit()
+               -- schedule quit callbacks (if any)
+               tick() -- also sets running to false
+         end
+      end
+
+      -- shutdown phase
+      while waiting['quit'] do
+         -- quit callbacks are automatically removed (via sched.off)
+         -- when they finish. when all quit handlers finish, there
+         -- will be no more threads or callbacks waiting for 'quit',
+         -- so we can shut down the scheduler.
+         tick()
+      end
    end
 
    function self.sched(fn, data)
