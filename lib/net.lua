@@ -26,6 +26,8 @@ function M.qpoll(fd, cb) -- "quittable" poll
          elseif data == sp_recv.fd then
             sp_recv:write("stopped\n")
             running = false
+         else
+            error("invalid fd in epoll event")
          end
       end)
    end
