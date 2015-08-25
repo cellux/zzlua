@@ -95,6 +95,10 @@ local socket_addr = socket.sockaddr(socket.AF_INET, "127.0.0.1", 54321)
 assert.equals(socket_addr.address, "127.0.0.1")
 assert.equals(socket_addr.port, 54321)
 
+local socket_addr_1 = socket.sockaddr(socket.AF_INET, "127.0.0.1", 54321)
+local socket_addr_2 = socket.sockaddr(socket.AF_INET, "127.0.0.1", 54321)
+assert(socket_addr_1 == socket_addr_2)
+
 -- listen, accept, connect (with local sockets)
 
 local socket_path = file.mktemp("zzlua-test-socket")

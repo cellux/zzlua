@@ -224,6 +224,19 @@ function sockaddr_mt:__index(k)
    end
 end
 
+function sockaddr_mt.__eq(lhs, rhs)
+   if lhs.af ~= rhs.af then
+      return false
+   end
+   if lhs.af == ffi.C.AF_LOCAL then
+      return lhs.address == rhs.address
+   elseif lhs.af == ffi.C.AF_INET then
+      return lhs.address == rhs.address and lhs.port == rhs.port
+   else
+      error("Unsupported address family")
+   end
+end
+
 local function sockaddr(af, address, port)
    local self = { af = af }
    if af == ffi.C.AF_LOCAL then
