@@ -455,12 +455,12 @@ function Socket_mt:close()
 end
 
 Socket_mt.__newindex = function(self, k, v)
-   if k == "SO_REUSEADDR" then
+   if k == "SO_REUSEADDR" or k == "SO_BROADCAST" then
       local optval = ffi.new("int[1]", v and 1 or 0)
       util.check_bad("setsockopt", -1,
                      ffi.C.setsockopt(self.fd,
                                       ffi.C.SOL_SOCKET,
-                                      ffi.C.SO_REUSEADDR,
+                                      ffi.C[k],
                                       optval,
                                       ffi.sizeof("int")))
    else
