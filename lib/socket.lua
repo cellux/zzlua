@@ -307,8 +307,8 @@ end
 function Socket_mt:connect(sockaddr)
    local rv = ffi.C.connect(self.fd, ffi.cast("struct sockaddr *", sockaddr.addr), sockaddr.addr_size)
    if rv == -1 then
-      local errno = errno.errno()
-      if errno == ffi.C.EINPROGRESS and coroutine.running() then
+      local errnum = errno.errno()
+      if errnum == ffi.C.EINPROGRESS and coroutine.running() then
          sched.poll(self.fd, "w")
          local optval = ffi.new("int[1]")
          local optlen = ffi.new("socklen_t[1]", ffi.sizeof("int"))
@@ -323,7 +323,7 @@ function Socket_mt:connect(sockaddr)
          end
          return 0
       else
-         error(sf("connect() failed: %s", errno.strerror(errno)))
+         error(sf("connect() failed: %s", errno.strerror(errnum)))
       end
    else
       return 0
