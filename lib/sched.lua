@@ -140,7 +140,7 @@ local function Scheduler()
    -- event_sub: the socket we receive events from
    local event_sub = nn.socket(nn.AF_SP, nn.SUB)
    nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
-   local event_sub_id = nn.bind(event_sub, "inproc://events")
+   nn.bind(event_sub, "inproc://events")
 
    -- a poller for event_sub (used when we wait for events)
    local event_sub_fd = nn.getsockopt(event_sub, 0, nn.RCVFD)
