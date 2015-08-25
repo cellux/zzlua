@@ -330,3 +330,15 @@ sched(tcp_server, s)
 sched(function() sched.quit() end)
 sched()
 assert.equals(tcp_server_gracefully_shut_down, true)
+
+-- connecting an UDP socket to the broadcast address and then calling
+-- getsockname() on it returns the IP address of the interface which
+-- would be used to send outgoing packets
+
+local s = socket(socket.PF_INET, socket.SOCK_DGRAM)
+s.SO_BROADCAST = true
+local broadcast_addr = socket.sockaddr(socket.AF_INET, "255.255.255.255", 54321)
+s:connect(broadcast_addr)
+assert.type(s:getsockname().port, "number")
+assert(string.match(s:getsockname().address, '^%d+%.%d+%.%d+%.%d+$'))
+s:close()
