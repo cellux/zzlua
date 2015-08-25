@@ -6,6 +6,7 @@ local ffi = require('ffi')
 local sf = string.format
 local sched = require('sched')
 local epoll = require('epoll')
+local net = require('net')
 
 -- open/close
 
@@ -316,38 +317,16 @@ local function tcp_server(s)
    s.SO_REUSEADDR = true
    s:bind(server_addr)
    s:listen()
-   local poller = epoll.create(2)
-   local sp_recv, sp_send = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM)
-   poller:add(sp_recv.fd, "r", sp_recv.fd)
-   poller:add(s.fd, "r", s.fd)
-   sched.on('stop-server', function()
-      sp_send:write("stop-server\n") 
+   net.qpoll(s, function()
+      local client_fd = s:accept()
+      -- handle connection
    end)
-   local running = true
-   while running do
-      sched.poll(poller.fd, "r")
-      poller:wait(0, function(events, fd)
-         if fd == s.fd then
-            local client_fd = s:accept()
-            -- handle connection
-         elseif fd == sp_recv.fd then
-            running = false
-         end
-      end)
-   end
-   poller:del(s.fd, "r", s.fd)
-   poller:del(sp_recv.fd, "r", sp_recv.fd)
-   poller:close()
-   sp_recv:close()
-   sp_send:close()
    s:close()
    tcp_server_gracefully_shut_down = true
 end
 
 local s = socket(socket.PF_INET, socket.SOCK_STREAM)
 sched(tcp_server, s)
-sched(function()
-   sched.emit('stop-server', 0)
-end)
+sched(function() sched.quit() end)
 sched()
 assert.equals(tcp_server_gracefully_shut_down, true)
