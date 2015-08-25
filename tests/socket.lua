@@ -317,7 +317,7 @@ local function tcp_server(s)
    s.SO_REUSEADDR = true
    s:bind(server_addr)
    s:listen()
-   net.qpoll(s, function()
+   net.qpoll(s.fd, function()
       local client_fd = s:accept()
       -- handle connection
    end)
