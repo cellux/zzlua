@@ -6,6 +6,12 @@ Might be used as a well-equipped script interpreter or as the starting point of 
 
 Currently Linux only.
 
+> Warning: this is alpha-quality software. It has not yet been used in production.
+
+> If you are interested in LuaJIT and/or event-driven architectures, you may find the code interesting to read.
+
+> I tried to keep everything as simple and clean as possible.
+
 ## Internal dependencies
 
 * [LuaJIT](http://luajit.org/)
@@ -20,6 +26,15 @@ These are either automatically downloaded upon compilation or bundled with the s
 * [Jack](http://jackaudio.org/)
 * [PCRE](http://www.pcre.org/)
 
+## Compilation
+
+```bash
+git clone https://github.com/cellux/zzlua
+cd zzlua
+make
+make test
+```
+
 ## Core features
 
 * coroutine-based scheduler (sched)
@@ -32,7 +47,7 @@ These are either automatically downloaded upon compilation or bundled with the s
 * access to various system calls (sys)
 * access to the process environment (env)
 
-Basically it's like node.js, implemented in LuaJIT with a bit of C support.
+Basically it's like node.js, implemented in LuaJIT and a little bit of C.
 
 ## Additional features and library bindings
 
@@ -42,11 +57,41 @@ Basically it's like node.js, implemented in LuaJIT with a bit of C support.
 * assertions (assert)
 * Jack audio support (jack)
 
-## Compilation
+## Planned features
 
-```bash
-git clone https://github.com/cellux/zzlua
-cd zzlua
-make
-make test
-```
+In decreasing order of priority:
+
+* SDL2 bindings
+* OpenGL bindings
+* a user interface library (based on SDL2)
+* SQLite bindings
+* async DNS resolver
+* HTTP library (for implementing HTTP clients and servers)
+* TLS/SSL support for sockets
+* JSON support
+* LLVM bindings
+* a JIT compiler for a very simple, statically typed language with LISP syntax (based on LLVM)
+* crypto bindings (hashing, encryption, decryption, PKI)
+* XML support
+* CSV support
+* UTF-8 support
+* zlib support
+* SMTP library (for sending and receiving Internet mail)
+* MIME support
+* IMAP library
+* POP3 library
+* FTP library
+* web browser integration (WebKit or CEF, for embedding HTML views into user interfaces)
+
+## Goals
+
+* Learn as much as possible about the stuff that's under the hood in all of the world's software
+* Create a platform which I can use to write the programs I want to write, and which I can extend/modify when the problems I face cannot be solved in the higher layers
+* Create a work of art
+
+## Philosophy
+
+* Small is beautiful
+* Reinventing the wheel is a good way to learn
+* Standing on the shoulders of giants is a good idea
+* Perfection results from finding optimal trade-offs
