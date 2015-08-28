@@ -8,9 +8,7 @@ Currently Linux only.
 
 > Warning: this is alpha-quality software. It has not yet been used in production.
 
-> If you are interested in LuaJIT and/or event-driven architectures, you may find the code interesting to read.
-
-> I tried to keep everything as simple and clean as possible.
+> If you are interested in LuaJIT and/or event-driven architectures, you may find the code interesting to read. I tried to keep everything as simple and clean as possible.
 
 ## Internal dependencies
 
