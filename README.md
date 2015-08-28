@@ -67,11 +67,11 @@ In decreasing order of priority:
 * SQLite bindings
 * async DNS resolver
 * HTTP library (for implementing HTTP clients and servers)
+* crypto bindings (hashing, encryption, decryption, PKI)
 * TLS/SSL support for sockets
 * JSON support
 * LLVM bindings
 * a JIT compiler for a very simple, statically typed language with LISP syntax (based on LLVM)
-* crypto bindings (hashing, encryption, decryption, PKI)
 * XML support
 * CSV support
 * UTF-8 support
@@ -95,3 +95,12 @@ In decreasing order of priority:
 * Reinventing the wheel is a good way to learn
 * Standing on the shoulders of giants is a good idea
 * Perfection results from finding optimal trade-offs
+
+## Inspiration
+
+* [LuaJIT](http://luajit.org/)
+* [OpenResty](http://openresty.org/)
+* [Luvit](https://luvit.io/)
+* [Raspberry Pi](https://www.raspberrypi.org/)
+* [Scheme](http://www.schemers.org/Documents/Standards/R5RS/)
+* the work of [William A. Adams](https://williamaadams.wordpress.com/)
