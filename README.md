@@ -103,4 +103,5 @@ In decreasing order of priority:
 * [Luvit](https://luvit.io/)
 * [Raspberry Pi](https://www.raspberrypi.org/)
 * [Scheme](http://www.schemers.org/Documents/Standards/R5RS/)
+* the work of [Leonard and Sylvia Ritter](http://www.duangle.com/)
 * the work of [William A. Adams](https://williamaadams.wordpress.com/)
