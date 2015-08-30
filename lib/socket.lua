@@ -190,6 +190,22 @@ int gethostbyname_r (const char *name,
 			               struct hostent **result,
 			               int *h_errnop);
 
+/* fcntl.h */
+
+int fcntl(int fd, int cmd, ...);
+
+enum {
+  F_DUPFD = 0,
+  F_GETFD = 1,
+  F_SETFD = 2,
+  F_GETFL = 3,
+  F_SETFL = 4
+};
+
+enum {
+  O_NONBLOCK = 04000
+};
+
 ]]
 
 local sockaddr_mt = {}
@@ -476,6 +492,16 @@ Socket_mt.__newindex = function(self, k, v)
                                       ffi.C[k],
                                       optval,
                                       ffi.sizeof("int")))
+   elseif k == "O_NONBLOCK" then
+      local flags = util.check_bad("fcntl", -1,
+                                   ffi.C.fcntl(self.fd, ffi.C.F_GETFL))
+      if v then
+         flags = bit.bor(flags, ffi.C[k])
+      else
+         flags = bit.band(flags, bit.bnot(ffi.C[k]))
+      end
+      util.check_bad("fcntl", -1,
+                     ffi.C.fcntl(self.fd, ffi.C.F_SETFL, flags))
    else
       error(sf("invalid attempt to set field on socket: %s", k))
    end
