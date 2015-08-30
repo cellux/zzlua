@@ -64,7 +64,10 @@ function M.fork(child_fn)
       local pid = util.check_bad("fork", -1, ffi.C.fork())
       if pid == 0 then
          sp:close()
-         pcall(child_fn, sc)
+         local ok, err = pcall(child_fn, sc)
+         if not ok then
+            error(err, 2)
+         end
          -- we don't close sc here because it may be used in an atexit
          -- function. when the child exits, it will be closed anyway.
          --
