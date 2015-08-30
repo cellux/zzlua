@@ -80,29 +80,38 @@ local function Scheduler()
 
    local running = false
 
-   -- runnable threads
-   local runnable = adt.List()
+   -- runnable threads:
+   -- those which will be resumed in the current tick
+   local runnables = adt.List()
 
-   local function RunnableThread(t, data)
-      return { t = t, data = data }
+   local function Runnable(r, data)
+      return { r = r, data = data }
    end
 
-   -- threads waiting for their time to come, ordered by wake-up time
+   -- sleeping threads:
+   -- waiting for their time to come, ordered by wake-up time
    local sleeping = adt.OrderedList(function(st) return st.time end)
 
    local function SleepingThread(t, time)
       return { t = t, time = time }
    end
 
+   -- waiting:
    -- threads and callback functions waiting for various events
    --
-   -- key: evtype, value: array of threads/functions waiting
+   -- key: evtype, value: array of runnables and callbacks waiting
    --
-   -- if it's a thread, it will be woken up, if it's a function, it
-   -- will be wrapped into a handler thread which will be woken up
+   -- if it's a thread, it will be woken up
    --
-   -- threads are removed once they have been serviced, functions
-   -- remain
+   -- if it's a function, it will be wrapped into a handler thread
+   -- which will be woken up
+   --
+   -- if it's a thread wrapped in a single-element table, it's a
+   -- background thread (does not keep the event loop alive) ;
+   -- otherwise it's handled in the same way as a plain thread
+   --
+   -- threads are removed once they have been serviced, callback
+   -- functions remain
    local waiting = {}
    local n_waiting_threads = 0
 
@@ -155,7 +164,7 @@ local function Scheduler()
          -- wake up sleeping threads whose time has come
          while sleeping:size() > 0 and sleeping[0].time <= now do
             local st = sleeping:shift()
-            runnable:push(RunnableThread(st.t, nil))
+            runnables:push(Runnable(st.t, nil))
          end
       end
 
@@ -176,7 +185,7 @@ local function Scheduler()
       end
 
       local function poll_events()
-         if runnable:size() == 0 and event_queue:empty() then
+         if runnables:size() == 0 and event_queue:empty() then
             -- there are no runnable threads, the event queue is empty
             -- we poll for events using a timeout to avoid busy-waiting
             local wait_until = now + 1 -- default timeout: 1 second
@@ -213,7 +222,7 @@ local function Scheduler()
             running = false
             -- after quit, only those threads shall be resumed which
             -- are waiting for this evtype ('quit')
-            runnable:clear()
+            runnables:clear()
          end
          -- wake up threads/callbacks waiting for this evtype
          local rs = waiting[evtype] -- runnables
@@ -221,9 +230,12 @@ local function Scheduler()
             local rs_next = adt.List()
             for r in rs:itervalues() do
                if type(r)=="thread" then
-                  -- threads will be resumed and forgotten
-                  runnable:push(RunnableThread(r, evdata))
+                  -- threads will be resumed and then forgotten
+                  runnables:push(Runnable(r, evdata))
                   n_waiting_threads = n_waiting_threads - 1
+               elseif type(r)=="table" then
+                  -- background threads are resumed and forgotten
+                  runnables:push(Runnable(r, evdata))
                elseif type(r)=="function" then
                   -- callback functions are wrapped into a handler
                   -- thread which is then resumed
@@ -254,10 +266,12 @@ local function Scheduler()
          process_event(event)
       end
 
-      local function resume_runnable()
-         local runnable_next = adt.List()
-         for rt in runnable:itervalues() do
-            local t, data = rt.t, rt.data
+      local function resume_runnables()
+         local runnables_next = adt.List()
+         for rt in runnables:itervalues() do
+            local r, data = rt.r, rt.data
+            local is_background = (type(r)=="table")
+            local t = is_background and r[1] or r
             local ok, rv = coroutine.resume(t, data)
             local status = coroutine.status(t)
             if status == "suspended" then
@@ -266,10 +280,10 @@ local function Scheduler()
                   sleeping:push(SleepingThread(t, rv))
                elseif rv then
                   -- rv is the evtype which shall wake up this thread
-                  add_waiting(rv, t)
+                  add_waiting(rv, r)
                else
                   -- the coroutine shall be resumed in the next tick
-                  runnable_next:push(RunnableThread(t, nil))
+                  runnables_next:push(Runnable(r, nil))
                end
             elseif status == "dead" then
                if not ok then
@@ -281,10 +295,10 @@ local function Scheduler()
                error(sf("unhandled status returned from coroutine.status(): %s", status))
             end
          end
-         runnable = runnable_next
+         runnables = runnables_next
       end
 
-      resume_runnable()
+      resume_runnables()
    end
 
    function self.loop()
@@ -293,7 +307,7 @@ local function Scheduler()
       -- running phase
       while running do
          tick()
-         if runnable:size() == 0
+         if runnables:size() == 0
             and sleeping:size() == 0
             and n_waiting_threads == 0 then
                -- all threads exited without anyone calling
@@ -318,7 +332,7 @@ local function Scheduler()
       if fn then
          -- add fn to the list of runnable threads
          local t = coroutine.create(fn)
-         runnable:push(RunnableThread(t, data))
+         runnables:push(Runnable(t, data))
       else
          -- enter the event loop, continue scheduling until there is
          -- work to do. when the event loop exits, cleanup and destroy
@@ -332,6 +346,11 @@ local function Scheduler()
          scheduler_singleton = nil
          -- after this function returns, self will be garbage-collected
       end
+   end
+
+   function self.background(fn, data)
+      local t = coroutine.create(fn)
+      runnables:push(Runnable({t}, data))
    end
 
    self.yield = coroutine.yield

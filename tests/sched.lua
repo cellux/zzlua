@@ -136,10 +136,11 @@ assert(output == 43, sf("output=%s", output))
 
 -- sched.wait() also accepts a positive number (a timestamp)
 -- in that case, the thread will be resumed at the specified time
+local time_before_wait = nil
 local wait_amount = 0.1 -- seconds
-local now = time.time()
 local time_after_wait = nil
 sched(function()
+         time_before_wait = time.time()
          sched.wait(time.time() + wait_amount)
          -- we could also use sched.sleep():
          -- sched.sleep(x) = sched.wait(time.time()+x)
@@ -147,7 +148,7 @@ sched(function()
       end)
 sched()
 assert.type(time_after_wait, 'number')
-local elapsed = time_after_wait-now
+local elapsed = time_after_wait-time_before_wait
 local diff = math.abs(wait_amount - elapsed) -- error
 -- we expect millisecond precision
 assert(diff < 1e-3, "diff > 1e-3: "..tostring(diff))
@@ -192,6 +193,26 @@ sched.on('my-signal',
 sched()
 assert.equals(output, {"signal-sent"})
 
+-- if you want to have a background thread which does not keep the
+-- event loop alive, schedule it with sched.background():
+
+local counter = -100
+sched.background(function()
+      counter = 0
+      while true do
+         evdata = sched.wait('never-happens')
+         -- do something with the event
+      end
+end)
+sched(function()
+      for i=1,10 do
+         sched.yield()
+         counter = counter + 1
+      end
+end)
+sched()
+assert.equals(counter, 10)
+
 -- one way to ensure that no signal gets lost is to call sched.yield()
 -- as the last statement of the thread which emits the signal which
 -- should be handled. this ensures a last tick of the event loop, in
@@ -214,7 +235,7 @@ sched()
 assert.equals(output, {"signal-sent", "signal-handler-1", "signal-handler-2"})
 
 -- note that the above behaviour does not apply to the 'quit' signal:
--- callbacks for 'quit' are always called at the end and then removed
+-- callbacks for 'quit' are always called before exiting the event loop
 
 local output = {}
 sched.on('quit',
