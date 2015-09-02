@@ -28,35 +28,25 @@ local sched = require('sched')
 -- broadcast subscriber (and potentially a broadcast listener) to be
 -- set up in the current process
 
--- this test is not working yet
-sys.exit()
-
 sched()
 
-print("---snip---")
-
-print(sys.getpid(), "parent")
 local pid, sp = sys.fork(function(sc)
       sched(function()
-            print(sys.getpid(), "child")
-            sched.wait("broadcast.initialized")
-            print(sys.getpid(), "child got broadcast.initialized")
-            sc:write("ready\n")
-            assert.equals(sc:readline(), "stop")
+          sched.wait("broadcast.initialized")
+          sc:write("ready\n")
+          assert.equals(sc:readline(), "stop")
       end)
       sched()
 end)
 sched(function()
    assert.equals(sp:readline(), "ready")
-   print(sys.getpid(), "got ready from child")
    sp:write("stop\n")
 end)
 sched()
 sp:close()
 sys.waitpid(pid)
 
-print("---snip---")
-
+sys.exit()
 
 -- broadcasting events from process A
 -- subscribing to them in process B
@@ -68,15 +58,12 @@ local pid, sp = sys.fork(function(sc)
                table.insert(messages, evdata)
             end)
             broadcast.on('broadcast-quit', function()
-               sched.emit('broadcast-quit')
+               print("broadcast.on: got broadcast-quit")
+               sched.emit('broadcast-quit', 0)
             end)
-            print(sys.getpid(), "BROADCAST INITIALIZED BEFORE")
             sched.wait('broadcast.initialized')
-            print(sys.getpid(), "BROADCAST INITIALIZED AFTER")
             sc:write("ready\n")
-            print(sys.getpid(), "waiting for broadcast-quit")
             sched.wait('broadcast-quit')
-            print(sys.getpid(), "got broadcast-quit")
       end)
       sched()
       assert.equals(messages, {'hello','world'})
@@ -87,6 +74,7 @@ sched(function()
    broadcast('broadcast-test', 'hello')
    broadcast('broadcast-test', 'world')
    broadcast('broadcast-quit')
+   print("sent broadcast-quit, exiting")
 end)
 sched()
 

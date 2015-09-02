@@ -68,7 +68,6 @@ function M.broadcast(evtype, evdata, dest_addr)
    end
    evdata = evdata or 0
    dest_addr = dest_addr or broadcast_addr
-   print(sys.getpid(), "broadcast:", evtype, evdata)
    local msg = msgpack.pack_array({evtype, evdata})
    broadcast_socket:sendto(msg, dest_addr)
 end
@@ -81,8 +80,7 @@ local function listener()
       --
       -- proxy incoming events to broadcast subscribers on this host
       local event_pub = nn.socket(nn.AF_SP, nn.PUB)
-      print(sys.getpid(), "connecting event_pub to", event_address)
-      nn.connect(event_pub, event_address)
+      nn.bind(event_pub, event_address)
       -- poll the listener socket for incoming events
       net.qpoll(s.fd, function()
          local msg, peer_addr = s:recvfrom()
@@ -92,7 +90,6 @@ local function listener()
          assert(type(unpacked) == "table")
          assert(#unpacked == 2, "broadcast message shall be a table of two elements, but it is "..inspect(unpacked))
          local evtype, evdata = unpack(unpacked)
-         print(sys.getpid(), "listener:", evtype, evdata, sender_address, sender_port)
          nn.send(event_pub, msgpack.pack_array({evtype, evdata, sender_address, sender_port}))
       end)
       nn.close(event_pub)
@@ -103,8 +100,7 @@ end
 local function subscriber()
    local event_sub = nn.socket(nn.AF_SP, nn.SUB)
    nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
-   print(sys.getpid(), "binding event_sub to", event_address)
-   nn.bind(event_sub, event_address)
+   nn.connect(event_sub, event_address)
    local event_sub_fd = nn.getsockopt(event_sub, 0, nn.RCVFD)
    assert(event_sub_fd > 0)
    -- prime the subscriber
@@ -112,30 +108,24 @@ local function subscriber()
    local got_ping = false
    sched(function()
       while not got_ping do
-         print(sys.getpid(), "before ping poll", event_sub_fd)
          sched.poll(event_sub_fd, "r")
-         print(sys.getpid(), "after ping poll", event_sub_fd)
          local msg = nn.recv(event_sub)
          local unpacked = msgpack.unpack(msg)
          assert(type(unpacked) == "table")
          assert(#unpacked == 4, inspect(unpacked))
          local evtype, evdata, sender_address, sender_port = unpack(unpacked)
-         print(sys.getpid(), "subscriber init:", evtype, evdata, sender_address, sender_port)
          if evtype == 'broadcast.ping' and sender_address == M.sender_address and sender_port == M.sender_port then
-            print(sys.getpid(), "got ping")
             got_ping = true
          end
       end
    end)
    while not got_ping and ping_attempts > 0 do
       local msg = msgpack.pack_array({'broadcast.ping', 0})
-      print(sys.getpid(), "sending broadcast.ping to local_addr from", M.sender_address, M.sender_port)
       broadcast_socket:sendto(msg, local_addr)
       ping_attempts = ping_attempts - 1
       sched.sleep(0.1)
    end
    if got_ping then
-      print(sys.getpid(), "broadcast.initialized")
       sched.emit('broadcast.initialized', 0)
    else
       error("cannot wire up broadcast subscriber to listener")
@@ -147,7 +137,6 @@ local function subscriber()
        assert(type(unpacked) == "table")
        assert(#unpacked == 4, inspect(unpacked))
        local evtype, evdata, sender_address, sender_port = unpack(unpacked)
-       print(sys.getpid(), "subscriber :", evtype, evdata, sender_address, sender_port)
        cbregistry.emit(evtype, evdata, sender_address, sender_port)
    end)
    nn.close(event_sub)
@@ -188,7 +177,6 @@ local function BroadcastModule(sched)
       broadcast_socket_addr = nil
       broadcast_socket = nil
       initialized = false
-      print(sys.getpid(), "broadcast:done")
    end
    return self
 end
