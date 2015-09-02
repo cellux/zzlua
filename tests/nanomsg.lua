@@ -12,10 +12,10 @@ end
 
 local sub_sock = nn.socket(nn.AF_SP, nn.SUB)
 nn.setsockopt(sub_sock, nn.SUB, nn.SUB_SUBSCRIBE, "")
-nn.bind(sub_sock, "inproc://messages")
+nn.connect(sub_sock, "inproc://messages")
 
 local pub_sock = nn.socket(nn.AF_SP, nn.PUB)
-nn.connect(pub_sock, "inproc://messages")
+nn.bind(pub_sock, "inproc://messages")
 nn.send(pub_sock, "hello")
 
 local poll = nn.Poll()
@@ -33,11 +33,11 @@ nn.close(sub_sock)
 -- tcp
 
 local pub_sock = nn.socket(nn.AF_SP, nn.PUB)
-nn.connect(pub_sock, "tcp://127.0.0.1:54321")
+nn.bind(pub_sock, "tcp://127.0.0.1:54321")
 
 local sub_sock = nn.socket(nn.AF_SP, nn.SUB)
 nn.setsockopt(sub_sock, nn.SUB, nn.SUB_SUBSCRIBE, "")
-nn.bind(sub_sock, "tcp://127.0.0.1:54321")
+nn.connect(sub_sock, "tcp://127.0.0.1:54321")
 
 -- after the connect and the bind, there is a time period while the
 -- connection gets established. during this period, messages sent to
@@ -49,20 +49,22 @@ assert(nn.recv(sub_sock, nn.DONTWAIT)==nil)
 nn.close(sub_sock)
 nn.close(pub_sock)
 
--- tcp + wait for the connection to be established
+-- tcp with handshake
+
+local n_messages = 10
 
 sched(function()
    local pub_sock = nn.socket(nn.AF_SP, nn.PUB)
-   nn.connect(pub_sock, "tcp://127.0.0.1:54321")
+   nn.bind(pub_sock, "tcp://127.0.0.1:54321")
 
    local sub_sock = nn.socket(nn.AF_SP, nn.SUB)
    nn.setsockopt(sub_sock, nn.SUB, nn.SUB_SUBSCRIBE, "")
-   nn.bind(sub_sock, "tcp://127.0.0.1:54321")
+   nn.connect(sub_sock, "tcp://127.0.0.1:54321")
 
-   local setup_done = false
+   local handshake_done = false
 
    sched(function()
-      while not setup_done do
+      while not handshake_done do
          nn.send(pub_sock, "ping")
          sched.sleep(0.1)
       end
@@ -72,69 +74,134 @@ sched(function()
    local sub_sock_fd = nn.getsockopt(sub_sock, 0, nn.RCVFD)
    sched.poll(sub_sock_fd, "r")
    assert(nn.recv(sub_sock)=="ping")
-   setup_done = true
+   handshake_done = true
 
    -- from now on, all messages will be delivered (but pub/sub is
    -- inherently unreliable, so in theory, there is no guarantee)
    local messages = {}
    sched(function()
-      for i=1,10 do
+      while #messages < n_messages do
          sched.poll(sub_sock_fd, "r")
-         table.insert(messages, nn.recv(sub_sock))
+         local msg = nn.recv(sub_sock)
+         if msg ~= "ping" then
+            table.insert(messages, msg)
+         end
       end
-      assert(#messages==10)
-      nn.close(sub_sock)
-      nn.close(pub_sock)
-   end)
-   for i=1,10 do
-      nn.send(pub_sock, sf("msg-%d", i))
-   end
-end)
-
-sched()
-
--- tcp + wait between two processes
-
-local pid, sp = sys.fork(function(sc)
-   sched(function()
-      local sub_sock = nn.socket(nn.AF_SP, nn.SUB)
-      nn.setsockopt(sub_sock, nn.SUB, nn.SUB_SUBSCRIBE, "")
-      nn.bind(sub_sock, "tcp://127.0.0.1:54321")
-      -- wait for the first message to arrive
-      local sub_sock_fd = nn.getsockopt(sub_sock, 0, nn.RCVFD)
-      sched.poll(sub_sock_fd, "r")
-      assert(nn.recv(sub_sock)=="ping")
-      sc:write("got ping\n")
-      -- from now on, all messages will be delivered (but pub/sub is
-      -- inherently unreliable, so in theory, there is no guarantee)
-      local messages = {}
-      for i=1,10 do
-         sched.poll(sub_sock_fd, "r")
-         table.insert(messages, nn.recv(sub_sock))
-      end
-      assert(#messages==10)
+      assert(#messages==n_messages)
       nn.close(sub_sock)
    end)
-   sched()
-end)
-
-sched(function()
-   local pub_sock = nn.socket(nn.AF_SP, nn.PUB)
-   nn.connect(pub_sock, "tcp://127.0.0.1:54321")
-   local setup_done = false
-   sched(function()
-      assert.equals(sp:readline(), "got ping")
-      setup_done = true
-   end)
-   while not setup_done do
-      nn.send(pub_sock, "ping")
-      sched.sleep(0.1)
-   end
-   for i=1,10 do
+   for i=1,n_messages do
       nn.send(pub_sock, sf("msg-%d", i))
    end
    nn.close(pub_sock)
 end)
+
 sched()
-sp:close()
-sys.waitpid(pid)
+
+-- tcp with handshake, 10 subscribers, 100 messages
+
+local n_subscribers = 10
+local n_messages = 100
+
+sched(function()
+   local pub_sock = nn.socket(nn.AF_SP, nn.PUB)
+   nn.bind(pub_sock, "tcp://127.0.0.1:54321")
+   local n_connected = 0
+   for i=1,n_subscribers do
+      sched(function()
+         local sub_sock = nn.socket(nn.AF_SP, nn.SUB)
+         nn.setsockopt(sub_sock, nn.SUB, nn.SUB_SUBSCRIBE, "")
+         nn.connect(sub_sock, "tcp://127.0.0.1:54321")
+         -- wait for the first message to arrive
+         local sub_sock_fd = nn.getsockopt(sub_sock, 0, nn.RCVFD)
+         sched.poll(sub_sock_fd, "r")
+         assert(nn.recv(sub_sock)=="ping")
+         n_connected = n_connected + 1
+         local messages = {}
+         while #messages < n_messages do
+            sched.poll(sub_sock_fd, "r")
+            local msg = nn.recv(sub_sock)
+            if msg ~= "ping" then
+               table.insert(messages, msg)
+            end
+         end
+         assert(#messages==n_messages)
+         nn.close(sub_sock)
+      end)
+   end
+   while n_connected < n_subscribers do
+      nn.send(pub_sock, "ping")
+      sched.sleep(0.1)
+   end
+   for i=1,n_messages do
+      local msg = sf("msg-%d", i)
+      nn.send(pub_sock, msg)
+   end
+   nn.close(pub_sock)
+end)
+sched()
+
+-- tcp with handshake, 10 subscribers in 10 subprocesses, 100 messages
+
+local n_children = 10
+local n_messages = 100
+
+local function child_proc(sc)
+   sched(function()
+      local sub_sock = nn.socket(nn.AF_SP, nn.SUB)
+      nn.setsockopt(sub_sock, nn.SUB, nn.SUB_SUBSCRIBE, "")
+      nn.connect(sub_sock, "tcp://127.0.0.1:54321")
+      -- wait for the first message to arrive
+      local sub_sock_fd = nn.getsockopt(sub_sock, 0, nn.RCVFD)
+      sched.poll(sub_sock_fd, "r")
+      sc:write("got ping\n")
+      -- from now on, all messages will be delivered (but pub/sub is
+      -- inherently unreliable, so in theory, there is no guarantee)
+      local messages = {}
+      while #messages < n_messages do
+         sched.poll(sub_sock_fd, "r")
+         local msg = nn.recv(sub_sock)
+         if msg ~= "ping" then
+            table.insert(messages, msg)
+         end
+      end
+      assert(#messages==n_messages)
+      for i=1,n_messages do
+         assert.equals(messages[i], sf("msg-%d", i))
+      end
+      nn.close(sub_sock)
+   end)
+   sched()
+end
+
+local children = {}
+for i=1,n_children do
+   local pid,sp = sys.fork(child_proc)
+   children[pid] = sp
+end
+
+sched(function()
+   local pub_sock = nn.socket(nn.AF_SP, nn.PUB)
+   nn.bind(pub_sock, "tcp://127.0.0.1:54321")
+   local n_connected = 0
+   for pid,sp in pairs(children) do
+      sched(function()
+         assert.equals(sp:readline(), "got ping")
+         n_connected = n_connected + 1
+      end)
+   end
+   while n_connected < n_children do
+      nn.send(pub_sock, "ping")
+      sched.sleep(0.1)
+   end
+   for i=1,n_messages do
+      local msg = sf("msg-%d", i)
+      nn.send(pub_sock, msg)
+   end
+   nn.close(pub_sock)
+end)
+sched()
+for pid,sp in pairs(children) do
+   sp:close()
+   sys.waitpid(pid)
+end
