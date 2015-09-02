@@ -5,7 +5,8 @@ local sched = require('sched')
 
 -- the broadcast module provides an UDP-based message distribution
 -- facility which lets you send messages to all zzlua processes
--- running anywhere on the local IP network.
+-- running anywhere on the local IP network, either on the same host
+-- or on other machines.
 --
 -- to receive broadcast messages, you need exactly one *broadcast
 -- listener* per host who distributes incoming broadcast messages to
@@ -20,23 +21,23 @@ local sched = require('sched')
 -- when a message arrives, the listener publishes it on a nanomsg PUB
 -- socket at tcp://localhost:3532. the port number is the same as that
 -- used for receiving broadcast messages, just TCP instead of UDP.
--- zzlua processes using the broadcast module automatically poll this
--- TCP port for messages and distribute them to all registered
--- callbacks.
+-- zzlua processes which require the broadcast module automatically
+-- poll this TCP port for messages and distribute them to all
+-- registered callbacks.
 
--- requiring the broadast module and starting the scheduler causes a
+-- requiring the broadcast module and starting the scheduler causes a
 -- broadcast subscriber (and potentially a broadcast listener) to be
--- set up in the current process
+-- set up in the current process.
 
 sched()
 
 local pid, sp = sys.fork(function(sc)
-      sched(function()
-          sched.wait("broadcast.initialized")
-          sc:write("ready\n")
-          assert.equals(sc:readline(), "stop")
-      end)
-      sched()
+   sched(function()
+      sched.wait("broadcast.initialized")
+      sc:write("ready\n")
+      assert.equals(sc:readline(), "stop")
+   end)
+   sched()
 end)
 sched(function()
    assert.equals(sp:readline(), "ready")
@@ -46,27 +47,24 @@ sched()
 sp:close()
 sys.waitpid(pid)
 
-sys.exit()
-
 -- broadcasting events from process A
 -- subscribing to them in process B
 
 local pid, sp = sys.fork(function(sc)
-      local messages = {}
-      sched(function()
-            broadcast.on('broadcast-test', function(evdata)
-               table.insert(messages, evdata)
-            end)
-            broadcast.on('broadcast-quit', function()
-               print("broadcast.on: got broadcast-quit")
-               sched.emit('broadcast-quit', 0)
-            end)
-            sched.wait('broadcast.initialized')
-            sc:write("ready\n")
-            sched.wait('broadcast-quit')
+   local messages = {}
+   sched(function()
+      broadcast.on('broadcast-test', function(evdata)
+         table.insert(messages, evdata)
       end)
-      sched()
-      assert.equals(messages, {'hello','world'})
+      broadcast.on('broadcast-quit', function()
+         sched.emit('broadcast-quit', 0)
+      end)
+      sched.wait('broadcast.initialized')
+      sc:write("ready\n")
+      sched.wait('broadcast-quit')
+   end)
+   sched()
+   assert.equals(messages, {'hello','world'})
 end)
 
 sched(function()
@@ -74,7 +72,6 @@ sched(function()
    broadcast('broadcast-test', 'hello')
    broadcast('broadcast-test', 'world')
    broadcast('broadcast-quit')
-   print("sent broadcast-quit, exiting")
 end)
 sched()
 

@@ -64,7 +64,6 @@ end
 function M.broadcast(evtype, evdata, dest_addr)
    if not initialized then
       sched.wait('broadcast.initialized')
-      initialized = true
    end
    evdata = evdata or 0
    dest_addr = dest_addr or broadcast_addr
@@ -126,6 +125,7 @@ local function subscriber()
       sched.sleep(0.1)
    end
    if got_ping then
+      initialized = true
       sched.emit('broadcast.initialized', 0)
    else
       error("cannot wire up broadcast subscriber to listener")
