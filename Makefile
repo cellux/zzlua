@@ -27,9 +27,9 @@ $(LUAJIT_BIN) $(LUAJIT_LIB): $(LUAJIT_DIR)/.stamp
 
 # nanomsg
 
-NANOMSG_VER = 0.5-beta
+NANOMSG_VER = 0.6-beta
 NANOMSG_TGZ = nanomsg-$(NANOMSG_VER).tar.gz
-NANOMSG_URL = http://download.nanomsg.org/$(NANOMSG_TGZ)
+NANOMSG_URL = https://github.com/nanomsg/nanomsg/releases/download/$(NANOMSG_VER)/nanomsg-$(NANOMSG_VER).tar.gz
 NANOMSG_DIR = deps/nanomsg-$(NANOMSG_VER)
 NANOMSG_LIB = $(NANOMSG_DIR)/.libs/libnanomsg.a
 NANOMSG_SRC = $(NANOMSG_DIR)/src
