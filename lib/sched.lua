@@ -92,8 +92,8 @@ local function Scheduler()
    -- waiting for their time to come, ordered by wake-up time
    local sleeping = adt.OrderedList(function(st) return st.time end)
 
-   local function SleepingThread(t, time)
-      return { t = t, time = time }
+   local function SleepingRunnable(r, time)
+      return { r = r, time = time }
    end
 
    -- waiting:
@@ -163,8 +163,8 @@ local function Scheduler()
       local function wakeup_sleepers(now)
          -- wake up sleeping threads whose time has come
          while sleeping:size() > 0 and sleeping[0].time <= now do
-            local st = sleeping:shift()
-            runnables:push(Runnable(st.t, nil))
+            local sr = sleeping:shift()
+            runnables:push(Runnable(sr.r, nil))
          end
       end
 
@@ -268,8 +268,8 @@ local function Scheduler()
 
       local function resume_runnables()
          local runnables_next = adt.List()
-         for rt in runnables:itervalues() do
-            local r, data = rt.r, rt.data
+         for runnable in runnables:itervalues() do
+            local r, data = runnable.r, runnable.data
             local is_background = (type(r)=="table")
             local t = is_background and r[1] or r
             local ok, rv = coroutine.resume(t, data)
@@ -277,7 +277,7 @@ local function Scheduler()
             if status == "suspended" then
                if type(rv) == "number" and rv > 0 then
                   -- the coroutine shall be resumed at the given time
-                  sleeping:push(SleepingThread(t, rv))
+                  sleeping:push(SleepingRunnable(r, rv))
                elseif rv then
                   -- rv is the evtype which shall wake up this thread
                   add_waiting(rv, r)
