@@ -65,6 +65,9 @@ local function Scheduler()
 
    local poller = M.poller_factory()
 
+   -- make it public so that people can add their fds for permanent polling
+   self.poller = poller
+
    function self.poll(fd, events)
       events = events.."1" -- one shot
       local event_id = self.make_event_id()
