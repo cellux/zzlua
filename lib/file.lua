@@ -148,10 +148,7 @@ function File_mt:read(rsize)
    else
       bytes_read = ffi.C.read(self.fd, buf, rsize)
    end
-   if bytes_read ~= rsize then
-      ef("read() failed: expected to read %d bytes, got %d bytes", rsize, bytes_read)
-   end
-   return ffi.string(buf, rsize)
+   return ffi.string(buf, bytes_read)
 end
 
 function File_mt:write(data)
@@ -323,9 +320,9 @@ function M.open(path)
    return File(fd)
 end
 
-function M.read(path)
+function M.read(path, rsize)
    local f = M.open(path)
-   local contents = f:read()
+   local contents = f:read(rsize)
    f:close()
    return contents
 end

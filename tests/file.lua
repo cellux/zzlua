@@ -126,6 +126,13 @@ local function test_read()
    local contents = f:read(5)
    assert(contents=="hello")
    f:close()
+
+   -- if we want to read more bytes than the length of the file, we
+   -- don't get an error
+   local f = file('testdata/hello.txt')
+   local contents = f:read(4096)
+   assert(contents=="hello, world!\n")
+   f:close()
 end
 
 local function test_seek()
