@@ -62,13 +62,17 @@ local function CallbackRegistry(invoke_fn)
 end
 
 function M.broadcast(evtype, evdata, dest_addr)
-   if not initialized then
-      sched.wait('broadcast.initialized')
-   end
+   M.wait_until_ready()
    evdata = evdata or 0
    dest_addr = dest_addr or broadcast_addr
    local msg = msgpack.pack_array({evtype, evdata})
    broadcast_socket:sendto(msg, dest_addr)
+end
+
+function M.wait_until_ready()
+   if not initialized then
+      sched.wait('broadcast.initialized')
+   end
 end
 
 local function listener()
