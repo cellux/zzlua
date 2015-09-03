@@ -49,7 +49,7 @@ function M.sleep(seconds)
       -- required here to avoid circular dependency
       -- between sched and time
       local sched = require('sched')
-      sched.wait(M.time()+seconds)
+      sched.sleep(seconds)
    else
       local requested_time = ffi.new("struct timespec")
       local integer_part = math.floor(seconds)
