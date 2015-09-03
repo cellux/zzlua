@@ -1,7 +1,6 @@
 -- statements in this file are executed once at zzlua startup
 
 local ffi = require('ffi')
-
 local sched = require('sched')
 local epoll = require('epoll')
 sched.poller_factory = epoll.poller_factory
@@ -29,7 +28,17 @@ void free (void *ptr);
 
 ]]
 
-local sf = string.format
+-- global definitions
+
+_G.sf = string.format
+
+function _G.pf(fmt, ...)
+   print(string.format(fmt, ...))
+end
+
+function _G.ef(fmt, ...)
+   error(string.format(fmt, ...), 2)
+end
 
 --[[ main ]]--
 

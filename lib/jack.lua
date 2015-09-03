@@ -1,6 +1,5 @@
 local ffi = require('ffi')
 local nn = require('nanomsg')
-local sf = string.format
 
 ffi.cdef [[
 
@@ -376,11 +375,11 @@ function M.client_open(client_name)
       local function setup_cb(setup_fn_name, cb_func, skip_check)
          local setup_fn = jack[setup_fn_name]
          if setup_fn == nil then
-            error(sf("invalid setup_fn_name: %s", setup_fn_name))
+            ef("invalid setup_fn_name: %s", setup_fn_name)
          end
          local rv = setup_fn(g_client, cb_func, g_params)
          if not skip_check and rv ~= 0 then
-            error(sf("%s() failed", setup_fn_name))
+            ef("%s() failed", setup_fn_name)
          end
       end
       setup_cb("jack_set_process_callback",
@@ -417,7 +416,7 @@ end
 function M.send_midi(port, data)
    assert_client()
    if not ports_by_name[port] then
-      error(sf("send_midi: invalid port: %s", port))
+      ef("send_midi: invalid port: %s", port)
    end
    local port, port_index = unpack(ports_by_name[port])
    local data_size = #data
@@ -437,11 +436,11 @@ end
 function M.port_register(name, type, flags)
    assert_client()
    if ports_by_name[name] then
-      error(sf("this port has been already registered: %s", name))
+      ef("this port has been already registered: %s", name)
    end
    local port_index = g_params.nports
    if port_index >= ZZ_JACK_PORTS_MAX then
-      error(sf("reached max number of Jack ports (%d)", ZZ_JACK_PORTS_MAX))
+      ef("reached max number of Jack ports (%d)", ZZ_JACK_PORTS_MAX)
    end
    local port = jack.jack_port_register(g_client, name, type, flags, 0)
    if port == nil then
@@ -455,7 +454,7 @@ function M.port_register(name, type, flags)
    elseif type == M.DEFAULT_MIDI_TYPE then
       g_params.port_types[port_index] = ZZ_JACK_PORT_MIDI
    else
-      error(sf("invalid jack port type: %s", type))
+      ef("invalid jack port type: %s", type)
    end
    g_params.port_flags[port_index] = flags
    g_params.nports = g_params.nports + 1

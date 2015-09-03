@@ -1,5 +1,4 @@
 local ffi = require('ffi')
-local sf = string.format
 
 ffi.cdef [[
 

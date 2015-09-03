@@ -1,5 +1,3 @@
-local sf = string.format
-
 local M = {}
 
 local function assert_true(x, err, level)

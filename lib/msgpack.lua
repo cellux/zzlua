@@ -1,6 +1,5 @@
 local ffi = require('ffi')
 local buffer = require('buffer')
-local sf = string.format
 
 ffi.cdef [[
 
@@ -215,7 +214,7 @@ function Context_mt:write(o)
       -- pack pointers by casting them to size_t
       self:write_uint(o)
    else
-      error(sf("cannot serialize object %s", o))
+      ef("cannot serialize object %s", o)
    end
 end
 
@@ -328,7 +327,7 @@ readers[CMP_TYPE_MAP32] = readers[CMP_TYPE_FIXMAP]
 function Context_mt:read()
    local obj = ffi.new("cmp_object_t")
    if not ffi.C.cmp_read_object(self.ctx, obj) then
-      error(sf("cmp_read_object() failed: %s", self:error()))
+      ef("cmp_read_object() failed: %s", self:error())
    end
    local obj_type = tonumber(obj.type)
    local reader = readers[obj_type]

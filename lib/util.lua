@@ -1,5 +1,4 @@
 local errno = require('errno')
-local sf = string.format
 
 local M = {}
 

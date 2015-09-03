@@ -1,7 +1,6 @@
 local ffi = require('ffi')
 local bit = require('bit')
 local util = require('util')
-local sf = string.format
 
 ffi.cdef [[
 enum EPOLL_EVENTS {
@@ -62,7 +61,7 @@ local function parse_events(events)
          local e = events:sub(i,i)
          local ev = event_values[e]
          if not ev then
-            error(sf("unknown event code: '%s' in '%s'", e, events))
+            ef("unknown event code: '%s' in '%s'", e, events)
          end
          rv = bit.bor(rv, ev)
       end

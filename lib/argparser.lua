@@ -1,5 +1,4 @@
 local re = require('re')
-local sf = string.format
 
 local M = {}
 
@@ -20,14 +19,13 @@ end
 local function ArgDescriptor(arg_opts)
    local self = arg_opts
    if not self.name then
-      error(sf("argument without a name"))
+      error("argument without a name")
    end
    if not self.type then
-      error(sf("argument has no type"))
+      error("argument has no type")
    end
    if not constructors[self.type] then
-      error(sf("invalid type for argument '%s': %s",
-               self.name, self.type))
+      ef("invalid type for argument '%s': %s", self.name, self.type)
    end
    if self.option then
       local m = re.match("^-(\\w)\\|--(\\w+)$", self.option)

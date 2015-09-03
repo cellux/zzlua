@@ -4,8 +4,6 @@ local nn = require('nanomsg')
 local msgpack = require('msgpack')
 local inspect = require('inspect')
 
-local sf = string.format
-
 local M = {}
 
 -- must be set to a platform-specific implementation at startup
@@ -250,7 +248,7 @@ local function Scheduler()
                   -- callbacks keep waiting
                   rs_next:push(r)
                else
-                  error(sf("invalid object in waiting[%s]: %s", evtype, r))
+                  ef("invalid object in waiting[%s]: %s", evtype, r)
                end
             end
             if rs_next:empty() then
@@ -292,7 +290,7 @@ local function Scheduler()
                   -- the coroutine finished its execution
                end
             else
-               error(sf("unhandled status returned from coroutine.status(): %s", status))
+               ef("unhandled status returned from coroutine.status(): %s", status)
             end
          end
          runnables = runnables_next

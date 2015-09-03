@@ -4,7 +4,6 @@ local nn = require('nanomsg')
 local sched = require('sched')
 local pthread = require('pthread')
 local inspect = require('inspect')
-local sf = string.format
 
 ffi.cdef [[
 
@@ -71,7 +70,7 @@ local function reserve_thread()
    local t
    if #reservable_threads == 0 then
       if active_threads == MAX_THREADS then
-         error(sf("exceeded max number of threads (%d), cannot reserve more", MAX_THREADS))
+         ef("exceeded max number of threads (%d), cannot reserve more", MAX_THREADS)
       else
          t = create_worker_thread()
       end

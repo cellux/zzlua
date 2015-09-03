@@ -1,5 +1,4 @@
 local re = require("re")
-local sf = string.format
 
 local M = {}
 
@@ -37,11 +36,11 @@ function Parser_mt:eat(regex, what)
       return m.stringcount == 1 and m[0] or m
    else
       if what then
-         error(sf("parse error: expected %s matching %s at position %d: %s",
-                  what, regex, self.pos, re.match(".+\n", self.source, self.pos)))
+         ef("parse error: expected %s matching %s at position %d: %s",
+            what, regex, self.pos, re.match(".+\n", self.source, self.pos))
       else
-         error(sf("parse error: expected a match for %s at position %d: %s",
-                  regex, self.pos, re.match(".+\n", self.source, self.pos)))
+         ef("parse error: expected a match for %s at position %d: %s",
+            regex, self.pos, re.match(".+\n", self.source, self.pos))
       end
    end
 end

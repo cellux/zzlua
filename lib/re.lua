@@ -1,5 +1,4 @@
 local ffi = require('ffi')
-local sf = string.format
 
 ffi.cdef [[
 struct pcre;
@@ -75,7 +74,7 @@ local pcre_mt = {
                                         options or 0,
                                         errptr)
       if errptr[0] ~= nil then
-         error(sf("pcre_study() failed: %s", ffi.string(errptr[0])))
+         ef("pcre_study() failed: %s", ffi.string(errptr[0]))
       end
    end,
    match = function(self, subject, startoffset, options)
@@ -93,7 +92,7 @@ local pcre_mt = {
          -- PCRE_ERROR_NOMATCH
          return nil
       elseif rv < 0 then
-         error(sf("pcre_exec() failed (%d)", rv))
+         ef("pcre_exec() failed (%d)", rv)
       elseif rv == 0 then
          error("pcre_exec() failed: vector overflow")
       else
@@ -113,7 +112,7 @@ function M.compile(pattern, options)
                                   erroffset,
                                   nil)
    if not pcre then
-      error(sf("error in regex /%s/ at position %d: %s", pattern, erroffset[0], ffi.string(errptr[0])))
+      ef("error in regex /%s/ at position %d: %s", pattern, erroffset[0], ffi.string(errptr[0]))
    end
    local self = { pcre = pcre }
    return setmetatable(self, pcre_mt)

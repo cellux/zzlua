@@ -4,7 +4,6 @@ local time = require('time') -- for struct timespec
 local env = require('env')
 local sys = require('sys')
 local util = require('util')
-local sf = string.format
 
 ffi.cdef [[
 
@@ -150,7 +149,7 @@ function File_mt:read(rsize)
       bytes_read = ffi.C.read(self.fd, buf, rsize)
    end
    if bytes_read ~= rsize then
-      error(sf("read() failed: expected to read %d bytes, got %d bytes", rsize, bytes_read))
+      ef("read() failed: expected to read %d bytes, got %d bytes", rsize, bytes_read)
    end
    return ffi.string(buf, rsize)
 end
@@ -279,7 +278,7 @@ function Stat_mt:__index(key)
       if field then
          return field
       else
-         error(sf("invalid key: %s, no such field in struct stat", key))
+         ef("invalid key: %s, no such field in struct stat", key)
       end
    end
 end

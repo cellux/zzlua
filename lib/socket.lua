@@ -1,6 +1,5 @@
 local ffi = require('ffi')
 local bit = require('bit')
-local sf = string.format
 local util = require('util')
 local sched = require('sched')
 local errno = require('errno')
@@ -233,7 +232,7 @@ function sockaddr_mt:__index(k)
       if self.af == ffi.C.AF_INET then
          return ffi.C.ntohs(self.addr.sin_port)
       else
-         error(sf("socket address with address family %u has no port", self.af))
+         ef("socket address with address family %u has no port", self.af)
       end
    else
       return rawget(self, k)
@@ -258,7 +257,7 @@ local function sockaddr(af, address, port)
    if af == ffi.C.AF_LOCAL then
       address = address or ""
       if #address > 107 then
-         error(sf("address too long: %s", address))
+         ef("address too long: %s", address)
       end
       self.addr = ffi.new("struct sockaddr_un")
       self.addr.sun_family = ffi.C.AF_LOCAL
@@ -278,7 +277,7 @@ local function sockaddr(af, address, port)
       util.check_ok("inet_pton", 1, ffi.C.inet_pton(ffi.C.AF_INET, address, self.addr.sin_addr))
       self.addr_size = ffi.sizeof("struct sockaddr_in")
    else
-      error(sf("Unsupported address family: %u", af))
+      ef("Unsupported address family: %u", af)
    end
    return setmetatable(self, sockaddr_mt)
 end
@@ -348,11 +347,11 @@ function Socket_mt:connect(sockaddr)
                                          optval,
                                          optlen))
          if optval[0] ~= 0 then
-            error(sf("connect() failed: %s", errno.strerror(optval[0])))
+            ef("connect() failed: %s", errno.strerror(optval[0]))
          end
          return 0
       else
-         error(sf("connect() failed: %s", errno.strerror(errnum)))
+         ef("connect() failed: %s", errno.strerror(errnum))
       end
    else
       return 0
@@ -503,7 +502,7 @@ Socket_mt.__newindex = function(self, k, v)
       util.check_bad("fcntl", -1,
                      ffi.C.fcntl(self.fd, ffi.C.F_SETFL, flags))
    else
-      error(sf("invalid attempt to set field on socket: %s", k))
+      ef("invalid attempt to set field on socket: %s", k)
    end
 end
 

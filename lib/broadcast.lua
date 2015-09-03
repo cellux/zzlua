@@ -7,7 +7,6 @@ local env = require('env')
 local sys = require('sys')
 local adt = require('adt')
 local inspect = require('inspect')
-local sf = string.format
 local time = require('time')
 
 local M = {}

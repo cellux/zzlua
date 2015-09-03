@@ -1,6 +1,5 @@
 local ffi = require('ffi')
 local bit = require('bit')
-local sf = string.format
 
 ffi.cdef [[
 int nn_errno (void);
@@ -90,7 +89,7 @@ end
 function M.socket(domain, protocol)
    local s = ffi.C.nn_socket(domain, protocol)
    if s < 0 then
-      error(sf("nn_socket() failed: %s", nn_error()))
+      ef("nn_socket() failed: %s", nn_error())
    end
    return s
 end
@@ -98,7 +97,7 @@ end
 function M.close(s)
    local rv = ffi.C.nn_close(s)
    if rv ~= 0 then
-      error(sf("nn_close() failed: %s", nn_error()))
+      ef("nn_close() failed: %s", nn_error())
    end
    return rv
 end
@@ -109,7 +108,7 @@ function M.setsockopt(s, level, option, optval, optvallen)
    end
    local rv = ffi.C.nn_setsockopt(s, level, option, optval, optvallen)
    if rv ~= 0 then
-      error(sf("nn_setsockopt() failed: %s", nn_error()))
+      ef("nn_setsockopt() failed: %s", nn_error())
    end
    return rv
 end
@@ -119,7 +118,7 @@ function M.getsockopt(s, level, option)
    local optvallen = ffi.new("size_t[1]", ffi.sizeof("int"))
    local rv = ffi.C.nn_getsockopt(s, level, option, optval, optvallen)
    if rv ~= 0 then
-      error(sf("nn_getsockopt() failed: %s", nn_error()))
+      ef("nn_getsockopt() failed: %s", nn_error())
    end
    return optval[0]
 end
@@ -127,7 +126,7 @@ end
 function M.bind(s, addr)
    local endpoint = ffi.C.nn_bind(s, addr)
    if endpoint < 0 then
-      error(sf("nn_bind() failed: %s", nn_error()))
+      ef("nn_bind() failed: %s", nn_error())
    end
    return endpoint
 end
@@ -135,7 +134,7 @@ end
 function M.connect(s, addr)
    local endpoint = ffi.C.nn_connect(s, addr)
    if endpoint < 0 then
-      error(sf("nn_connect() failed: %s", nn_error()))
+      ef("nn_connect() failed: %s", nn_error())
    end
    return endpoint
 end
@@ -143,7 +142,7 @@ end
 function M.shutdown(s, how)
    local rv = ffi.C.nn_shutdown(s, how)
    if rv < 0 then
-      error(sf("nn_shutdown() failed: %s", nn_error()))
+      ef("nn_shutdown() failed: %s", nn_error())
    end
    return rv
 end
@@ -155,7 +154,7 @@ function M.send(s, buf, len, flags)
    flags = flags or 0
    local bytes_sent = ffi.C.nn_send(s, buf, len, flags)
    if bytes_sent == -1 then
-      error(sf("nn_send() failed: %s", nn_error()))
+      ef("nn_send() failed: %s", nn_error())
    end
    return bytes_sent
 end
@@ -170,7 +169,7 @@ function M.recv(s, flags)
          -- this is normal, there was nothing to process
          return nil
       else
-         error(sf("nn_recv() failed: %s", nn_error()))
+         ef("nn_recv() failed: %s", nn_error())
       end
    end
    local buf = ffi.string(bufptr[0], bytes_received)
@@ -203,7 +202,7 @@ function Poll_mt:__call(timeout)
    end
    local rv = ffi.C.nn_poll(self.nn_pollfd, #self.items, timeout)
    if rv == -1 then
-      error(sf("nn_poll() failed: %s", nn_error()))
+      ef("nn_poll() failed: %s", nn_error())
    end
    return rv
 end
