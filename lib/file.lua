@@ -316,7 +316,7 @@ Dir_mt.__gc = Dir_mt.close
 local Dir = ffi.metatype("struct zz_file_Dir_ct", Dir_mt)
 
 function M.open(path)
-   local fd = ffi.C.open(path, ffi.C.O_RDONLY)
+   local fd = util.check_bad("open", -1, ffi.C.open(path, ffi.C.O_RDONLY))
    return File(fd)
 end
 
