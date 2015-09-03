@@ -6,10 +6,11 @@ local Err_mt = {
    end,
 }
 
-function M.Err(code, msg)
+function M.Err(code, msg, bt)
    local self = {
       code = code,
       msg = msg,
+      bt = bt or debug.traceback(msg, 2),
    }
    return setmetatable(self, Err_mt)
 end

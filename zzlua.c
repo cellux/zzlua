@@ -114,7 +114,7 @@ static int pmain(lua_State *L)
   //luaopen_io(L);
   //luaopen_os(L);
   luaopen_package(L);
-  //luaopen_debug(L);
+  luaopen_debug(L);
   luaopen_bit(L);
   //luaopen_jit(L);
   luaopen_ffi(L);
