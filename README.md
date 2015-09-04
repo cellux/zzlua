@@ -23,6 +23,9 @@ These are either automatically downloaded upon compilation or bundled with the s
 
 * [Jack](http://jackaudio.org/)
 * [PCRE](http://www.pcre.org/)
+* [SDL 2.0](http://libsdl.org/)
+
+These are needed only if the corresponding library is `require`d by some Lua code.
 
 ## Compilation
 
