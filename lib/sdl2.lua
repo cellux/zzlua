@@ -114,9 +114,23 @@ local function SDL2Module(sched)
                   for name,_ in pairs(self.pollable_devices) do
                      if string.lower(devname):match(name) then
                         local devpath = sf("/dev/input/%s", fn)
+                        -- these devices are only readable by root :(
+                        --
+                        -- which is understandable, otherwise users
+                        -- could easily install keyloggers which steal
+                        -- what is typed by other users including root
                         if file.is_readable(devpath) then
                            local dev = file.open(devpath)
                            table.insert(self.pollable_devices[name], dev)
+                        else
+                           -- in this case, we won't be able to poll
+                           -- keyboard/mouse devices so events will be
+                           -- collected at tick granularity. if you
+                           -- want seamless event collection, you have
+                           -- to ensure that the event loop does not
+                           -- block for too long. one way to do this
+                           -- is to run a thread which draws something
+                           -- to the screen 60 times/second.
                         end
                      end
                   end
@@ -125,26 +139,27 @@ local function SDL2Module(sched)
          end
       end
    end
-   local function register_pollable_devices(event_id)
+   local function foreach_dev(fn)
       for name,device_files in pairs(self.pollable_devices) do
          for _,dev in ipairs(device_files) do
-            sched.poller:add(dev.fd, "r", event_id)
+            fn(dev)
          end
       end
+   end
+   local function register_pollable_devices(event_id)
+      foreach_dev(function(dev)
+         sched.poller:add(dev.fd, "r", event_id)
+      end)
    end
    local function unregister_pollable_devices(event_id)
-      for name,device_files in pairs(self.pollable_devices) do
-         for _,dev in ipairs(device_files) do
-            sched.poller:del(dev.fd, "r", event_id)
-         end
-      end
+      foreach_dev(function(dev)
+         sched.poller:del(dev.fd, "r", event_id)
+      end)
    end
    local function close_pollable_devices()
-      for name,device_files in pairs(self.pollable_devices) do
-         for _,dev in ipairs(device_files) do
-            dev:close()
-         end
-      end
+      foreach_dev(function(dev)
+         dev:close()
+      end)
    end
    local sdl_input_event = sched.make_event_id()
    function self.init()
