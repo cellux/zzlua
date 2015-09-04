@@ -115,8 +115,8 @@ local function SDL2Module(sched)
                      if string.lower(devname):match(name) then
                         local devpath = sf("/dev/input/%s", fn)
                         if file.is_readable(devpath) then
-                           table.insert(self.pollable_devices[name],
-                                        file.open(devpath))
+                           local dev = file.open(devpath)
+                           table.insert(self.pollable_devices[name], dev)
                         end
                      end
                   end
@@ -127,22 +127,22 @@ local function SDL2Module(sched)
    end
    local function register_pollable_devices(event_id)
       for name,device_files in pairs(self.pollable_devices) do
-         for _,f in ipairs(device_files) do
-            sched.poller:add(f.fd, "r", event_id)
+         for _,dev in ipairs(device_files) do
+            sched.poller:add(dev.fd, "r", event_id)
          end
       end
    end
    local function unregister_pollable_devices(event_id)
       for name,device_files in pairs(self.pollable_devices) do
-         for _,f in ipairs(device_files) do
-            sched.poller:del(f.fd, "r", event_id)
+         for _,dev in ipairs(device_files) do
+            sched.poller:del(dev.fd, "r", event_id)
          end
       end
    end
    local function close_pollable_devices()
       for name,device_files in pairs(self.pollable_devices) do
-         for _,f in ipairs(device_files) do
-            f:close()
+         for _,dev in ipairs(device_files) do
+            dev:close()
          end
       end
    end
