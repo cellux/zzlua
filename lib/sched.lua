@@ -160,6 +160,7 @@ local function Scheduler()
    -- tick: one iteration of the event loop
    local function tick() 
       local now = time.time()
+      self.now = now
 
       local function wakeup_sleepers(now)
          -- wake up sleeping threads whose time has come
