@@ -68,11 +68,30 @@ $(CMP_DIR)/.stamp: deps/$(CMP_TGZ)
 $(CMP_OBJ): $(CMP_DIR)/.stamp
 	cd $(CMP_DIR) && gcc -c cmp.c
 
+# GLEW
+
+GLEW_VER = 1.13.0
+GLEW_TGZ = glew-$(GLEW_VER).tgz
+GLEW_URL = https://sourceforge.net/projects/glew/files/glew/$(GLEW_VER)/$(GLEW_TGZ)/download
+GLEW_DIR = deps/glew-$(GLEW_VER)
+GLEW_LIB = $(GLEW_DIR)/lib/libGLEW.a
+
+deps/$(GLEW_TGZ):
+	mkdir -p deps
+	$(CURL) -o $@ $(GLEW_URL)
+
+$(GLEW_DIR)/.stamp: deps/$(GLEW_TGZ)
+	cd deps && tar xvzf $(GLEW_TGZ)
+	touch $@
+
+$(GLEW_LIB): $(GLEW_DIR)/.stamp
+	$(MAKE) -C $(GLEW_DIR) glew.lib
+
 ### main ###
 
 CC = gcc
 CFLAGS = -Wall -iquote ./lib -iquote $(LUAJIT_SRC) -iquote $(NANOMSG_SRC) -iquote $(CMP_DIR)
-LDFLAGS = -Wl,-E -lm -ldl -lpthread -lanl -ljack
+LDFLAGS = -Wl,-E -lm -ldl -lpthread -lanl -ljack -lGL
 
 # Lua libraries
 ZZ_LIB_LUA_SRC = $(wildcard lib/*.lua)
@@ -91,7 +110,7 @@ ZZ_LIB_C_OBJ = $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
 lib/buffer.o: lib/buffer.h
 lib/msgpack.o: lib/msgpack.h
 
-zzlua.o: $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
+zzlua.o: $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ) $(GLEW_LIB)
 
 # zzlua + libs + support
 ZZ_OBJ = zzlua.o $(ZZ_LIB_LUA_OBJ) $(ZZ_LIB_C_OBJ)
@@ -100,7 +119,7 @@ ZZ_OBJ = zzlua.o $(ZZ_LIB_LUA_OBJ) $(ZZ_LIB_C_OBJ)
 ZZ_LIB = $(LUAJIT_LIB) $(CMP_OBJ)
 
 # static libraries and object files to be linked in as a whole
-ZZ_LIB_WHOLE = $(NANOMSG_LIB)
+ZZ_LIB_WHOLE = $(NANOMSG_LIB) $(GLEW_LIB)
 
 zzlua: $(ZZ_OBJ) $(ZZ_LIB) $(ZZ_LIB_WHOLE)
 	$(CC) $(CFLAGS) $(ZZ_OBJ) $(ZZ_LIB) -Wl,--whole-archive $(ZZ_LIB_WHOLE) -Wl,--no-whole-archive $(LDFLAGS) -o $@
