@@ -2,6 +2,8 @@ local ffi = require('ffi')
 local sched = require('sched')
 local file = require('file')
 local util = require('util')
+local glew = require('glew')
+local gl = require('gl')
 
 ffi.cdef [[
 
@@ -20,6 +22,11 @@ typedef int32_t  Sint32;
 typedef uint32_t Uint32;
 typedef int64_t  Sint64;
 typedef uint64_t Uint64;
+
+/* SDL_error.h */
+
+const char * SDL_GetError(void);
+void SDL_ClearError(void);
 
 /* SDL_version.h */
 
@@ -1165,6 +1172,10 @@ SDL_bool SDL_GetWindowGrab(SDL_Window * window);
 
 void SDL_DestroyWindow(SDL_Window * window);
 
+void SDL_GL_ResetAttributes(void);
+int SDL_GL_SetAttribute(SDL_GLattr attr, int value);
+int SDL_GL_GetAttribute(SDL_GLattr attr, int *value);
+
 SDL_GLContext SDL_GL_CreateContext(SDL_Window * window);
 int SDL_GL_MakeCurrent(SDL_Window * window, SDL_GLContext context);
 SDL_Window* SDL_GL_GetCurrentWindow(void);
@@ -1179,6 +1190,10 @@ void SDL_GL_DeleteContext(SDL_GLContext context);
 local sdl = ffi.load("SDL2")
 
 local M = {}
+
+function M.GetError()
+   return ffi.string(sdl.SDL_GetError())
+end
 
 function M.GetPlatform()
    return ffi.string(sdl.SDL_GetPlatform())
@@ -1255,7 +1270,15 @@ function Window_mt:hide()
    sdl.SDL_HideWindow(self.w)
 end
 
+function Window_mt:swap()
+   sdl.SDL_GL_SwapWindow(self.w)
+end
+
 function Window_mt:destroy()
+   if self.ctx then
+      sdl.SDL_GL_DeleteContext(self.ctx)
+      self.ctx = nil
+   end
    if self.w then
       sdl.SDL_DestroyWindow(self.w)
       self.w = nil
@@ -1269,12 +1292,47 @@ function M.CreateWindow(title, x, y, w, h, flags)
    if x == -1 then x = sdl.SDL_WINDOWPOS_CENTERED end
    y = y or sdl.SDL_WINDOWPOS_UNDEFINED
    if y == -1 then y = sdl.SDL_WINDOWPOS_CENTERED end
-   w = w or 800
-   h = h or 600
+   w = w or 640
+   h = h or 480
    flags = flags or bit.bor(sdl.SDL_WINDOW_RESIZABLE, sdl.SDL_WINDOW_OPENGL)
    local window = sdl.SDL_CreateWindow(title, x, y, w, h, flags)
+   if window == nil then
+      ef("SDL_CreateWindow() failed: %s", M.GetError())
+   end
    local self = { w = window }
+   if bit.band(flags, sdl.SDL_WINDOW_OPENGL) ~= 0 then
+      assert(gl.GetError() == gl.GL_NO_ERROR)
+      self.ctx = sdl.SDL_GL_CreateContext(window)
+      if self.ctx == nil then
+         ef("SDL_GL_CreateContext() failed")
+      end
+      assert(gl.GetError() == gl.GL_NO_ERROR)
+      local rv = sdl.SDL_GL_MakeCurrent(window, self.ctx)
+      if rv ~= 0 then
+         ef("SDL_GL_MakeCurrent() failed")
+      end
+      assert(gl.GetError() == gl.GL_NO_ERROR)
+      glew.init()
+      local gl_error = gl.GetError()
+      assert(gl_error == gl.GL_NO_ERROR, gl_error)
+   end
    return setmetatable(self, Window_mt)
+end
+
+function M.GL_SetAttribute(attr, value)
+   local rv = sdl.SDL_GL_SetAttribute(attr, value)
+   if rv ~= 0 then
+      ef("SDL_GL_SetAttribute(%d, %d) failed: %s", attr, value, M.GetError())
+   end
+end
+
+function M.GL_GetAttribute(attr)
+   local value = ffi.new("int[1]")
+   local rv = sdl.SDL_GL_GetAttribute(attr, value)
+   if rv ~= 0 then
+      ef("SDL_GL_GetAttribute() failed: %s", M.GetError())
+   end
+   return value[0]
 end
 
 M.initflags = sdl.SDL_INIT_AUDIO +
