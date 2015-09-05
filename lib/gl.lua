@@ -113,6 +113,8 @@ void glDeleteShader (GLuint shader);
 
 GLuint glCreateProgram (void);
 void glAttachShader (GLuint program, GLuint shader);
+void glBindAttribLocation (GLuint program, GLuint index, const GLchar *name);
+void glBindFragDataLocation (GLuint program, GLuint color, const GLchar *name);
 void glLinkProgram (GLuint program);
 void glUseProgram (GLuint program);
 void glGetProgramiv (GLuint program, GLenum pname, GLint *params);
@@ -217,6 +219,14 @@ end
 
 function Program_mt:detach(shader)
    ffi.C.glDetachShader(self.id, shader.id)
+end
+
+function Program_mt:bindAttribLocation(index, name)
+   ffi.C.glBindAttribLocation(self.id, index, name)
+end
+
+function Program_mt:bindFragDataLocation(index, name)
+   ffi.C.glBindFragDataLocation(self.id, index, name)
 end
 
 function Program_mt:link()
