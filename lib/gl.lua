@@ -356,4 +356,55 @@ function M.DrawElements(mode, count, type, indices)
    ffi.C.glDrawElements(mode, count, type, ffi.cast("const GLvoid *", indices))
 end
 
+local ResourceManager_mt = {}
+
+function ResourceManager_mt:CreateShader(...)
+   local shader = M.CreateShader(...)
+   table.insert(self.shaders, shader)
+   return shader
+end
+
+function ResourceManager_mt:CreateProgram(...)
+   local program = M.CreateProgram(...)
+   table.insert(self.programs, program)
+   return program
+end
+
+function ResourceManager_mt:VAO(...)
+   local vao = M.VAO(...)
+   table.insert(self.vaos, vao)
+   return vao
+end
+
+function ResourceManager_mt:VBO(...)
+   local vbo = M.VBO(...)
+   table.insert(self.vbos, vbo)
+   return vbo
+end
+
+function ResourceManager_mt:delete()
+   for _,vao in self.vaos do vao:delete() end
+   self.vaos = {}
+   for _,vbo in self.vbos do vbo:delete() end
+   self.vbos = {}
+   for _,program in self.programs do program:detach_all() end
+   for _,shader in self.shaders do shader:delete() end
+   self.shaders = {}
+   for _,program in self.programs do program:delete() end
+   self.programs = {}
+end
+
+ResourceManager_mt.__index = ResourceManager_mt
+ResourceManager_mt.__gc = ResourceManager_mt.delete
+
+function M.ResourceManager()
+   local self = {
+      shaders = {},
+      programs = {},
+      vaos = {},
+      vbos = {},
+   }
+   return setmetatable(self, ResourceManager_mt)
+end
+
 return setmetatable(M, { __index = ffi.C })
