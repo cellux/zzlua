@@ -1,5 +1,6 @@
 local ffi = require('ffi')
 local util = require('util')
+local adt = require('adt')
 
 ffi.cdef [[
 
@@ -216,10 +217,19 @@ local Program_mt = {}
 
 function Program_mt:attach(shader)
    ffi.C.glAttachShader(self.id, shader.id)
+   self.shaders:push(shader)
 end
 
 function Program_mt:detach(shader)
    ffi.C.glDetachShader(self.id, shader.id)
+   self.shaders:remove(shader)
+end
+
+function Program_mt:detach_all()
+   for shader in self.shaders:itervalues() do
+      ffi.C.glDetachShader(self.id, shader.id)
+   end
+   self.shaders = adt.List()
 end
 
 function Program_mt:bindAttribLocation(index, name)
@@ -260,7 +270,7 @@ Program_mt.__gc = Program_mt.delete
 
 function M.CreateProgram()
    local id = util.check_bad("glCreateProgram", 0, ffi.C.glCreateProgram())
-   local self = { id = id }
+   local self = { id = id, shaders = adt.List() }
    return setmetatable(self, Program_mt)
 end
 
