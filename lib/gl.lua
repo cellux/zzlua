@@ -327,8 +327,11 @@ function M.BindBuffer(target, buffer)
 end
 
 function M.FloatArray(elements)
-   local array = ffi.new("GLfloat[?]", #elements, elements)
-   return array
+   return ffi.new("GLfloat[?]", #elements, elements)
+end
+
+function M.UIntArray(elements)
+   return ffi.new("GLuint[?]", #elements, elements)
 end
 
 function M.BufferData(target, size, data, usage)
