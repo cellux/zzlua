@@ -263,9 +263,11 @@ function M.CreateProgram()
    return setmetatable(self, Program_mt)
 end
 
-local VertexArray_mt = {}
+-- VertexArray (VAO)
 
-function VertexArray_mt:delete()
+local VAO_mt = {}
+
+function VAO_mt:delete()
    if self.id then
       local arrays = ffi.new("GLuint[1]", self.id)
       ffi.C.glDeleteVertexArrays(1, arrays)
@@ -273,23 +275,25 @@ function VertexArray_mt:delete()
    end
 end
    
-VertexArray_mt.__index = VertexArray_mt
-VertexArray_mt.__gc = VertexArray_mt.delete
+VAO_mt.__index = VAO_mt
+VAO_mt.__gc = VAO_mt.delete
 
-function M.VertexArray()
+function M.VAO()
    local arrays = ffi.new("GLuint[1]")
    ffi.C.glGenVertexArrays(1, arrays)
    local self = { id = arrays[0] }
-   return setmetatable(self, VertexArray_mt)
+   return setmetatable(self, VAO_mt)
 end
 
 function M.BindVertexArray(array)
-   ffi.C.glBindVertexArray(array.id)
+   ffi.C.glBindVertexArray(array and array.id or 0)
 end
 
-local Buffer_mt = {}
+-- VertexBuffer (VBO)
 
-function Buffer_mt:delete()
+local VBO_mt = {}
+
+function VBO_mt:delete()
    if self.id then
       local buffers = ffi.new("GLuint[1]", self.id)
       ffi.C.glDeleteBuffers(1, buffers)
@@ -297,14 +301,14 @@ function Buffer_mt:delete()
    end
 end
 
-Buffer_mt.__index = Buffer_mt
-Buffer_mt.__gc = Buffer_mt.delete
+VBO_mt.__index = VBO_mt
+VBO_mt.__gc = VBO_mt.delete
 
-function M.Buffer()
+function M.VBO()
    local buffers = ffi.new("GLuint[1]")
    ffi.C.glGenBuffers(1, buffers)
    local self = { id = buffers[0] }
-   return setmetatable(self, Buffer_mt)
+   return setmetatable(self, VBO_mt)
 end
 
 function M.BindBuffer(target, buffer)

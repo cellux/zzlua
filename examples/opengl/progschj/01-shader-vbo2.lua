@@ -39,10 +39,9 @@ function app:init()
    shader_program:bindFragDataLocation(0, "FragColor")
    shader_program:link()
 
-   local vao = gl.VertexArray()
+   local vao = gl.VAO()
    gl.BindVertexArray(vao)
-
-   local vbo = gl.Buffer()
+   local vbo = gl.VBO()
    gl.BindBuffer(gl.GL_ARRAY_BUFFER, vbo)
    local vertex_data = gl.FloatArray {
    --   X    Y    Z          R    G    B
@@ -60,6 +59,7 @@ function app:init()
    gl.VertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 6*FS, 0*FS)
    gl.EnableVertexAttribArray(1)
    gl.VertexAttribPointer(1, 3, gl.GL_FLOAT, gl.GL_FALSE, 6*FS, 3*FS)
+   gl.BindVertexArray(nil)
 
    function app:draw()
       gl.Clear(gl.GL_COLOR_BUFFER_BIT)
