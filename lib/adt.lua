@@ -23,6 +23,13 @@ function List_mt:remove_at(index)
    return table.remove(self._items, index+1)
 end
 
+function List_mt:remove(item)
+   local index = self:index(item)
+   if index then
+      self:remove_at(index)
+   end
+end
+
 function List_mt:size()
    return #self._items
 end
