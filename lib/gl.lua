@@ -159,6 +159,7 @@ enum {
 };
 
 void glDrawArrays (GLenum mode, GLint first, GLsizei count);
+void glDrawElements (GLenum mode, GLsizei count, GLenum type, const void *indices);
 
 ]]
 
@@ -337,5 +338,9 @@ end
 
 M.Clear = ffi.C.glClear
 M.DrawArrays = ffi.C.glDrawArrays
+
+function M.DrawElements(mode, count, type, indices)
+   ffi.C.glDrawElements(mode, count, type, ffi.cast("const GLvoid *", indices))
+end
 
 return setmetatable(M, { __index = ffi.C })
