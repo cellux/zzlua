@@ -50,6 +50,11 @@ enum {
   GL_FIXED          = 0x140C
 };
 
+enum {
+  GL_RGBA = 0x1908,
+  GL_RGBA8 = 0x8058
+};
+
 /* Errors */
 
 enum {
@@ -116,6 +121,7 @@ GLuint glCreateProgram (void);
 void glAttachShader (GLuint program, GLuint shader);
 void glBindAttribLocation (GLuint program, GLuint index, const GLchar *name);
 void glBindFragDataLocation (GLuint program, GLuint color, const GLchar *name);
+GLint glGetUniformLocation (GLuint program, const GLchar *name);
 void glLinkProgram (GLuint program);
 void glUseProgram (GLuint program);
 void glGetProgramiv (GLuint program, GLenum pname, GLint *params);
@@ -123,20 +129,76 @@ void glGetProgramInfoLog (GLuint program, GLsizei bufSize, GLsizei *length, GLch
 void glDetachShader (GLuint program, GLuint shader);
 void glDeleteProgram (GLuint program);
 
+void glUniform1i (GLint location, GLint v0);
+
 void glGenVertexArrays (GLsizei n, GLuint *arrays);
 void glBindVertexArray (GLuint array);
-void glDeleteVertexArrays (GLsizei n, const GLuint *arrays);
-
 void glEnableVertexAttribArray (GLuint index);
 void glDisableVertexAttribArray (GLuint index);
-
 void glVertexAttribPointer (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
+void glDeleteVertexArrays (GLsizei n, const GLuint *arrays);
 
 void glGenBuffers (GLsizei n, GLuint *buffers);
 void glBindBuffer (GLenum target, GLuint buffer);
+void glBufferData (GLenum target, GLsizeiptr size, const void *data, GLenum usage);
 void glDeleteBuffers (GLsizei n, const GLuint *buffers);
 
-void glBufferData (GLenum target, GLsizeiptr size, const void *data, GLenum usage);
+enum {
+  GL_TEXTURE_2D = 0x0DE1,
+  GL_TEXTURE_MAG_FILTER = 0x2800,
+  GL_TEXTURE_MIN_FILTER = 0x2801,
+  GL_TEXTURE_WRAP_S     = 0x2802,
+  GL_TEXTURE_WRAP_T     = 0x2803
+};
+
+enum {
+  GL_TEXTURE0  = 0x84C0,
+  GL_TEXTURE1  = 0x84C1,
+  GL_TEXTURE2  = 0x84C2,
+  GL_TEXTURE3  = 0x84C3,
+  GL_TEXTURE4  = 0x84C4,
+  GL_TEXTURE5  = 0x84C5,
+  GL_TEXTURE6  = 0x84C6,
+  GL_TEXTURE7  = 0x84C7,
+  GL_TEXTURE8  = 0x84C8,
+  GL_TEXTURE9  = 0x84C9,
+  GL_TEXTURE10 = 0x84CA,
+  GL_TEXTURE11 = 0x84CB,
+  GL_TEXTURE12 = 0x84CC,
+  GL_TEXTURE13 = 0x84CD,
+  GL_TEXTURE14 = 0x84CE,
+  GL_TEXTURE15 = 0x84CF,
+  GL_TEXTURE16 = 0x84D0,
+  GL_TEXTURE17 = 0x84D1,
+  GL_TEXTURE18 = 0x84D2,
+  GL_TEXTURE19 = 0x84D3,
+  GL_TEXTURE20 = 0x84D4,
+  GL_TEXTURE21 = 0x84D5,
+  GL_TEXTURE22 = 0x84D6,
+  GL_TEXTURE23 = 0x84D7,
+  GL_TEXTURE24 = 0x84D8,
+  GL_TEXTURE25 = 0x84D9,
+  GL_TEXTURE26 = 0x84DA,
+  GL_TEXTURE27 = 0x84DB,
+  GL_TEXTURE28 = 0x84DC,
+  GL_TEXTURE29 = 0x84DD,
+  GL_TEXTURE30 = 0x84DE,
+  GL_TEXTURE31 = 0x84DF
+};
+
+enum {
+  GL_LINEAR = 0x2601,
+  GL_CLAMP_TO_EDGE = 0x812F
+};
+
+void glGenTextures (GLsizei n, GLuint *textures);
+void glBindTexture (GLenum target, GLuint texture);
+void glTexParameteri (GLenum target, GLenum pname, GLint param);
+void glTexImage2D (GLenum target, GLint level, GLint internalFormat,
+                   GLsizei width, GLsizei height, GLint border,
+                   GLenum format, GLenum type, const void *pixels);
+void glActiveTexture (GLenum texture);
+void glDeleteTextures (GLsizei n, const GLuint *textures);
 
 enum {
   GL_COLOR_BUFFER_BIT   = 0x00004000,
@@ -238,6 +300,10 @@ end
 
 function Program_mt:bindFragDataLocation(index, name)
    ffi.C.glBindFragDataLocation(self.id, index, name)
+end
+
+function Program_mt:getUniformLocation(name)
+   return util.check_bad("glGetUniformLocation", -1, ffi.C.glGetUniformLocation(self.id, name))
 end
 
 function Program_mt:link()
@@ -345,6 +411,48 @@ function M.VertexAttribPointer(index, size, type, normalized, stride, pointer)
    ffi.C.glVertexAttribPointer(index, size, type, normalized, stride, ffi.cast("GLvoid *", pointer))
 end
 
+-- Texture
+
+local Texture_mt = {}
+
+function Texture_mt:delete()
+   if self.id then
+      local textures = ffi.new("GLuint[1]", self.id)
+      ffi.C.glDeleteTextures(1, textures)
+      self.id = nil
+   end
+end
+   
+Texture_mt.__index = Texture_mt
+Texture_mt.__gc = Texture_mt.delete
+
+function M.Texture()
+   local textures = ffi.new("GLuint[1]")
+   ffi.C.glGenTextures(1, textures)
+   local self = { id = textures[0] }
+   return setmetatable(self, Texture_mt)
+end
+
+function M.BindTexture(target, texture)
+   ffi.C.glBindTexture(target, texture.id)
+end
+
+M.TexParameteri = ffi.C.glTexParameteri
+
+function M.TexImage2D(target, level, internalFormat,
+                      width, height, border,
+                      format, type, pixels)
+   ffi.C.glTexImage2D(target, level, internalFormat,
+                      width, height, border,
+                      format, type, ffi.cast("const void *", pixels))
+end
+
+M.ActiveTexture = ffi.C.glActiveTexture
+
+M.Uniform1i = ffi.C.glUniform1i
+
+--
+
 function M.UseProgram(program)
    ffi.C.glUseProgram(program.id)
 end
@@ -382,15 +490,23 @@ function ResourceManager_mt:VBO(...)
    return vbo
 end
 
+function ResourceManager_mt:Texture(...)
+   local texture = M.Texture(...)
+   table.insert(self.textures, texture)
+   return texture
+end
+
 function ResourceManager_mt:delete()
-   for _,vao in self.vaos do vao:delete() end
+   for _,texture in ipairs(self.textures) do texture:delete() end
+   self.textures = {}
+   for _,vao in ipairs(self.vaos) do vao:delete() end
    self.vaos = {}
-   for _,vbo in self.vbos do vbo:delete() end
+   for _,vbo in ipairs(self.vbos) do vbo:delete() end
    self.vbos = {}
-   for _,program in self.programs do program:detach_all() end
-   for _,shader in self.shaders do shader:delete() end
+   for _,program in ipairs(self.programs) do program:detach_all() end
+   for _,shader in ipairs(self.shaders) do shader:delete() end
    self.shaders = {}
-   for _,program in self.programs do program:delete() end
+   for _,program in ipairs(self.programs) do program:delete() end
    self.programs = {}
 end
 
@@ -403,6 +519,7 @@ function M.ResourceManager()
       programs = {},
       vaos = {},
       vbos = {},
+      textures = {},
    }
    return setmetatable(self, ResourceManager_mt)
 end
