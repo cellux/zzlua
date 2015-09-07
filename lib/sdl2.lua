@@ -1304,12 +1304,12 @@ function M.CreateWindow(title, x, y, w, h, flags)
       assert(gl.GetError() == gl.GL_NO_ERROR)
       self.ctx = sdl.SDL_GL_CreateContext(window)
       if self.ctx == nil then
-         ef("SDL_GL_CreateContext() failed")
+         ef("SDL_GL_CreateContext() failed: %s", M.GetError())
       end
       assert(gl.GetError() == gl.GL_NO_ERROR)
       local rv = sdl.SDL_GL_MakeCurrent(window, self.ctx)
       if rv ~= 0 then
-         ef("SDL_GL_MakeCurrent() failed")
+         ef("SDL_GL_MakeCurrent() failed: %s", M.GetError())
       end
       assert(gl.GetError() == gl.GL_NO_ERROR)
       glew.init()
