@@ -35,3 +35,22 @@ end
 sched()
 
 assert.equals(actual_replies, expected_replies)
+
+-- test that async requests which cannot be handled immediately are
+-- properly queued and executed later
+
+actual_replies = {}
+local n_req = 100
+for i=1,n_req do
+   sched(make_async_echo_requester(0, {i}))
+end
+sched()
+assert.equals(#actual_replies, n_req)
+-- unwrap from {...}
+for i=1,n_req do
+   actual_replies[i] = unpack(actual_replies[i])
+end
+table.sort(actual_replies)
+for i=1,n_req do
+   assert.equals(actual_replies[i], i)
+end
