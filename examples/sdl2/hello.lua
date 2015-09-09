@@ -30,6 +30,7 @@ sched(function()
                               bit.bor(sdl.SDL_WINDOW_OPENGL,
                                       sdl.SDL_WINDOW_RESIZABLE))
    w:show()
+   pf("Screen DPI: %dx%d", w:dpi())
    print("To quit the example app, press Escape while the SDL window has keyboard focus or simply close the window")
    sched.on('sdl.keydown', function(evdata)
       pf("got sdl.keydown event, keysym=%s", evdata.key.keysym.sym)
