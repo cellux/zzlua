@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local bit = require('bit')
 local sched = require('sched')
 local file = require('file')
 local util = require('util')
@@ -1006,6 +1007,241 @@ typedef struct SDL_Surface SDL_Surface;
 
 /* SDL_pixels.h */
 
+enum {
+  SDL_ALPHA_OPAQUE = 255,
+  SDL_ALPHA_TRANSPARENT = 0
+};
+
+/** Pixel type. */
+enum {
+  SDL_PIXELTYPE_UNKNOWN,
+  SDL_PIXELTYPE_INDEX1,
+  SDL_PIXELTYPE_INDEX4,
+  SDL_PIXELTYPE_INDEX8,
+  SDL_PIXELTYPE_PACKED8,
+  SDL_PIXELTYPE_PACKED16,
+  SDL_PIXELTYPE_PACKED32,
+  SDL_PIXELTYPE_ARRAYU8,
+  SDL_PIXELTYPE_ARRAYU16,
+  SDL_PIXELTYPE_ARRAYU32,
+  SDL_PIXELTYPE_ARRAYF16,
+  SDL_PIXELTYPE_ARRAYF32
+};
+
+/** Bitmap pixel order, high bit -> low bit. */
+enum {
+  SDL_BITMAPORDER_NONE,
+  SDL_BITMAPORDER_4321,
+  SDL_BITMAPORDER_1234
+};
+
+/** Packed component order, high bit -> low bit. */
+enum {
+  SDL_PACKEDORDER_NONE,
+  SDL_PACKEDORDER_XRGB,
+  SDL_PACKEDORDER_RGBX,
+  SDL_PACKEDORDER_ARGB,
+  SDL_PACKEDORDER_RGBA,
+  SDL_PACKEDORDER_XBGR,
+  SDL_PACKEDORDER_BGRX,
+  SDL_PACKEDORDER_ABGR,
+  SDL_PACKEDORDER_BGRA
+};
+
+/** Array component order, low byte -> high byte. */
+enum {
+  SDL_ARRAYORDER_NONE,
+  SDL_ARRAYORDER_RGB,
+  SDL_ARRAYORDER_RGBA,
+  SDL_ARRAYORDER_ARGB,
+  SDL_ARRAYORDER_BGR,
+  SDL_ARRAYORDER_BGRA,
+  SDL_ARRAYORDER_ABGR
+};
+
+/** Packed component layout. */
+enum {
+  SDL_PACKEDLAYOUT_NONE,
+  SDL_PACKEDLAYOUT_332,
+  SDL_PACKEDLAYOUT_4444,
+  SDL_PACKEDLAYOUT_1555,
+  SDL_PACKEDLAYOUT_5551,
+  SDL_PACKEDLAYOUT_565,
+  SDL_PACKEDLAYOUT_8888,
+  SDL_PACKEDLAYOUT_2101010,
+  SDL_PACKEDLAYOUT_1010102
+};
+
+]]
+
+local function SDL_FOURCC(a,b,c,d)
+   return bit.bor(bit.lshift(bit.band(a,0xff),0),
+                  bit.lshift(bit.band(b,0xff),8),
+                  bit.lshift(bit.band(c,0xff),16),
+                  bit.lshift(bit.band(d,0xff),24))
+end
+
+local SDL_DEFINE_PIXELFOURCC = SDL_FOURCC
+
+local function SDL_DEFINE_PIXELFORMAT(type, order, layout, bits, bytes)
+   return bit.bor(bit.lshift(1, 28),
+                  bit.lshift(type, 24),
+                  bit.lshift(order, 20),
+                  bit.lshift(layout, 16),
+                  bit.lshift(bits, 8),
+                  bit.lshift(bytes, 0))
+end
+
+local pixelformats = {
+   sf("SDL_PIXELFORMAT_UNKNOWN"),
+   sf("SDL_PIXELFORMAT_INDEX1LSB = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_INDEX1,
+         ffi.C.SDL_BITMAPORDER_4321, 0, 1, 0)),
+   sf("SDL_PIXELFORMAT_INDEX1MSB = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_INDEX1,
+         ffi.C.SDL_BITMAPORDER_1234, 0, 1, 0)),
+   sf("SDL_PIXELFORMAT_INDEX4LSB = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_INDEX4,
+         ffi.C.SDL_BITMAPORDER_4321, 0, 4, 0)),
+   sf("SDL_PIXELFORMAT_INDEX4MSB = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_INDEX4,
+         ffi.C.SDL_BITMAPORDER_1234, 0, 4, 0)),
+   sf("SDL_PIXELFORMAT_INDEX8 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_INDEX8, 0, 0, 8, 1)),
+   sf("SDL_PIXELFORMAT_RGB332 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED8,
+         ffi.C.SDL_PACKEDORDER_XRGB,
+         ffi.C.SDL_PACKEDLAYOUT_332, 8, 1)),
+   sf("SDL_PIXELFORMAT_RGB444 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_XRGB,
+         ffi.C.SDL_PACKEDLAYOUT_4444, 12, 2)),
+   sf("SDL_PIXELFORMAT_RGB555 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_XRGB,
+         ffi.C.SDL_PACKEDLAYOUT_1555, 15, 2)),
+   sf("SDL_PIXELFORMAT_BGR555 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_XBGR,
+         ffi.C.SDL_PACKEDLAYOUT_1555, 15, 2)),
+   sf("SDL_PIXELFORMAT_ARGB4444 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_ARGB,
+         ffi.C.SDL_PACKEDLAYOUT_4444, 16, 2)),
+   sf("SDL_PIXELFORMAT_RGBA4444 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_RGBA,
+         ffi.C.SDL_PACKEDLAYOUT_4444, 16, 2)),
+   sf("SDL_PIXELFORMAT_ABGR4444 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_ABGR,
+         ffi.C.SDL_PACKEDLAYOUT_4444, 16, 2)),
+   sf("SDL_PIXELFORMAT_BGRA4444 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_BGRA,
+         ffi.C.SDL_PACKEDLAYOUT_4444, 16, 2)),
+   sf("SDL_PIXELFORMAT_ARGB1555 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_ARGB,
+         ffi.C.SDL_PACKEDLAYOUT_1555, 16, 2)),
+   sf("SDL_PIXELFORMAT_RGBA5551 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_RGBA,
+         ffi.C.SDL_PACKEDLAYOUT_5551, 16, 2)),
+   sf("SDL_PIXELFORMAT_ABGR1555 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_ABGR,
+         ffi.C.SDL_PACKEDLAYOUT_1555, 16, 2)),
+   sf("SDL_PIXELFORMAT_BGRA5551 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_BGRA,
+         ffi.C.SDL_PACKEDLAYOUT_5551, 16, 2)),
+   sf("SDL_PIXELFORMAT_RGB565 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_XRGB,
+         ffi.C.SDL_PACKEDLAYOUT_565, 16, 2)),
+   sf("SDL_PIXELFORMAT_BGR565 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED16,
+         ffi.C.SDL_PACKEDORDER_XBGR,
+         ffi.C.SDL_PACKEDLAYOUT_565, 16, 2)),
+   sf("SDL_PIXELFORMAT_RGB24 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_ARRAYU8,
+         ffi.C.SDL_ARRAYORDER_RGB, 0, 24, 3)),
+   sf("SDL_PIXELFORMAT_BGR24 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_ARRAYU8,
+         ffi.C.SDL_ARRAYORDER_BGR, 0, 24, 3)),
+   sf("SDL_PIXELFORMAT_RGB888 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_XRGB,
+         ffi.C.SDL_PACKEDLAYOUT_8888, 24, 4)),
+   sf("SDL_PIXELFORMAT_RGBX8888 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_RGBX,
+         ffi.C.SDL_PACKEDLAYOUT_8888, 24, 4)),
+   sf("SDL_PIXELFORMAT_BGR888 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_XBGR,
+         ffi.C.SDL_PACKEDLAYOUT_8888, 24, 4)),
+   sf("SDL_PIXELFORMAT_BGRX8888 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_BGRX,
+         ffi.C.SDL_PACKEDLAYOUT_8888, 24, 4)),
+   sf("SDL_PIXELFORMAT_ARGB8888 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_ARGB,
+         ffi.C.SDL_PACKEDLAYOUT_8888, 32, 4)),
+   sf("SDL_PIXELFORMAT_RGBA8888 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_RGBA,
+         ffi.C.SDL_PACKEDLAYOUT_8888, 32, 4)),
+   sf("SDL_PIXELFORMAT_ABGR8888 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_ABGR,
+         ffi.C.SDL_PACKEDLAYOUT_8888, 32, 4)),
+   sf("SDL_PIXELFORMAT_BGRA8888 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_BGRA,
+         ffi.C.SDL_PACKEDLAYOUT_8888, 32, 4)),
+   sf("SDL_PIXELFORMAT_ARGB2101010 = 0x%08x", SDL_DEFINE_PIXELFORMAT(
+         ffi.C.SDL_PIXELTYPE_PACKED32,
+         ffi.C.SDL_PACKEDORDER_ARGB,
+         ffi.C.SDL_PACKEDLAYOUT_2101010, 32, 4)),
+   sf("SDL_PIXELFORMAT_YV12 = 0x%08x", SDL_DEFINE_PIXELFOURCC(
+         string.byte('Y'),
+         string.byte('V'),
+         string.byte('1'),
+         string.byte('2'))),
+   sf("SDL_PIXELFORMAT_IYUV = 0x%08x", SDL_DEFINE_PIXELFOURCC(
+         string.byte('I'),
+         string.byte('Y'),
+         string.byte('U'),
+         string.byte('V'))),
+   sf("SDL_PIXELFORMAT_YUY2 = 0x%08x", SDL_DEFINE_PIXELFOURCC(
+         string.byte('Y'),
+         string.byte('U'),
+         string.byte('Y'),
+         string.byte('2'))),
+   sf("SDL_PIXELFORMAT_UYVY = 0x%08x", SDL_DEFINE_PIXELFOURCC(
+         string.byte('U'),
+         string.byte('Y'),
+         string.byte('V'),
+         string.byte('Y'))),
+   sf("SDL_PIXELFORMAT_YVYU = 0x%08x", SDL_DEFINE_PIXELFOURCC(
+         string.byte('Y'),
+         string.byte('V'),
+         string.byte('Y'),
+         string.byte('U'))),
+}
+
+local cdef = "enum {\n"
+for i=1,#pixelformats do
+   cdef = cdef .. sf("  %s,\n", pixelformats[i])
+end
+cdef = cdef .. "  SDL_PIXELFORMAT_LAST\n};\n"
+ffi.cdef(cdef)
+
+ffi.cdef [[
+
 typedef struct SDL_Color {
   Uint8 r;
   Uint8 g;
@@ -1185,6 +1421,83 @@ int SDL_GL_SetSwapInterval(int interval);
 int SDL_GL_GetSwapInterval(void);
 void SDL_GL_SwapWindow(SDL_Window * window);
 void SDL_GL_DeleteContext(SDL_GLContext context);
+
+/* SDL_blendmode.h */
+
+typedef enum {
+  SDL_BLENDMODE_NONE  = 0x00000000,
+  SDL_BLENDMODE_BLEND = 0x00000001,
+  SDL_BLENDMODE_ADD   = 0x00000002,
+  SDL_BLENDMODE_MOD   = 0x00000004
+} SDL_BlendMode;
+
+/* SDL_render.h */
+
+typedef enum {
+  SDL_RENDERER_SOFTWARE      = 0x0001,
+  SDL_RENDERER_ACCELERATED   = 0x0002,
+  SDL_RENDERER_PRESENTVSYNC  = 0x0004,
+  SDL_RENDERER_TARGETTEXTURE = 0x0008
+} SDL_RendererFlags;
+
+typedef enum {
+  SDL_TEXTUREACCESS_STATIC,
+  SDL_TEXTUREACCESS_STREAMING,
+  SDL_TEXTUREACCESS_TARGET
+} SDL_TextureAccess;
+
+typedef enum {
+  SDL_TEXTUREMODULATE_NONE  = 0x0000,     /**< No modulation */
+  SDL_TEXTUREMODULATE_COLOR = 0x0001,    /**< srcC = srcC * color */
+  SDL_TEXTUREMODULATE_ALPHA = 0x0002     /**< srcA = srcA * alpha */
+} SDL_TextureModulate;
+
+typedef enum {
+  SDL_FLIP_NONE       = 0x00000000,     /**< Do not flip */
+  SDL_FLIP_HORIZONTAL = 0x00000001,    /**< flip horizontally */
+  SDL_FLIP_VERTICAL   = 0x00000002     /**< flip vertically */
+} SDL_RendererFlip;
+
+typedef struct SDL_Renderer SDL_Renderer;
+typedef struct SDL_Texture SDL_Texture;
+
+SDL_Renderer * SDL_CreateRenderer(SDL_Window * window, 
+                                  int index, Uint32 flags);
+
+SDL_Texture * SDL_CreateTexture(SDL_Renderer * renderer,
+                                Uint32 format, int access,
+                                int w, int h);
+int SDL_UpdateTexture(SDL_Texture * texture, const SDL_Rect * rect,
+                      const void *pixels, int pitch);
+int SDL_LockTexture(SDL_Texture * texture, const SDL_Rect * rect,
+                    void **pixels, int *pitch);
+void SDL_UnlockTexture(SDL_Texture * texture);
+void SDL_DestroyTexture(SDL_Texture * texture);
+
+int SDL_SetRenderDrawColor(SDL_Renderer * renderer,
+                           Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+int SDL_SetRenderDrawBlendMode(SDL_Renderer * renderer,
+                               SDL_BlendMode blendMode);
+int SDL_RenderClear(SDL_Renderer * renderer);
+int SDL_RenderDrawPoint(SDL_Renderer * renderer, int x, int y);
+int SDL_RenderDrawLine(SDL_Renderer * renderer, 
+                       int x1, int y1, int x2, int y2);
+int SDL_RenderDrawRect(SDL_Renderer * renderer, const SDL_Rect * rect);
+int SDL_RenderFillRect(SDL_Renderer * renderer, const SDL_Rect * rect);
+int SDL_RenderCopy(SDL_Renderer * renderer,
+                   SDL_Texture * texture,
+                   const SDL_Rect * srcrect,
+                   const SDL_Rect * dstrect);
+int SDL_RenderCopyEx(SDL_Renderer * renderer,
+                     SDL_Texture * texture,
+                     const SDL_Rect * srcrect,
+                     const SDL_Rect * dstrect,
+                     const double angle,
+                     const SDL_Point *center,
+                     const SDL_RendererFlip flip);
+void SDL_RenderPresent(SDL_Renderer * renderer);
+
+void SDL_DestroyRenderer(SDL_Renderer * renderer);
 
 /* SDL_syswm.h */
 
