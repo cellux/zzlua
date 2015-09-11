@@ -297,4 +297,17 @@ function M.dirname(path)
    return ffi.string(ffi.C.dirname(path_copy))
 end
 
+local function join(path, ...)
+   local n_rest = select('#', ...)
+   if n_rest == 0 then
+      return path
+   elseif type(path)=="string" then
+      return sf("%s/%s", path, join(...))
+   else
+      ef("Invalid argument to join: %s", path)
+   end
+end
+
+M.join = join
+
 return setmetatable(M, { __index = ffi.C })

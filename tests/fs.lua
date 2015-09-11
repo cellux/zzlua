@@ -151,6 +151,13 @@ local function test_basename_dirname()
    assert.equals(fs.dirname("testdata/hello.txt"), "testdata")
 end
 
+local function test_join()
+   assert.equals(fs.join(), nil)
+   assert.equals(fs.join("abc"), "abc")
+   assert.equals(fs.join("abc","def"), "abc/def")
+   assert.equals(fs.join("abc",".", "def"), "abc/./def")
+end
+
 local function test()
    test_exists()
    test_chmod()
@@ -159,6 +166,7 @@ local function test()
    test_type()
    test_readdir()
    test_basename_dirname()
+   test_join()
 end
 
 -- sync
