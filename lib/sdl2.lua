@@ -2,6 +2,7 @@ local ffi = require('ffi')
 local bit = require('bit')
 local sched = require('sched')
 local file = require('file')
+local fs = require('fs')
 local util = require('util')
 local gl = require('gl')
 local glew = require('glew')
@@ -1721,11 +1722,11 @@ local function SDL2Module(sched)
    local do_poll = false
    local function discover_pollable_devices()
       local input_dev_dir = "/sys/class/input"
-      if file.is_dir(input_dev_dir) then
-         for fn in file.readdir(input_dev_dir) do
+      if fs.is_dir(input_dev_dir) then
+         for fn in fs.readdir(input_dev_dir) do
             if fn:match("^event[0-9]$") then
                local devname_path = sf("%s/%s/device/name", input_dev_dir, fn)
-               if file.exists(devname_path) then
+               if fs.exists(devname_path) then
                   local devname = file.read(devname_path, 256)
                   for name,_ in pairs(self.pollable_devices) do
                      if string.lower(devname):match(name) then
@@ -1735,7 +1736,7 @@ local function SDL2Module(sched)
                         -- which is understandable, otherwise users
                         -- could easily install keyloggers which steal
                         -- what is typed by other users including root
-                        if file.is_readable(devpath) then
+                        if fs.is_readable(devpath) then
                            local dev = file.open(devpath)
                            table.insert(self.pollable_devices[name], dev)
                            do_poll = true
