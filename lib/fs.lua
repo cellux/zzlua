@@ -22,6 +22,9 @@ int     rmdir (const char *filename);
 int     dup (int old);
 int     dup2 (int old, int new);
 
+char   *dirname (char *path);
+char   *basename (char *path);
+
 struct zz_fs_Stat_ct {
   struct stat *buf;
 };
@@ -278,6 +281,20 @@ end
 
 function M.rmdir(path)
    return util.check_bad("rmdir", -1, ffi.C.rmdir(path))
+end
+
+function M.basename(path)
+   -- may modify its argument, so let's make a copy
+   local path_copy = ffi.new("char[?]", #path+1)
+   ffi.copy(path_copy, path)
+   return ffi.string(ffi.C.basename(path_copy))
+end
+
+function M.dirname(path)
+   -- may modify its argument, so let's make a copy
+   local path_copy = ffi.new("char[?]", #path+1)
+   ffi.copy(path_copy, path)
+   return ffi.string(ffi.C.dirname(path_copy))
 end
 
 return setmetatable(M, { __index = ffi.C })

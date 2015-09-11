@@ -146,6 +146,11 @@ local function test_readdir()
    assert.equals(entries, expected_entries)
 end
 
+local function test_basename_dirname()
+   assert.equals(fs.basename("testdata/hello.txt"), "hello.txt")
+   assert.equals(fs.dirname("testdata/hello.txt"), "testdata")
+end
+
 local function test()
    test_exists()
    test_chmod()
@@ -153,6 +158,7 @@ local function test()
    test_stat()
    test_type()
    test_readdir()
+   test_basename_dirname()
 end
 
 -- sync
