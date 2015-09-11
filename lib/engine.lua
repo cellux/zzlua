@@ -39,11 +39,6 @@ function SDLApp_mt:run()
          sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, tonumber(minor))
       end
 
-      if self.gl_doublebuffer ~= nil then
-         sdl.GL_SetAttribute(sdl.SDL_GL_DOUBLEBUFFER,
-                             self.gl_doublebuffer and 1 or 0)
-      end
-
       -- create window
       local w = sdl.CreateWindow(self.title,
                                  self.x, self.y, 
@@ -107,7 +102,6 @@ function M.SDLApp(opts)
       title = opts.title or "SDLApp",
       gl_profile = opts.gl_profile,
       gl_version = opts.gl_version,
-      gl_doublebuffer = opts.gl_doublebuffer,
    }
    local flags = 0
    for k,v in pairs(sdl_window_flags) do
@@ -148,7 +142,6 @@ function M.OpenGLApp(opts)
    self.fps = opts.fps or 60
    self.gl_profile = opts.gl_profile or 'core'
    self.gl_version = opts.gl_version or '3.3'
-   self.gl_doublebuffer = true
    return setmetatable(self, OpenGLApp_mt)
 end
 
