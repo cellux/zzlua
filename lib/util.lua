@@ -4,7 +4,7 @@ local M = {}
 
 function M.check_ok(funcname, okvalue, rv)
    if rv ~= okvalue then
-      error(sf("%s() failed", funcname), 2)
+      error(sf("%s() failed: %s", funcname, rv), 2)
    else
       return rv
    end
