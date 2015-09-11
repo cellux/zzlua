@@ -76,6 +76,9 @@ for i=arg_index+1,#arg do
 end
 arg = script_args -- the script shall not see any zzlua options
 
+-- save the path of the script to arg[0]
+arg[0] = script_path
+
 if opt_e and not script_path then
    -- if there was a script passed in via -e, but we didn't get a
    -- script path on the command line, then don't read from stdin
