@@ -345,23 +345,23 @@ local M = {}
 
 local Face_mt = {}
 
-function Face_mt:set_char_size(width, height, xdpi, ydpi)
+function Face_mt:Set_Char_Size(width, height, xdpi, ydpi)
    util.check_ok("FT_Set_Char_Size", 0,
                  freetype.FT_Set_Char_Size(self.face, width, height,
                                            xdpi or 0, ydpi or 0))
 end
 
-function Face_mt:set_pixel_sizes(width, height)
+function Face_mt:Set_Pixel_Sizes(width, height)
    util.check_ok("FT_Set_Pixel_Sizes", 0,
                  freetype.FT_Set_Pixel_Sizes(self.face, width, height))
 end
 
 -- charcode is the value of a Unicode code point (unsigned long)
-function Face_mt:get_char_index(charcode)
+function Face_mt:Get_Char_Index(charcode)
    return freetype.FT_Get_Char_Index(self.face, charcode)
 end
 
-function Face_mt:load_glyph(glyph_index, load_flags)
+function Face_mt:Load_Glyph(glyph_index, load_flags)
    load_flags = load_flags or freetype.FT_LOAD_DEFAULT
    util.check_ok("FT_Load_Glyph", 0,
                  freetype.FT_Load_Glyph(self.face,
@@ -369,19 +369,19 @@ function Face_mt:load_glyph(glyph_index, load_flags)
                                         load_flags))
 end
 
-function Face_mt:render_glyph(render_mode)
+function Face_mt:Render_Glyph(render_mode)
    render_mode = render_mode or freetype.FT_RENDER_MODE_NORMAL
    util.check_ok("FT_Render_Glyph", 0,
                  freetype.FT_Render_Glyph(self.face.glyph, render_mode))
 end
 
-function Face_mt:load_char(charcode, load_flags)
+function Face_mt:Load_Char(charcode, load_flags)
    load_flags = load_flags or freetype.FT_LOAD_DEFAULT
    util.check_ok("FT_Load_Char", 0,
                  freetype.FT_Load_Char(self.face, charcode, load_flags))
 end
 
-function Face_mt:done()
+function Face_mt:Done_Face()
    if self.face then
       util.check_ok("FT_Done_Face", 0, freetype.FT_Done_Face(self.face))
       self.face = nil
@@ -389,7 +389,7 @@ function Face_mt:done()
 end
 
 Face_mt.__index = Face_mt
-Face_mt.__gc = Face_mt.done
+Face_mt.__gc = Face_mt.Done_Face
 
 function M.New_Face(path, face_index)
    assert_library_loaded()
@@ -423,14 +423,14 @@ function M.Face(source, ...)
    end
 end
 
-function M.init()
+function M.Init_FreeType()
    assert(library[0]==nil)
    if freetype.FT_Init_FreeType(library) ~= 0 then
       ef("Cannot initialize FreeType")
    end
 end
 
-function M.done()
+function M.Done_FreeType()
    assert(library[0] ~= nil)
    freetype.FT_Done_FreeType(library[0])
    library[0] = nil
@@ -438,8 +438,8 @@ end
 
 local function FreeTypeModule(sched)
    local self = {}
-   self.init = M.init
-   self.done = M.done
+   self.init = M.Init_FreeType
+   self.done = M.Done_FreeType
    return self
 end
 
