@@ -107,6 +107,7 @@ function M.SDLApp(opts)
       title = opts.title or "SDLApp",
       gl_profile = opts.gl_profile,
       gl_version = opts.gl_version,
+      gl_doublebuffer = opts.gl_doublebuffer,
    }
    local flags = 0
    for k,v in pairs(sdl_window_flags) do
