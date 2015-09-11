@@ -3,8 +3,8 @@ local bit = require('bit')
 local sched = require('sched')
 local file = require('file')
 local util = require('util')
-local glew = require('glew')
 local gl = require('gl')
+local glew = require('glew')
 local xlib = require('xlib')
 
 ffi.cdef [[
