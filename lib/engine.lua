@@ -5,38 +5,46 @@ local sched = require('sched')
 
 local M = {}
 
-local OpenGLApp_mt = {}
+-- SDLApp
 
-function OpenGLApp_mt:init()
+local SDLApp_mt = {}
+
+function SDLApp_mt:init()
 end
 
-function OpenGLApp_mt:run()
-   sched(function()
-      -- set desired OpenGL profile
-      local gl_profile_masks = {
-         core = sdl.SDL_GL_CONTEXT_PROFILE_CORE,
-         compatibility = sdl.SDL_GL_CONTEXT_PROFILE_COMPATIBILITY,
-         es = sdl.SDL_GL_CONTEXT_PROFILE_ES
-      }
-      local gl_profile_mask = gl_profile_masks[self.gl_profile]
-      if not gl_profile_mask then
-         ef("Invalid value for gl_profile: %s", self.gl_profile)
-      end
-      sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, gl_profile_mask)
+function SDLApp_mt:main()
+end
 
-      -- set desired OpenGL version
-      local major, minor = string.match(self.gl_version, "^(%d+)%.(%d+)$")
-      if not major then
-         ef("Invalid value for gl_version: %s", self.gl_version)
+function SDLApp_mt:run()
+   sched(function()
+      if self.gl_profile then
+         local gl_profile_masks = {
+            core = sdl.SDL_GL_CONTEXT_PROFILE_CORE,
+            compatibility = sdl.SDL_GL_CONTEXT_PROFILE_COMPATIBILITY,
+            es = sdl.SDL_GL_CONTEXT_PROFILE_ES
+         }
+         local gl_profile_mask = gl_profile_masks[self.gl_profile]
+         if not gl_profile_mask then
+            ef("Invalid value for gl_profile: %s", self.gl_profile)
+         end
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, gl_profile_mask)
       end
-      sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, tonumber(major))
-      sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, tonumber(minor))
+
+      if self.gl_version then
+         local major, minor = string.match(self.gl_version, "^(%d+)%.(%d+)$")
+         if not major then
+            ef("Invalid value for gl_version: %s", self.gl_version)
+         end
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, tonumber(major))
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, tonumber(minor))
+      end
 
       -- create window
       local w = sdl.CreateWindow(self.title,
                                  self.x, self.y, 
                                  self.w, self.h,
                                  self.flags)
+      self.window = w
 
       -- user-provided app initialization
       self:init()
@@ -52,21 +60,8 @@ function OpenGLApp_mt:run()
       end)
       sched.on('sdl.quit', sched.quit)
 
-      -- schedule the game loop
-      sched(function()
-            -- game loop
-            while true do
-               now = sched.now
-               self:draw()
-               local gl_error = gl.GetError()
-               if gl_error ~= gl.GL_NO_ERROR then
-                  ef("GL error: %d", gl_error)
-               end
-               w:swap()
-               sched.wait(now+1/self.fps)
-            end
-      end)
-      sched.wait('quit')
+      -- run app
+      self:main()
 
       -- cleanup
       self:done()
@@ -75,13 +70,10 @@ function OpenGLApp_mt:run()
    sched()
 end
 
-function OpenGLApp_mt:draw()
+function SDLApp_mt:done()
 end
 
-function OpenGLApp_mt:done()
-end
-
-OpenGLApp_mt.__index = OpenGLApp_mt
+SDLApp_mt.__index = SDLApp_mt
 
 local sdl_window_flags = {
    fullscreen = sdl.SDL_WINDOW_FULLSCREEN,
@@ -100,18 +92,16 @@ local sdl_window_flags = {
    allow_highdpi = sdl.SDL_WINDOW_ALLOW_HIGHDPI,
 }
 
-function M.OpenGLApp(opts)
+function M.SDLApp(opts)
    opts = opts or {}
-   opts.opengl = true
    local self = {
       x = opts.x or -1, -- -1 means centered
       y = opts.y or -1,
       w = opts.w or 640,
       h = opts.h or 480,
-      title = opts.title or "OpenGLApp",
-      fps = opts.fps or 60,
-      gl_profile = opts.gl_profile or "core",
-      gl_version = opts.gl_version or "3.3",
+      title = opts.title or "SDLApp",
+      gl_profile = opts.gl_profile,
+      gl_version = opts.gl_version,
    }
    local flags = 0
    for k,v in pairs(sdl_window_flags) do
@@ -120,6 +110,38 @@ function M.OpenGLApp(opts)
       end
    end
    self.flags = flags
+   return setmetatable(self, SDLApp_mt)
+end
+
+-- OpenGLApp
+
+local OpenGLApp_mt = setmetatable({}, SDLApp_mt)
+
+function OpenGLApp_mt:main()
+   while true do
+      now = sched.now
+      self:draw()
+      local gl_error = gl.GetError()
+      if gl_error ~= gl.GL_NO_ERROR then
+         ef("GL error: %d", gl_error)
+      end
+      self.window:swap()
+      sched.wait(now+1/self.fps)
+   end
+end
+
+function OpenGLApp_mt:draw()
+end
+
+OpenGLApp_mt.__index = OpenGLApp_mt
+
+function M.OpenGLApp(opts)
+   opts = opts or {}
+   opts.opengl = true
+   local self = M.SDLApp(opts)
+   self.fps = opts.fps or 60
+   self.gl_profile = opts.gl_profile or 'core'
+   self.gl_version = opts.gl_version or '3.3'
    return setmetatable(self, OpenGLApp_mt)
 end
 
