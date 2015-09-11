@@ -2,7 +2,7 @@ local env = require('env')
 local assert = require('assert')
 local sys = require('sys')
 local ffi = require('ffi')
-local file = require('file')
+local fs = require('fs') -- for dup2
 local socket = require('socket')
 
 assert.type(env.PATH, "string")

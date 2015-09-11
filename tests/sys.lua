@@ -1,7 +1,7 @@
 local sys = require('sys')
 local ffi = require('ffi')
 local assert = require('assert')
-local file = require('file')
+local fs = require('fs') -- for dup2
 local socket = require('socket')
 local sf = string.format
 

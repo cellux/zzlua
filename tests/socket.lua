@@ -2,6 +2,7 @@ local socket = require('socket')
 local assert = require('assert')
 local sys = require('sys')
 local file = require('file')
+local fs = require('fs')
 local ffi = require('ffi')
 local sf = string.format
 local sched = require('sched')
@@ -135,8 +136,8 @@ server:close()
 sp:close()
 sys.waitpid(pid)
 
-if file.exists(socket_path) then
-   file.unlink(socket_path)
+if fs.exists(socket_path) then
+   fs.unlink(socket_path)
 end
 
 -- listen, accept, connect (with TCP sockets) + getsockname, getpeername
