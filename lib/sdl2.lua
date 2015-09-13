@@ -1613,6 +1613,22 @@ function M.GetCurrentDisplayMode(d)
    return mode
 end
 
+function M.Point(x,y)
+   local p = ffi.new("SDL_Point")
+   p.x = x
+   p.y = y
+   return p
+end
+
+function M.Rect(x,y,w,h)
+   local r = ffi.new("SDL_Rect")
+   r.x = x
+   r.y = y
+   r.w = w
+   r.h = h
+   return r
+end
+
 local Window_mt = {}
 
 function Window_mt:show()
