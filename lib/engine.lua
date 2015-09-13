@@ -46,11 +46,15 @@ function SDLApp_mt:run()
                                  self.flags)
       self.window = w
 
+      if self.create_renderer then
+         self.renderer = w:CreateRenderer()
+      end
+
       -- user-provided app initialization
       self:init()
 
       -- show window
-      w:show()
+      w:ShowWindow()
 
       -- register quit handlers
       sched.on('sdl.keydown', function(evdata)
@@ -65,7 +69,11 @@ function SDLApp_mt:run()
 
       -- cleanup
       self:done()
-      w:destroy()
+      if self.renderer then
+         self.renderer:DestroyRenderer()
+         self.renderer = nil
+      end
+      w:DestroyWindow()
    end)
    sched()
 end
@@ -102,6 +110,7 @@ function M.SDLApp(opts)
       title = opts.title or "SDLApp",
       gl_profile = opts.gl_profile,
       gl_version = opts.gl_version,
+      create_renderer = opts.create_renderer or false,
    }
    local flags = 0
    for k,v in pairs(sdl_window_flags) do
@@ -125,7 +134,7 @@ function OpenGLApp_mt:main()
       if gl_error ~= gl.GL_NO_ERROR then
          ef("GL error: %d", gl_error)
       end
-      self.window:swap()
+      self.window:GL_SwapWindow()
       sched.wait(now+1/self.fps)
    end
 end
@@ -143,6 +152,32 @@ function M.OpenGLApp(opts)
    self.gl_profile = opts.gl_profile or 'core'
    self.gl_version = opts.gl_version or '3.3'
    return setmetatable(self, OpenGLApp_mt)
+end
+
+-- DesktopApp
+
+local DesktopApp_mt = setmetatable({}, SDLApp_mt)
+
+function DesktopApp_mt:main()
+   while true do
+      now = sched.now
+      self:draw()
+      self.renderer:RenderPresent()
+      sched.wait(now+1/self.fps)
+   end
+end
+
+function DesktopApp_mt:draw()
+end
+
+DesktopApp_mt.__index = DesktopApp_mt
+
+function M.DesktopApp(opts)
+   opts = opts or {}
+   opts.create_renderer = true
+   local self = M.SDLApp(opts)
+   self.fps = opts.fps or 60
+   return setmetatable(self, DesktopApp_mt)
 end
 
 return M

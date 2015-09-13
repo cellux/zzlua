@@ -1631,15 +1631,15 @@ end
 
 local Window_mt = {}
 
-function Window_mt:show()
+function Window_mt:ShowWindow()
    sdl.SDL_ShowWindow(self.w)
 end
 
-function Window_mt:hide()
+function Window_mt:HideWindow()
    sdl.SDL_HideWindow(self.w)
 end
 
-function Window_mt:swap()
+function Window_mt:GL_SwapWindow()
    sdl.SDL_GL_SwapWindow(self.w)
 end
 
@@ -1663,7 +1663,79 @@ function Window_mt:dpi()
    end
 end
 
-function Window_mt:destroy()
+local Texture_mt = {}
+
+function Texture_mt:UpdateTexture(rect, pixels, pitch)
+   local rv = sdl.SDL_UpdateTexture(self.t, rect,
+                                    ffi.cast("void**", pixels),
+                                    pitch)
+   if rv ~= 0 then
+      ef("SDL_UpdateTexture() failed")
+   end
+end
+
+function Texture_mt:DestroyTexture()
+   if self.t then
+      sdl.SDL_DestroyTexture(self.t)
+      self.t = nil
+   end
+end
+
+Texture_mt.__index = Texture_mt
+Texture_mt.__gc = Texture_mt.DestroyTexture
+
+local Renderer_mt = {}
+
+function Renderer_mt:CreateTexture(format, access, w, h)
+   local t = sdl.SDL_CreateTexture(self.r, format, access, w, h)
+   if t == nil then
+      ef("Cannot create texture: %s", M.GetError())
+   end
+   local self = { t = t }
+   return setmetatable(self, Texture_mt)
+end
+
+function Renderer_mt:SetRenderDrawColor(r,g,b,a)
+   util.check_ok("SDL_SetRenderDrawColor", 0,
+                 sdl.SDL_SetRenderDrawColor(self.r,r,g,b,a))
+end
+
+function Renderer_mt:RenderClear()
+   util.check_ok("SDL_RenderClear", 0, sdl.SDL_RenderClear(self.r))
+end
+
+function Renderer_mt:RenderCopy(texture, srcrect, dstrect)
+   util.check_ok("SDL_RenderCopy", 0,
+                 sdl.SDL_RenderCopy(self.r, texture.t,
+                                    srcrect, dstrect))
+end
+
+function Renderer_mt:RenderPresent()
+   sdl.SDL_RenderPresent(self.r)
+end
+
+function Renderer_mt:DestroyRenderer()
+   if self.r then
+      sdl.SDL_DestroyRenderer(self.r)
+      self.r = nil
+   end
+end
+
+Renderer_mt.__index = Renderer_mt
+Renderer_mt.__gc = Renderer_mt.DestroyRenderer
+
+function Window_mt:CreateRenderer(index, flags)
+   index = index or -1
+   flags = flags or 0
+   local r = sdl.SDL_CreateRenderer(self.w, index, flags)
+   if r == nil then
+      ef("Cannot create renderer: %s", M.GetError())
+   end
+   local self = { r = r }
+   return setmetatable(self, Renderer_mt)
+end
+
+function Window_mt:DestroyWindow()
    if self.ctx then
       sdl.SDL_GL_DeleteContext(self.ctx)
       self.ctx = nil

@@ -10,7 +10,7 @@ function app:init()
    local rm = gl.ResourceManager()
 
    local vertex_shader = rm:CreateShader(gl.GL_VERTEX_SHADER)
-   vertex_shader:source [[
+   vertex_shader:ShaderSource [[
       #version 330
       layout (location = 0) in vec4 vposition;
       layout (location = 1) in vec4 vcolor;
@@ -20,10 +20,10 @@ function app:init()
         gl_Position = vposition;
       }
    ]]
-   vertex_shader:compile()
+   vertex_shader:CompileShader()
 
    local fragment_shader = rm:CreateShader(gl.GL_FRAGMENT_SHADER)
-   fragment_shader:source [[
+   fragment_shader:ShaderSource [[
       #version 330
       in vec4 fcolor;
       layout (location = 0) out vec4 FragColor;
@@ -31,16 +31,16 @@ function app:init()
          FragColor = fcolor;
       }
    ]]
-   fragment_shader:compile()
+   fragment_shader:CompileShader()
 
    local shader_program = rm:CreateProgram()
-   shader_program:attach(vertex_shader)
-   shader_program:attach(fragment_shader)
-   shader_program:link()
+   shader_program:AttachShader(vertex_shader)
+   shader_program:AttachShader(fragment_shader)
+   shader_program:LinkProgram()
 
-   local vao = rm:VAO()
+   local vao = rm:VertexArray()
    gl.BindVertexArray(vao)
-   local vbo = rm:VBO()
+   local vbo = rm:Buffer()
    gl.BindBuffer(gl.GL_ARRAY_BUFFER, vbo)
    local vertex_data = gl.FloatArray {
    --   X    Y    Z          R    G    B
@@ -56,7 +56,7 @@ function app:init()
    gl.VertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 6*FS, 0*FS)
    gl.EnableVertexAttribArray(1)
    gl.VertexAttribPointer(1, 3, gl.GL_FLOAT, gl.GL_FALSE, 6*FS, 3*FS)
-   local ibo = rm:VBO()
+   local ibo = rm:Buffer()
    gl.BindBuffer(gl.GL_ELEMENT_ARRAY_BUFFER, ibo)
    local index_data = gl.UIntArray {
       0,1,2, -- first triangle

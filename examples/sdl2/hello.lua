@@ -29,7 +29,7 @@ sched(function()
    local w = sdl.CreateWindow("hello", 0, 0, 800, 600,
                               bit.bor(sdl.SDL_WINDOW_OPENGL,
                                       sdl.SDL_WINDOW_RESIZABLE))
-   w:show()
+   w:ShowWindow()
    pf("Screen DPI: %dx%d", w:dpi())
    print("To quit the example app, press Escape while the SDL window has keyboard focus or simply close the window")
    sched.on('sdl.keydown', function(evdata)
@@ -50,7 +50,7 @@ sched(function()
    end)
    sched.wait('quit')
    print("got quit signal, destroying window")
-   w:destroy()
+   w:DestroyWindow()
 end)
 
 sched()

@@ -232,7 +232,7 @@ M.GetError = ffi.C.glGetError
 
 local Shader_mt = {}
 
-function Shader_mt:source(text)
+function Shader_mt:ShaderSource(text)
    local str = ffi.new("GLchar*[1]", ffi.cast("GLchar*", text))
    local len = ffi.new("GLint[1]", #text)
    ffi.C.glShaderSource(self.id,
@@ -241,7 +241,7 @@ function Shader_mt:source(text)
                         len)
 end
 
-function Shader_mt:compile()
+function Shader_mt:CompileShader()
    ffi.C.glCompileShader(self.id)
    local status = ffi.new("GLint[1]")
    ffi.C.glGetShaderiv(self.id, ffi.C.GL_COMPILE_STATUS, status)
@@ -250,7 +250,7 @@ function Shader_mt:compile()
    end
 end
 
-function Shader_mt:info_log()
+function Shader_mt:GetShaderInfoLog()
    local length = ffi.new("GLint[1]")
    ffi.C.glGetShaderiv(self.id, ffi.C.GL_INFO_LOG_LENGTH, length)
    local log = ffi.new("GLchar[?]", length[0])
@@ -259,7 +259,7 @@ function Shader_mt:info_log()
    return ffi.string(log, log_len[0])
 end
 
-function Shader_mt:delete()
+function Shader_mt:DeleteShader()
    if self.id then
       ffi.C.glDeleteShader(self.id)
       self.id = nil
@@ -267,7 +267,7 @@ function Shader_mt:delete()
 end
 
 Shader_mt.__index = Shader_mt
-Shader_mt.__gc = Shader_mt.delete
+Shader_mt.__gc = Shader_mt.DeleteShader
 
 function M.CreateShader(type)
    local id = util.check_bad("glCreateShader", 0, ffi.C.glCreateShader(type))
@@ -277,12 +277,12 @@ end
 
 local Program_mt = {}
 
-function Program_mt:attach(shader)
+function Program_mt:AttachShader(shader)
    ffi.C.glAttachShader(self.id, shader.id)
    self.shaders:push(shader)
 end
 
-function Program_mt:detach(shader)
+function Program_mt:DetachShader(shader)
    ffi.C.glDetachShader(self.id, shader.id)
    self.shaders:remove(shader)
 end
@@ -294,19 +294,19 @@ function Program_mt:detach_all()
    self.shaders = adt.List()
 end
 
-function Program_mt:bindAttribLocation(index, name)
+function Program_mt:BindAttribLocation(index, name)
    ffi.C.glBindAttribLocation(self.id, index, name)
 end
 
-function Program_mt:bindFragDataLocation(index, name)
+function Program_mt:BindFragDataLocation(index, name)
    ffi.C.glBindFragDataLocation(self.id, index, name)
 end
 
-function Program_mt:getUniformLocation(name)
+function Program_mt:GetUniformLocation(name)
    return util.check_bad("glGetUniformLocation", -1, ffi.C.glGetUniformLocation(self.id, name))
 end
 
-function Program_mt:link()
+function Program_mt:LinkProgram()
    ffi.C.glLinkProgram(self.id)
    local status = ffi.new("GLint[1]")
    ffi.C.glGetProgramiv(self.id, ffi.C.GL_LINK_STATUS, status)
@@ -315,7 +315,7 @@ function Program_mt:link()
    end
 end
 
-function Program_mt:info_log()
+function Program_mt:GetProgramInfoLog()
    local length = ffi.new("GLint[1]")
    ffi.C.glGetProgramiv(self.id, ffi.C.GL_INFO_LOG_LENGTH, length)
    local log = ffi.new("GLchar[?]", length[0])
@@ -324,7 +324,7 @@ function Program_mt:info_log()
    return ffi.string(log, log_len[0])
 end
 
-function Program_mt:delete()
+function Program_mt:DeleteProgram()
    if self.id then
       ffi.C.glDeleteProgram(self.id)
       self.id = nil
@@ -332,7 +332,7 @@ function Program_mt:delete()
 end
 
 Program_mt.__index = Program_mt
-Program_mt.__gc = Program_mt.delete
+Program_mt.__gc = Program_mt.DeleteProgram
 
 function M.CreateProgram()
    local id = util.check_bad("glCreateProgram", 0, ffi.C.glCreateProgram())
@@ -344,7 +344,7 @@ end
 
 local VAO_mt = {}
 
-function VAO_mt:delete()
+function VAO_mt:DeleteVertexArray()
    if self.id then
       local arrays = ffi.new("GLuint[1]", self.id)
       ffi.C.glDeleteVertexArrays(1, arrays)
@@ -353,7 +353,7 @@ function VAO_mt:delete()
 end
    
 VAO_mt.__index = VAO_mt
-VAO_mt.__gc = VAO_mt.delete
+VAO_mt.__gc = VAO_mt.DeleteVertexArray
 
 function M.VAO()
    local arrays = ffi.new("GLuint[1]")
@@ -366,11 +366,13 @@ function M.BindVertexArray(array)
    ffi.C.glBindVertexArray(array and array.id or 0)
 end
 
+M.VertexArray = M.VAO
+
 -- VertexBuffer (VBO)
 
 local VBO_mt = {}
 
-function VBO_mt:delete()
+function VBO_mt:DeleteBuffer()
    if self.id then
       local buffers = ffi.new("GLuint[1]", self.id)
       ffi.C.glDeleteBuffers(1, buffers)
@@ -379,7 +381,7 @@ function VBO_mt:delete()
 end
 
 VBO_mt.__index = VBO_mt
-VBO_mt.__gc = VBO_mt.delete
+VBO_mt.__gc = VBO_mt.DeleteBuffer
 
 function M.VBO()
    local buffers = ffi.new("GLuint[1]")
@@ -391,6 +393,8 @@ end
 function M.BindBuffer(target, buffer)
    ffi.C.glBindBuffer(target, buffer.id)
 end
+
+M.Buffer = M.VBO
 
 function M.FloatArray(elements)
    return ffi.new("GLfloat[?]", #elements, elements)
@@ -415,7 +419,7 @@ end
 
 local Texture_mt = {}
 
-function Texture_mt:delete()
+function Texture_mt:DeleteTexture()
    if self.id then
       local textures = ffi.new("GLuint[1]", self.id)
       ffi.C.glDeleteTextures(1, textures)
@@ -424,7 +428,7 @@ function Texture_mt:delete()
 end
    
 Texture_mt.__index = Texture_mt
-Texture_mt.__gc = Texture_mt.delete
+Texture_mt.__gc = Texture_mt.DeleteTexture
 
 function M.Texture()
    local textures = ffi.new("GLuint[1]")
@@ -484,11 +488,15 @@ function ResourceManager_mt:VAO(...)
    return vao
 end
 
+ResourceManager_mt.VertexArray = ResourceManager_mt.VAO
+
 function ResourceManager_mt:VBO(...)
    local vbo = M.VBO(...)
    table.insert(self.vbos, vbo)
    return vbo
 end
+
+ResourceManager_mt.Buffer = ResourceManager_mt.VBO
 
 function ResourceManager_mt:Texture(...)
    local texture = M.Texture(...)
@@ -497,16 +505,16 @@ function ResourceManager_mt:Texture(...)
 end
 
 function ResourceManager_mt:delete()
-   for _,texture in ipairs(self.textures) do texture:delete() end
+   for _,texture in ipairs(self.textures) do texture:DeleteTexture() end
    self.textures = {}
-   for _,vao in ipairs(self.vaos) do vao:delete() end
+   for _,vao in ipairs(self.vaos) do vao:DeleteVertexArray() end
    self.vaos = {}
-   for _,vbo in ipairs(self.vbos) do vbo:delete() end
+   for _,vbo in ipairs(self.vbos) do vbo:DeleteBuffer() end
    self.vbos = {}
    for _,program in ipairs(self.programs) do program:detach_all() end
-   for _,shader in ipairs(self.shaders) do shader:delete() end
+   for _,shader in ipairs(self.shaders) do shader:DeleteShader() end
    self.shaders = {}
-   for _,program in ipairs(self.programs) do program:delete() end
+   for _,program in ipairs(self.programs) do program:DeleteProgram() end
    self.programs = {}
 end
 

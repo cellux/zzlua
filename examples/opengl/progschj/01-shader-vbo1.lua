@@ -8,7 +8,7 @@ function app:init()
    local FS = ffi.sizeof("GLfloat")
 
    local vertex_shader = gl.CreateShader(gl.GL_VERTEX_SHADER)
-   vertex_shader:source [[
+   vertex_shader:ShaderSource [[
       #version 330
       layout(location = 0) in vec4 vposition;
       layout(location = 1) in vec4 vcolor;
@@ -18,10 +18,10 @@ function app:init()
         gl_Position = vposition;
       }
    ]]
-   vertex_shader:compile()
+   vertex_shader:CompileShader()
 
    local fragment_shader = gl.CreateShader(gl.GL_FRAGMENT_SHADER)
-   fragment_shader:source [[
+   fragment_shader:ShaderSource [[
       #version 330
       in vec4 fcolor;
       layout(location = 0) out vec4 FragColor;
@@ -29,16 +29,16 @@ function app:init()
          FragColor = fcolor;
       }
    ]]
-   fragment_shader:compile()
+   fragment_shader:CompileShader()
 
    local shader_program = gl.CreateProgram()
-   shader_program:attach(vertex_shader)
-   shader_program:attach(fragment_shader)
-   shader_program:link()
+   shader_program:AttachShader(vertex_shader)
+   shader_program:AttachShader(fragment_shader)
+   shader_program:LinkProgram()
 
-   local vao = gl.VAO()
+   local vao = gl.VertexArray()
    gl.BindVertexArray(vao)
-   local vbo = gl.VBO()
+   local vbo = gl.Buffer()
    gl.BindBuffer(gl.GL_ARRAY_BUFFER, vbo)
    local vertex_data = gl.FloatArray {
    --   X    Y    Z          R    G    B
@@ -66,13 +66,13 @@ function app:init()
    end
 
    function app:done()
-      vao:delete()
-      vbo:delete()
-      shader_program:detach(vertex_shader)
-      shader_program:detach(fragment_shader)
-      vertex_shader:delete()
-      fragment_shader:delete()
-      shader_program:delete()
+      vao:DeleteVertexArray()
+      vbo:DeleteBuffer()
+      shader_program:DetachShader(vertex_shader)
+      shader_program:DetachShader(fragment_shader)
+      vertex_shader:DeleteShader()
+      fragment_shader:DeleteShader()
+      shader_program:DeleteProgram()
    end
 end
 
