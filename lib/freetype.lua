@@ -347,13 +347,18 @@ local Face_mt = {}
 
 function Face_mt:Set_Char_Size(width, height, xdpi, ydpi)
    util.check_ok("FT_Set_Char_Size", 0,
-                 freetype.FT_Set_Char_Size(self.face, width, height,
-                                           xdpi or 0, ydpi or 0))
+                 freetype.FT_Set_Char_Size(self.face,
+                                           width or 0,
+                                           height or 0,
+                                           xdpi or 0,
+                                           ydpi or 0))
 end
 
 function Face_mt:Set_Pixel_Sizes(width, height)
    util.check_ok("FT_Set_Pixel_Sizes", 0,
-                 freetype.FT_Set_Pixel_Sizes(self.face, width, height))
+                 freetype.FT_Set_Pixel_Sizes(self.face,
+                                             width or 0,
+                                             height or 0))
 end
 
 -- charcode is the value of a Unicode code point (unsigned long)
