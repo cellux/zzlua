@@ -1670,7 +1670,7 @@ function Texture_mt:UpdateTexture(rect, pixels, pitch)
                                     ffi.cast("void**", pixels),
                                     pitch)
    if rv ~= 0 then
-      ef("SDL_UpdateTexture() failed")
+      ef("SDL_UpdateTexture() failed: %s", M.GetError())
    end
 end
 
