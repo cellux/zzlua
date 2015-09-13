@@ -93,6 +93,7 @@ function app:init()
 
    function app:done()
       texture:DestroyTexture()
+      face:Done_Face()
    end
 end
 
