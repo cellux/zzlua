@@ -1731,71 +1731,6 @@ M.initflags = sdl.SDL_INIT_AUDIO +
 
 local function SDL2Module(sched)
    local self = {}
-   self.pollable_devices = {
-      keyboard = {},
-      mouse = {}
-   }
-   local do_poll = false
-   local function discover_pollable_devices()
-      local input_dev_dir = "/sys/class/input"
-      if fs.is_dir(input_dev_dir) then
-         for fn in fs.readdir(input_dev_dir) do
-            if fn:match("^event[0-9]$") then
-               local devname_path = sf("%s/%s/device/name", input_dev_dir, fn)
-               if fs.exists(devname_path) then
-                  local devname = file.read(devname_path, 256)
-                  for name,_ in pairs(self.pollable_devices) do
-                     if string.lower(devname):match(name) then
-                        local devpath = sf("/dev/input/%s", fn)
-                        -- these devices are only readable by root :(
-                        --
-                        -- which is understandable, otherwise users
-                        -- could easily install keyloggers which steal
-                        -- what is typed by other users including root
-                        if fs.is_readable(devpath) then
-                           local dev = file.open(devpath)
-                           table.insert(self.pollable_devices[name], dev)
-                           do_poll = true
-                        else
-                           -- in this case, we won't be able to poll
-                           -- keyboard/mouse devices so events will be
-                           -- collected at tick granularity. if you
-                           -- want seamless event collection, you have
-                           -- to ensure that the event loop does not
-                           -- block for too long. one way to do this
-                           -- is to run a thread which draws something
-                           -- to the screen 60 times/second.
-                        end
-                     end
-                  end
-               end
-            end
-         end
-      end
-   end
-   local function foreach_dev(fn)
-      for name,device_files in pairs(self.pollable_devices) do
-         for _,dev in ipairs(device_files) do
-            fn(dev)
-         end
-      end
-   end
-   local function register_pollable_devices(event_id)
-      foreach_dev(function(dev)
-         sched.poller:add(dev.fd, "r", event_id)
-      end)
-   end
-   local function unregister_pollable_devices(event_id)
-      foreach_dev(function(dev)
-         sched.poller:del(dev.fd, "r", event_id)
-      end)
-   end
-   local function close_pollable_devices()
-      foreach_dev(function(dev)
-         dev:close()
-      end)
-   end
-   local sdl_input_event = sched.make_event_id()
    local sdl_event_types = {
       [sdl.SDL_QUIT]                 = 'sdl.quit',
       [sdl.SDL_WINDOWEVENT]          = 'sdl.windowevent',
@@ -1809,8 +1744,11 @@ local function SDL2Module(sched)
       [sdl.SDL_DROPFILE]             = 'sdl.dropfile',
       [sdl.SDL_RENDER_TARGETS_RESET] = 'sdl.render_targets_reset',
    }
+   function self.init()
+      util.check_ok("SDL_Init", 0, sdl.SDL_Init(M.initflags))
+   end
    local tmp_event = ffi.new("SDL_Event")
-   local function tick_fn()
+   function self.tick()
       sdl.SDL_PumpEvents()
       while sdl.SDL_PollEvent(tmp_event) == 1 do
          local evdata = ffi.new("SDL_Event", tmp_event)
@@ -1820,40 +1758,12 @@ local function SDL2Module(sched)
          end
       end
    end
-   local function poll_thread()
-      while true do
-         -- if we see any activity on the input devices, we pump the
-         -- SDL event queue and convert all incoming SDL events into
-         -- standard scheduler events
-         sched.wait(sdl_input_event)
-         tick_fn()
-      end
-   end
-   function self.init()
-      discover_pollable_devices()
-      if do_poll then
-         register_pollable_devices(sdl_input_event)
-         sched.background(poll_thread)
-      end
-      util.check_ok("SDL_Init", 0, sdl.SDL_Init(M.initflags))
-   end
-   function self.tick()
-      if not do_poll then
-         tick_fn()
-      end
-   end
    function self.done()
       sdl.SDL_Quit()
-      unregister_pollable_devices(sdl_input_event)
-      close_pollable_devices()
    end
    return self
 end
 
 sched.register_module(SDL2Module)
 
-local M_mt = {
-   __index = sdl
-}
-
-return setmetatable(M, M_mt)
+return setmetatable(M, { __index = sdl })
