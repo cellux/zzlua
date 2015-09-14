@@ -16,7 +16,7 @@ local app = engine.DesktopApp {
 }
 
 local function round(x)
-   return math.floor(x+0.5)
+   return math.floor(tonumber(x)+0.5)
 end
 
 function app:init()

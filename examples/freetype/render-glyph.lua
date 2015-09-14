@@ -13,11 +13,11 @@ local app = engine.DesktopApp {
 }
 
 local function round(x)
-   return math.floor(x+0.5)
+   return math.floor(tonumber(x)+0.5)
 end
 
 local function p26_6(name, value)
-   pf("%s=%d (%d px)", name, value, round(value/64))
+   pf("%s=%d (%d px)", name, tonumber(value), round(value/64))
 end
 
 function app:init()
@@ -26,14 +26,14 @@ function app:init()
    local face = freetype.Face(ttf_path)
    face:Set_Pixel_Sizes(self.h)
    pf("face info:")
-   pf("  num_glyphs=%d", face.face.num_glyphs)
+   pf("  num_glyphs=%d", tonumber(face.face.num_glyphs))
    pf("  family_name=%s", ffi.string(face.face.family_name))
    pf("  style_name=%s", ffi.string(face.face.style_name))
    pf("  bbox=(xMin=%d,yMin=%d,xMax=%d,yMax=%d)",
-      face.face.bbox.xMin,
-      face.face.bbox.yMin,
-      face.face.bbox.xMax,
-      face.face.bbox.yMax)
+      tonumber(face.face.bbox.xMin),
+      tonumber(face.face.bbox.yMin),
+      tonumber(face.face.bbox.xMax),
+      tonumber(face.face.bbox.yMax))
    pf("  units_per_EM=%d", face.face.units_per_EM)
    pf("  ascender=%d", face.face.ascender)
    pf("  descender=%d", face.face.descender)
