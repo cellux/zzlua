@@ -1473,6 +1473,7 @@ int SDL_UpdateTexture(SDL_Texture * texture, const SDL_Rect * rect,
 int SDL_LockTexture(SDL_Texture * texture, const SDL_Rect * rect,
                     void **pixels, int *pitch);
 void SDL_UnlockTexture(SDL_Texture * texture);
+int SDL_SetTextureBlendMode(SDL_Texture * texture, SDL_BlendMode blendMode);
 void SDL_DestroyTexture(SDL_Texture * texture);
 
 int SDL_SetRenderDrawColor(SDL_Renderer * renderer,
@@ -1672,6 +1673,11 @@ function Texture_mt:UpdateTexture(rect, pixels, pitch)
    if rv ~= 0 then
       ef("SDL_UpdateTexture() failed: %s", M.GetError())
    end
+end
+
+function Texture_mt:SetTextureBlendMode(mode)
+   util.check_ok("SDL_SetTextureBlendMode", 0,
+                 sdl.SDL_SetTextureBlendMode(self.t,mode))
 end
 
 function Texture_mt:DestroyTexture()
