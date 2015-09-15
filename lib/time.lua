@@ -29,18 +29,35 @@ int gettimeofday (struct timeval *TP,
 int nanosleep (const struct timespec *requested_time,
                struct timespec *remaining);
 
+typedef int32_t clockid_t;
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp);
+
 ]]
 
 local M = {}
 
 function M.time()
    -- return number of seconds elapsed since epoch
-   local TP = ffi.new("struct timeval")
-   if ffi.C.gettimeofday(TP, nil) ~= 0 then
-      error("gettimeofday() failed")
+   local tp = ffi.new("struct timespec")
+   if ffi.C.clock_gettime(0, tp) ~= 0 then
+      error("clock_gettime() failed")
    end
-   -- on 64-bit architectures TP.tv_sec and TP.tv_usec are boxed
-   return tonumber(TP.tv_sec) + tonumber(TP.tv_usec) / 1e6
+   -- on 64-bit architectures tp.tv_sec and tp.tv_nsec are boxed
+   return tonumber(tp.tv_sec) + tonumber(tp.tv_nsec) / 1e9
+end
+
+function M.nanosleep(seconds)
+   local requested_time = ffi.new("struct timespec")
+   local integer_part = math.floor(seconds)
+   requested_time.tv_sec = integer_part
+   local float_part = seconds - integer_part
+   local ns = float_part * 1e9
+   requested_time.tv_nsec = ns
+   local remaining = ffi.new("struct timespec")
+   if ffi.C.nanosleep(requested_time, remaining) ~= 0 then
+      error("nanosleep() failed")
+   end
 end
 
 function M.sleep(seconds)
@@ -51,16 +68,7 @@ function M.sleep(seconds)
       local sched = require('sched')
       sched.sleep(seconds)
    else
-      local requested_time = ffi.new("struct timespec")
-      local integer_part = math.floor(seconds)
-      requested_time.tv_sec = integer_part
-      local float_part = seconds - integer_part
-      local ns = float_part * 1e9
-      requested_time.tv_nsec = ns
-      local remaining = ffi.new("struct timespec")
-      if ffi.C.nanosleep(requested_time, remaining) ~= 0 then
-         error("nanosleep() failed")
-      end
+      M.nanosleep(seconds)
    end
 end
 
