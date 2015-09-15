@@ -56,12 +56,30 @@ local function Font(source, size, window, renderer)
             local pitch = g.bitmap.pitch
             gd.width = g.bitmap.width/3
             gd.height = g.bitmap.rows
+            local rgba_pitch = 4*gd.width
+            local rgba_pixels = ffi.new("uint8_t[?]", rgba_pitch * gd.height)
+            for y=0,gd.height-1 do
+               for x=0,gd.width-1 do
+                  local r = pixels[pitch*y+x*3+0]
+                  local g = pixels[pitch*y+x*3+1]
+                  local b = pixels[pitch*y+x*3+2]
+                  local a = sdl.SDL_ALPHA_OPAQUE
+                  if r == 0 and g == 0 and b == 0 then
+                     a = sdl.SDL_ALPHA_TRANSPARENT
+                  end
+                  rgba_pixels[rgba_pitch*y+x*4+0] = a
+                  rgba_pixels[rgba_pitch*y+x*4+1] = b
+                  rgba_pixels[rgba_pitch*y+x*4+2] = g
+                  rgba_pixels[rgba_pitch*y+x*4+3] = r
+               end
+            end
             gd.srcrect.w = gd.width
             gd.srcrect.h = gd.height
-            gd.texture = renderer:CreateTexture(sdl.SDL_PIXELFORMAT_RGB24,
+            gd.texture = renderer:CreateTexture(sdl.SDL_PIXELFORMAT_RGBA8888,
                                                 sdl.SDL_TEXTUREACCESS_STATIC,
                                                 gd.width, gd.height)
-            gd.texture:UpdateTexture(gd.srcrect, pixels, pitch)
+            gd.texture:SetTextureBlendMode(sdl.SDL_BLENDMODE_BLEND)
+            gd.texture:UpdateTexture(gd.srcrect, rgba_pixels, rgba_pitch)
          end
          glyph_cache[charcode] = gd
       end
