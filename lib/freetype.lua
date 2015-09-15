@@ -337,6 +337,18 @@ FT_Error FT_Render_Glyph(FT_GlyphSlot slot, FT_Render_Mode render_mode);
 FT_Error FT_Load_Char(FT_Face face, FT_ULong charcode, FT_Int32 load_flags);
 FT_Error FT_Done_Face( FT_Face face );
 
+typedef enum FT_LcdFilter_ {
+  FT_LCD_FILTER_NONE    = 0,
+  FT_LCD_FILTER_DEFAULT = 1,
+  FT_LCD_FILTER_LIGHT   = 2,
+  FT_LCD_FILTER_LEGACY  = 16,
+  FT_LCD_FILTER_MAX
+} FT_LcdFilter;
+
+FT_Error FT_Library_SetLcdFilter(FT_Library library, FT_LcdFilter filter);
+FT_Error FT_Library_SetLcdFilterWeights(FT_Library library,
+                                        unsigned char *weights);
+
 ]]
 
 local freetype = ffi.load("freetype")
@@ -350,6 +362,8 @@ local function assert_library_loaded()
 end
 
 local M = {}
+
+M.lcdfilter = freetype.FT_LCD_FILTER_LIGHT
 
 local Face_mt = {}
 
@@ -440,6 +454,11 @@ function M.Init_FreeType()
    assert(library[0]==nil)
    if freetype.FT_Init_FreeType(library) ~= 0 then
       ef("Cannot initialize FreeType")
+   end
+   if M.lcdfilter ~= freetype.FT_LCD_FILTER_NONE then
+      if freetype.FT_Library_SetLcdFilter(library[0], M.lcdfilter) ~= 0 then
+         ef("FT_Library_SetLcdFilter() failed")
+      end
    end
 end
 
