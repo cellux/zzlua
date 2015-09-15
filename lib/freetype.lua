@@ -284,6 +284,14 @@ typedef enum FT_Render_Mode_ {
   FT_RENDER_MODE_MAX
 } FT_Render_Mode;
 
+typedef enum {
+  FT_LOAD_TARGET_NORMAL = 0,
+  FT_LOAD_TARGET_LIGHT  = 0x00010000,
+  FT_LOAD_TARGET_MONO   = 0x00020000,
+  FT_LOAD_TARGET_LCD    = 0x00030000,
+  FT_LOAD_TARGET_LCD_V  = 0x00040000
+};
+
 enum {
   FT_LOAD_DEFAULT                      = 0,
   FT_LOAD_NO_SCALE                     = ( 1 << 0 ),
