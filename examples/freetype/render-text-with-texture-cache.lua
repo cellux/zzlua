@@ -134,7 +134,7 @@ function app:init()
                                   glyph_data.width, glyph_data.height)
          r:RenderCopy(glyph_data.texture, glyph_data.srcrect, dstrect)
       end
-      return round(glyph_data.advance_x)
+      return glyph_data.advance_x
    end
 
    local function draw_string(font, s, x, y)
