@@ -92,11 +92,17 @@ function app:init()
    local font = Font(ttf_path, font_size, self.window, self.renderer)
 
    local text_top = 0
+   local text_speed = 1
    sched(function()
          while true do
-            text_top = text_top-1
+            text_top = text_top-text_speed
             sched.sleep(1/self.fps)
          end
+   end)
+   sched.on('sdl.keydown', function(evdata)
+      if evdata.key.keysym.sym == sdl.SDLK_SPACE then
+         text_speed = 1-text_speed
+      end
    end)
 
    local r = self.renderer
