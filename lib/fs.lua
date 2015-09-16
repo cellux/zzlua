@@ -272,15 +272,15 @@ create_type_checker("fifo")
 create_type_checker("sock")
 
 function M.chmod(path, mode)
-   return util.check_bad("chmod", -1, ffi.C.chmod(path, mode))
+   return util.check_errno("chmod", ffi.C.chmod(path, mode))
 end
 
 function M.unlink(path)
-   return util.check_bad("unlink", -1, ffi.C.unlink(path))
+   return util.check_errno("unlink", ffi.C.unlink(path))
 end
 
 function M.rmdir(path)
-   return util.check_bad("rmdir", -1, ffi.C.rmdir(path))
+   return util.check_errno("rmdir", ffi.C.rmdir(path))
 end
 
 function M.basename(path)

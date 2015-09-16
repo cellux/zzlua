@@ -56,7 +56,7 @@ function M.fork(child_fn)
       local sp, sc = socket.socketpair(socket.PF_LOCAL,
                                        socket.SOCK_STREAM,
                                        0)
-      local pid = util.check_bad("fork", -1, ffi.C.fork())
+      local pid = util.check_errno("fork", ffi.C.fork())
       if pid == 0 then
          sp:close()
          child_fn(sc)
@@ -67,7 +67,7 @@ function M.fork(child_fn)
          return pid, sp
       end
    else
-      return util.check_bad("fork", -1, ffi.C.fork())
+      return util.check_errno("fork", ffi.C.fork())
    end
 end
 
@@ -86,13 +86,13 @@ function M.execvp(path, argv)
       execvp_argv[i-1] = ffi.cast("char*", argv[i])
    end
    execvp_argv[#argv] = nil
-   util.check_bad("execvp", -1, ffi.C.execvp(path, execvp_argv))
+   util.check_errno("execvp", ffi.C.execvp(path, execvp_argv))
 end
 
 function M.waitpid(pid, options)
    options = options or 0
    local status = ffi.new("int[1]")
-   local rv = util.check_bad("waitpid", -1, ffi.C.waitpid(pid, status, options))
+   local rv = util.check_errno("waitpid", ffi.C.waitpid(pid, status, options))
    return rv, tonumber(status[0])
 end
 

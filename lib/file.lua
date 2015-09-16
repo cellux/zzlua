@@ -62,7 +62,7 @@ local function lseek(fd, offset, whence)
    else
       rv = ffi.C.lseek(fd, offset, whence)
    end
-   return util.check_bad("lseek", -1, rv)
+   return util.check_errno("lseek", rv)
 end
 
 function File_mt:pos()
@@ -137,7 +137,7 @@ File_mt.__gc = File_mt.close
 local File = ffi.metatype("struct zz_file_File_ct", File_mt)
 
 function M.open(path)
-   local fd = util.check_bad("open", -1, ffi.C.open(path, ffi.C.O_RDONLY))
+   local fd = util.check_errno("open", ffi.C.open(path, ffi.C.O_RDONLY))
    return File(fd)
 end
 
@@ -154,7 +154,7 @@ function M.mkstemp(filename_prefix, tmpdir)
    local template = sf("%s/%s-XXXXXX", tmpdir, filename_prefix)
    local buf = ffi.new("char[?]", #template+1)
    ffi.copy(buf, template)
-   local fd = util.check_bad("mkstemp", -1, ffi.C.mkstemp(buf))
+   local fd = util.check_errno("mkstemp", ffi.C.mkstemp(buf))
    return File(fd), ffi.string(buf)
 end
 

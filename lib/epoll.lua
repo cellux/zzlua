@@ -75,7 +75,7 @@ function Poller_mt:ctl(op, fd, events, data)
    local epoll_event = ffi.new("struct epoll_event")
    epoll_event.events = events and parse_events(events) or 0
    epoll_event.data.fd = data or 0
-   return util.check_bad("epoll_ctl", -1, ffi.C.epoll_ctl(self.fd, op, fd, epoll_event))
+   return util.check_errno("epoll_ctl", ffi.C.epoll_ctl(self.fd, op, fd, epoll_event))
 end
 
 function Poller_mt:add(fd, events, data)
@@ -91,9 +91,9 @@ function Poller_mt:del(fd, events, data)
 end
 
 function Poller_mt:wait(timeout, process)
-   local rv = util.check_bad("epoll_wait", -1,
-                             ffi.C.epoll_wait(self.fd, self.events,
-                                              self.maxevents, timeout))
+   local rv = util.check_errno("epoll_wait",
+                               ffi.C.epoll_wait(self.fd, self.events,
+                                                self.maxevents, timeout))
    if rv > 0 then
       for i = 1,rv do
          local event = self.events[i-1]
@@ -128,7 +128,7 @@ end
 local M = {}
 
 function M.create(maxevents)
-   local fd = util.check_bad("epoll_create", -1, ffi.C.epoll_create(1))
+   local fd = util.check_errno("epoll_create", ffi.C.epoll_create(1))
    return Poller(fd, maxevents)
 end
 
