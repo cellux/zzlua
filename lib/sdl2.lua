@@ -1732,7 +1732,8 @@ Renderer_mt.__gc = Renderer_mt.DestroyRenderer
 
 function Window_mt:CreateRenderer(index, flags)
    index = index or -1
-   flags = flags or 0
+   flags = flags or bit.bor(sdl.SDL_RENDERER_ACCELERATED,
+                            sdl.SDL_RENDERER_PRESENTVSYNC)
    local r = sdl.SDL_CreateRenderer(self.w, index, flags)
    if r == nil then
       ef("Cannot create renderer: %s", M.GetError())
