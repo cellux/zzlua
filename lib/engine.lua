@@ -128,7 +128,7 @@ local OpenGLApp_mt = setmetatable({}, SDLApp_mt)
 
 function OpenGLApp_mt:main()
    while true do
-      now = sched.now
+      local now = sched.now
       self:draw()
       local gl_error = gl.GetError()
       if gl_error ~= gl.GL_NO_ERROR then
@@ -160,7 +160,7 @@ local DesktopApp_mt = setmetatable({}, SDLApp_mt)
 
 function DesktopApp_mt:main()
    while true do
-      now = sched.now
+      local now = sched.now
       self:draw()
       self.renderer:RenderPresent()
       sched.wait(now+1/self.fps)
