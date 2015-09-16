@@ -10,6 +10,7 @@ local file = require('file')
 local sdl = require('sdl2')
 local iconv = require('iconv')
 local time = require('time')
+local util = require('util')
 
 local app = engine.DesktopApp {
    title = "render-text",
@@ -169,25 +170,12 @@ function app:init()
       return font.height
    end
 
-   local function CumulativeMovingAverage()
-      local avg = 0
-      local n = 0
-      return function(x)
-         if x then
-            n = n + 1
-            avg = (x + (n-1)*avg) / n
-         else
-            return avg
-         end
-      end
-   end
-
-   local avg_time = CumulativeMovingAverage()
+   local avg_time = util.Accumulator()
 
    sched(function()
       while true do
          sched.sleep(1)
-         pf("app:draw() takes %s seconds in average", avg_time())
+         pf("app:draw() takes %s seconds in average", avg_time.avg)
       end
    end)
 
