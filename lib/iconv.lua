@@ -49,6 +49,7 @@ function M.utf8_codepoints(utf8_string)
    local rv = sdl.SDL_iconv(iconv,
                             inbuf, inbytesleft,
                             outbuf, outbytesleft)
+   util.check_ok("SDL_iconv_close", 0, sdl.SDL_iconv_close(iconv))
    if rv == -1 then
       ef("iconv failed")
    end
