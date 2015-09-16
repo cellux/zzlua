@@ -26,4 +26,28 @@ function M.check_errno(funcname, rv)
    end
 end
 
+function M.Accumulator()
+   local self = {
+      last = nil,
+      n = 0,
+      sum = 0,
+      avg = 0,
+      min = nil,
+      max = nil,
+   }
+   function self:feed(x)
+      self.n = self.n + 1
+      self.sum = self.sum + x
+      self.avg = self.sum / self.n
+      if not self.max or x > self.max then
+         self.max = x
+      end
+      if not self.min or x < self.min then
+         self.min = x
+      end
+      self.last = x
+   end
+   return setmetatable(self, { __call = self.feed })
+end
+
 return M
