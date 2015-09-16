@@ -2,8 +2,17 @@ local gl = require('gl')
 local sdl = require('sdl2')
 local bit = require('bit')
 local sched = require('sched')
+local time = require('time')
 
 local M = {}
+
+local function exact_wait(target)
+   -- we wait 2 ms less than required
+   sched.wait(target-0.002)
+   while time.time() < target do
+      -- busy wait to fix timing irregularities
+   end
+end
 
 -- SDLApp
 
@@ -135,7 +144,7 @@ function OpenGLApp_mt:main()
          ef("GL error: %d", gl_error)
       end
       self.window:GL_SwapWindow()
-      sched.wait(now+1/self.fps)
+      exact_wait(now+1/self.fps)
    end
 end
 
@@ -163,7 +172,7 @@ function DesktopApp_mt:main()
       local now = sched.now
       self:draw()
       self.renderer:RenderPresent()
-      sched.wait(now+1/self.fps)
+      exact_wait(now+1/self.fps)
    end
 end
 
