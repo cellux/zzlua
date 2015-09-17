@@ -1441,6 +1441,15 @@ typedef enum {
   SDL_RENDERER_TARGETTEXTURE = 0x0008
 } SDL_RendererFlags;
 
+typedef struct SDL_RendererInfo {
+  const char *name;           /**< The name of the renderer */
+  Uint32 flags;               /**< Supported ::SDL_RendererFlags */
+  Uint32 num_texture_formats; /**< The number of available texture formats */
+  Uint32 texture_formats[16]; /**< The available texture formats */
+  int max_texture_width;      /**< The maximimum texture width */
+  int max_texture_height;     /**< The maximimum texture height */
+} SDL_RendererInfo;
+
 typedef enum {
   SDL_TEXTUREACCESS_STATIC,
   SDL_TEXTUREACCESS_STREAMING,
@@ -1462,8 +1471,12 @@ typedef enum {
 typedef struct SDL_Renderer SDL_Renderer;
 typedef struct SDL_Texture SDL_Texture;
 
+int SDL_GetNumRenderDrivers(void);
+int SDL_GetRenderDriverInfo(int index, SDL_RendererInfo * info);
+
 SDL_Renderer * SDL_CreateRenderer(SDL_Window * window, 
                                   int index, Uint32 flags);
+int SDL_GetRendererInfo(SDL_Renderer * renderer, SDL_RendererInfo * info);
 
 SDL_Texture * SDL_CreateTexture(SDL_Renderer * renderer,
                                 Uint32 format, int access,
@@ -1614,6 +1627,15 @@ function M.GetCurrentDisplayMode(d)
    return mode
 end
 
+M.GetNumRenderDrivers = sdl.SDL_GetNumRenderDrivers
+
+function M.GetRenderDriverInfo(index)
+   local info = ffi.new("SDL_RendererInfo")
+   util.check_ok("SDL_GetRenderDriverInfo", 0,
+                 sdl.SDL_GetRenderDriverInfo(index-1, info))
+   return info
+end
+
 M.Point = ffi.typeof("SDL_Point")
 M.Rect = ffi.typeof("SDL_Rect")
 
@@ -1678,6 +1700,13 @@ Texture_mt.__index = Texture_mt
 Texture_mt.__gc = Texture_mt.DestroyTexture
 
 local Renderer_mt = {}
+
+function Renderer_mt:GetRendererInfo()
+   local info = ffi.new("SDL_RendererInfo")
+   util.check_ok("SDL_GetRendererInfo", 0,
+                 sdl.SDL_GetRendererInfo(self.r, info))
+   return info
+end
 
 function Renderer_mt:CreateTexture(format, access, w, h)
    local t = sdl.SDL_CreateTexture(self.r, format, access, w, h)
