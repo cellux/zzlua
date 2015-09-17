@@ -1688,6 +1688,15 @@ end
 
 local Texture_mt = {}
 
+function Texture_mt:LockTexture(rect, pixels, pitch)
+   local rv = sdl.SDL_LockTexture(self.t, rect,
+                                  ffi.cast("void**", pixels),
+                                  pitch)
+   if rv ~= 0 then
+      ef("SDL_LockTexture() failed: %s", M.GetError())
+   end
+end
+
 function Texture_mt:UpdateTexture(rect, pixels, pitch)
    local rv = sdl.SDL_UpdateTexture(self.t, rect,
                                     ffi.cast("const void*", pixels),
@@ -1695,6 +1704,10 @@ function Texture_mt:UpdateTexture(rect, pixels, pitch)
    if rv ~= 0 then
       ef("SDL_UpdateTexture() failed: %s", M.GetError())
    end
+end
+
+function Texture_mt.UnlockTexture()
+   sdl.SDL_UnlockTexture(self.t)
 end
 
 function Texture_mt:SetTextureBlendMode(mode)
