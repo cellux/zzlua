@@ -1411,6 +1411,9 @@ void SDL_HideWindow(SDL_Window * window);
 void SDL_SetWindowGrab(SDL_Window * window, SDL_bool grabbed);
 SDL_bool SDL_GetWindowGrab(SDL_Window * window);
 
+void SDL_SetWindowSize(SDL_Window * window, int w, int h);
+void SDL_GetWindowSize(SDL_Window * window, int *w, int *h);
+
 void SDL_DestroyWindow(SDL_Window * window);
 
 void SDL_GL_ResetAttributes(void);
@@ -1654,6 +1657,13 @@ end
 
 function Window_mt:GL_SwapWindow()
    sdl.SDL_GL_SwapWindow(self.w)
+end
+
+function Window_mt:GetWindowSize()
+   local w = ffi.new("int[1]")
+   local h = ffi.new("int[1]")
+   sdl.SDL_GetWindowSize(self.w, w, h)
+   return w[0], h[0]
 end
 
 function Window_mt:dpi()
