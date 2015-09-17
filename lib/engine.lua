@@ -65,6 +65,9 @@ function SDLApp_mt:run()
       -- show window
       w:ShowWindow()
 
+      -- update width/height
+      self.w, self.h = w:GetWindowSize()
+
       -- register quit handlers
       sched.on('sdl.keydown', function(evdata)
                   if evdata.key.keysym.sym == sdl.SDLK_ESCAPE then
