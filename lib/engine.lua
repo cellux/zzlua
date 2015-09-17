@@ -114,6 +114,9 @@ local sdl_window_flags = {
 
 function M.SDLApp(opts)
    opts = opts or {}
+   if opts.gl_profile or opts.gl_version or opts.create_renderer then
+      opts.opengl = true
+   end
    local self = {
       x = opts.x or -1, -- -1 means centered
       y = opts.y or -1,
