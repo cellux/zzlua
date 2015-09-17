@@ -119,6 +119,7 @@ local sdl_window_flags = {
 
 function M.SDLApp(opts)
    opts = opts or {}
+   opts.hidden = true -- always start hidden, show when everything is ready
    if opts.gl_profile or opts.gl_version or opts.create_renderer then
       opts.opengl = true
    end
