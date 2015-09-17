@@ -71,6 +71,11 @@ local function TextureAtlas(size, renderer)
       local t = renderer:CreateTexture(sdl.SDL_PIXELFORMAT_RGBA8888,
                                        sdl.SDL_TEXTUREACCESS_TARGET,
                                        size, size)
+      local old = renderer:GetRenderTarget()
+      renderer:SetRenderTarget(t)
+      renderer:SetRenderDrawColor(0,0,0,0)
+      renderer:RenderClear()
+      renderer:SetRenderTarget(old)
       t:SetTextureBlendMode(sdl.SDL_BLENDMODE_BLEND)
       return t
    end
