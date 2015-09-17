@@ -1690,7 +1690,7 @@ local Texture_mt = {}
 
 function Texture_mt:UpdateTexture(rect, pixels, pitch)
    local rv = sdl.SDL_UpdateTexture(self.t, rect,
-                                    ffi.cast("void**", pixels),
+                                    ffi.cast("const void*", pixels),
                                     pitch)
    if rv ~= 0 then
       ef("SDL_UpdateTexture() failed: %s", M.GetError())
