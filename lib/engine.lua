@@ -157,7 +157,11 @@ function OpenGLApp_mt:main()
          ef("GL error: %d", gl_error)
       end
       self.window:GL_SwapWindow()
-      exact_wait(now+1/self.fps)
+      if self.exact_frame_timing then
+         exact_wait(now+1/self.fps)
+      else
+         sched.wait(now+1/self.fps)
+      end
    end
 end
 
@@ -173,6 +177,7 @@ function M.OpenGLApp(opts)
    self.fps = opts.fps
    self.gl_profile = opts.gl_profile or 'core'
    self.gl_version = opts.gl_version or '3.3'
+   self.exact_frame_timing = opts.exact_frame_timing or false
    return setmetatable(self, OpenGLApp_mt)
 end
 
@@ -186,7 +191,11 @@ function DesktopApp_mt:main()
       local now = sched.now
       self:draw()
       self.renderer:RenderPresent()
-      exact_wait(now+1/self.fps)
+      if self.exact_frame_timing then
+         exact_wait(now+1/self.fps)
+      else
+         sched.wait(now+1/self.fps)
+      end
    end
 end
 
@@ -200,6 +209,7 @@ function M.DesktopApp(opts)
    opts.create_renderer = true
    local self = M.SDLApp(opts)
    self.fps = opts.fps
+   self.exact_frame_timing = opts.exact_frame_timing or false
    return setmetatable(self, DesktopApp_mt)
 end
 
