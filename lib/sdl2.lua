@@ -1762,7 +1762,15 @@ Renderer_mt.__gc = Renderer_mt.DestroyRenderer
 function Window_mt:CreateRenderer(index, flags)
    index = index or -1
    flags = flags or bit.bor(sdl.SDL_RENDERER_ACCELERATED,
-                            sdl.SDL_RENDERER_PRESENTVSYNC)
+                            -- if vsync is enabled AND the fps matches
+                            -- the display's refresh rate, then even a
+                            -- simple SDL_RenderClear() call can block
+                            -- the CPU until the next vsync.
+                            --
+                            -- disabled until I find a workaround
+                            --
+                            -- sdl.SDL_RENDERER_PRESENTVSYNC,
+                            sdl.SDL_RENDERER_TARGETTEXTURE)
    local r = sdl.SDL_CreateRenderer(self.w, index, flags)
    if r == nil then
       ef("Cannot create renderer: %s", M.GetError())
