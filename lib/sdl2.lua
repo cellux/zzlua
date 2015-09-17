@@ -1516,6 +1516,12 @@ int SDL_RenderCopyEx(SDL_Renderer * renderer,
                      const double angle,
                      const SDL_Point *center,
                      const SDL_RendererFlip flip);
+int SDL_RenderReadPixels(SDL_Renderer * renderer,
+                         const SDL_Rect * rect,
+                         Uint32 format,
+                         void *pixels, int pitch);
+int SDL_SetRenderTarget(SDL_Renderer *renderer, SDL_Texture *texture);
+SDL_Texture * SDL_GetRenderTarget(SDL_Renderer *renderer);
 void SDL_RenderPresent(SDL_Renderer * renderer);
 
 void SDL_DestroyRenderer(SDL_Renderer * renderer);
@@ -1756,6 +1762,30 @@ function Renderer_mt:RenderCopy(texture, srcrect, dstrect)
    util.check_ok("SDL_RenderCopy", 0,
                  sdl.SDL_RenderCopy(self.r, texture.t,
                                     srcrect, dstrect))
+end
+
+function Renderer_mt:RenderReadPixels(rect, format, pixels, pitch)
+   util.check_ok("SDL_RenderReadPixels", 0,
+                 sdl.SDL_RenderReadPixels(self.r, rect, format, pixels, pitch))
+end
+
+function Renderer_mt:SetRenderTarget(target)
+   if type(target)=="table" then
+      -- it's a texture object
+      target = target.t
+   elseif type(target)=="cdata" then
+      -- it's an SDL_Texture pointer
+   else
+      ef("invalid target: %s", target)
+   end
+   local rv = sdl.SDL_SetRenderTarget(self.r, target)
+   if rv ~= 0 then
+      ef("SDL_SetRenderTarget() failed: %s", M.GetError())
+   end
+end
+
+function Renderer_mt:GetRenderTarget()
+   return sdl.SDL_GetRenderTarget(self.r)
 end
 
 function Renderer_mt:RenderPresent()
