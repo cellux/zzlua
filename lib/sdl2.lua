@@ -1399,6 +1399,9 @@ SDL_DisplayMode * SDL_GetClosestDisplayMode(int displayIndex,
 SDL_Window * SDL_CreateWindow(const char *title,
                               int x, int y, int w, int h,
                               Uint32 flags);
+
+int SDL_GetWindowDisplayMode(SDL_Window * window, SDL_DisplayMode * mode);
+
 Uint32 SDL_GetWindowID(SDL_Window * window);
 void SDL_SetWindowIcon(SDL_Window * window, SDL_Surface * icon);
 
@@ -1756,6 +1759,12 @@ function Window_mt:CreateRenderer(index, flags)
    end
    local self = { r = r }
    return setmetatable(self, Renderer_mt)
+end
+
+function Window_mt:GetWindowDisplayMode()
+   local mode = DisplayMode()
+   sdl.SDL_GetWindowDisplayMode(self.w, mode)
+   return mode
 end
 
 function Window_mt:DestroyWindow()
