@@ -39,9 +39,12 @@ sched(function()
       end
    end)
    sched.on('sdl.quit', sched.quit)
+   local fps = w:GetWindowDisplayMode().refresh_rate
+   if fps == 0 then
+      fps = 60
+   end
    sched(function()
       -- game loop
-      local fps = 60
       while true do
          now = sched.now
          -- redraw the screen
