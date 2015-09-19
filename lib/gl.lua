@@ -224,6 +224,9 @@ enum {
 void glDrawArrays (GLenum mode, GLint first, GLsizei count);
 void glDrawElements (GLenum mode, GLsizei count, GLenum type, const void *indices);
 
+void glFlush (void);
+void glFinish (void);
+
 ]]
 
 local M = {}
@@ -452,8 +455,9 @@ function M.TexImage2D(target, level, internalFormat,
 end
 
 M.ActiveTexture = ffi.C.glActiveTexture
-
 M.Uniform1i = ffi.C.glUniform1i
+M.Flush = ffi.C.glFlush
+M.Finish = ffi.C.glFinish
 
 --
 
