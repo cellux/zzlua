@@ -207,6 +207,7 @@ enum {
 };
 
 void glClear (GLbitfield mask);
+void glClearColor (GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
 
 enum {
   GL_POINTS         = 0x0000,
