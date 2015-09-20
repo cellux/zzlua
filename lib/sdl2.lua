@@ -1677,24 +1677,29 @@ function Window_mt:GetWindowDisplayIndex()
    return sdl.SDL_GetWindowDisplayIndex(self.w)
 end
 
-function Window_mt:dpi()
+function Window_mt:GetWindowWMInfo()
    local info = ffi.new("SDL_SysWMinfo")
    sdl.SDL_GetVersion(info.version)
    local rv = sdl.SDL_GetWindowWMInfo(self.w, info)
    if rv == sdl.SDL_TRUE then
-      local dpy = info.info.x11.display
-      local width = xlib.XDisplayWidth(dpy, 0)
-      local height = xlib.XDisplayHeight(dpy, 0)
-      local width_mm = xlib.XDisplayWidthMM(dpy, 0)
-      local height_mm = xlib.XDisplayHeightMM(dpy, 0)
-      local width_inch = width_mm / 25.4 -- 1 inch = 2.54 cm = 25.4 mm
-      local height_inch = height_mm / 25.4
-      local xdpi = math.floor(width / width_inch + 0.5)
-      local ydpi = math.floor(height / height_inch + 0.5)
-      return xdpi, ydpi
+      return info
    else
       ef("SDL_GetWindowWMInfo() failed: %s", M.GetError())
    end
+end
+
+function Window_mt:dpi()
+   local info = self:GetWindowWMInfo()
+   local dpy = info.info.x11.display
+   local width = xlib.XDisplayWidth(dpy, 0)
+   local height = xlib.XDisplayHeight(dpy, 0)
+   local width_mm = xlib.XDisplayWidthMM(dpy, 0)
+   local height_mm = xlib.XDisplayHeightMM(dpy, 0)
+   local width_inch = width_mm / 25.4 -- 1 inch = 2.54 cm = 25.4 mm
+   local height_inch = height_mm / 25.4
+   local xdpi = math.floor(width / width_inch + 0.5)
+   local ydpi = math.floor(height / height_inch + 0.5)
+   return xdpi, ydpi
 end
 
 local Texture_mt = {}
