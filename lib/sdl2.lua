@@ -1400,6 +1400,7 @@ SDL_Window * SDL_CreateWindow(const char *title,
                               int x, int y, int w, int h,
                               Uint32 flags);
 
+int SDL_GetWindowDisplayIndex(SDL_Window * window);
 int SDL_GetWindowDisplayMode(SDL_Window * window, SDL_DisplayMode * mode);
 
 Uint32 SDL_GetWindowID(SDL_Window * window);
@@ -1670,6 +1671,10 @@ function Window_mt:GetWindowSize()
    local h = ffi.new("int[1]")
    sdl.SDL_GetWindowSize(self.w, w, h)
    return w[0], h[0]
+end
+
+function Window_mt:GetWindowDisplayIndex()
+   return sdl.SDL_GetWindowDisplayIndex(self.w)
 end
 
 function Window_mt:dpi()
