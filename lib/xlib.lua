@@ -4,6 +4,7 @@ ffi.cdef [[
 
 typedef unsigned long XID;
 typedef XID Window;
+typedef XID Pixmap;
 typedef struct _XDisplay Display;
 
 int XDisplayWidth(Display*, int);
