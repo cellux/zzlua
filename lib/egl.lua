@@ -342,6 +342,11 @@ function Display_mt:CreateContext(config, share_context, attrib_list)
    return setmetatable(self, Context_mt)
 end
 
+function Display_mt:SwapInterval(interval)
+   util.check_ok("eglSwapInterval", egl.EGL_TRUE,
+                 egl.eglSwapInterval(self.dpy, interval))
+end
+
 function Display_mt:Terminate()
    util.check_ok("eglTerminate", egl.EGL_TRUE,
                  egl.eglTerminate(self.dpy))
