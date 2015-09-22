@@ -1,24 +1,41 @@
 #!/bin/bash
 
-if [ -n "$1" ]; then
-  # user passed the names of the desired test cases on the command line
-  TESTS=""
-  for t in "$@"; do
-    TESTPATH=""
-    for f in "tests/$t.lua" "$t"; do
+TESTS=""
+
+add_test() {
+  local t="$1"
+  if [ -d "$t" ]; then
+    # if it's a directory, then all *.lua files below will be included
+    for f in $(find "$t" -type f -name '*.lua'); do
+      add_test $f
+    done
+  else
+    # otherwise, it should be the name of a test case under
+    # tests or app/tests or the full path to a *.lua file
+    local testpath=""
+    for f in "tests/$t.lua" "app/tests/$t.lua" "$t"; do
       if [ -e "$f" ]; then
-        TESTPATH="$f"
+        testpath="$f"
         break
       fi
     done
-    if [ -z "$TESTPATH" ]; then
+    if [ -z "$testpath" ]; then
       echo "Unidentified test: $t, skipping."
     else
       TESTS+=" $f"
     fi
+  fi
+}
+
+if [ -n "$1" ]; then
+  # user passed the test cases on the command line
+  for t in "$@"; do
+    add_test "$t"
   done
 else
-  TESTS="$(find tests -type f -name '*.lua' | sort)"
+  # run everything under tests and app/tests
+  add_test tests
+  add_test app/tests
 fi
 
 for f in $TESTS; do

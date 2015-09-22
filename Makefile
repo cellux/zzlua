@@ -95,16 +95,16 @@ CFLAGS := -Wall -iquote ./lib -iquote $(LUAJIT_SRC) -iquote $(NANOMSG_SRC) -iquo
 LDFLAGS := -Wl,-E -lm -ldl -lpthread -lanl -ljack -lGL
 
 # Lua libraries
-ZZ_LIB_LUA_SRC := $(wildcard lib/*.lua)
+ZZ_LIB_LUA_SRC := $(wildcard lib/*.lua) $(wildcard app/lib/*.lua)
 ZZ_LIB_LUA_OBJ := $(patsubst %.lua,%.lo,$(ZZ_LIB_LUA_SRC))
 
 # Lua libs are precompiled into object files
 # and then linked into the zzlua executable
-lib/%.lo: lib/%.lua $(LUAJIT_BIN)
+%.lo: %.lua $(LUAJIT_BIN)
 	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -bt o -g $< $@
 
 # low-level support for Lua libraries
-ZZ_LIB_C_SRC := $(wildcard lib/*.c)
+ZZ_LIB_C_SRC := $(wildcard lib/*.c) $(wildcard app/lib/*.c)
 ZZ_LIB_C_OBJ := $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
 
 # header dependencies
@@ -131,7 +131,7 @@ test: zzlua
 
 .PHONY: clean
 clean:
-	rm -f zzlua *.o lib/*.o lib/*.lo
+	rm -f zzlua *.o lib/*.o lib/*.lo app/lib/*.o app/lib/*.lo
 
 .PHONY: distclean
 distclean: clean
