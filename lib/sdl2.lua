@@ -4,8 +4,6 @@ local sched = require('sched')
 local file = require('file')
 local fs = require('fs')
 local util = require('util')
-local gl = require('gl')
-local glew = require('glew')
 local xlib = require('xlib')
 
 ffi.cdef [[
@@ -1865,6 +1863,7 @@ function M.CreateWindow(title, x, y, w, h, flags)
    end
    local self = { w = window }
    if bit.band(flags, sdl.SDL_WINDOW_OPENGL) ~= 0 then
+      local gl = require('gl')
       assert(gl.GetError() == gl.GL_NO_ERROR)
       self.ctx = sdl.SDL_GL_CreateContext(window)
       if self.ctx == nil then
@@ -1876,6 +1875,7 @@ function M.CreateWindow(title, x, y, w, h, flags)
          ef("SDL_GL_MakeCurrent() failed: %s", M.GetError())
       end
       assert(gl.GetError() == gl.GL_NO_ERROR)
+      local glew = require('glew')
       glew.init()
       local gl_error = gl.GetError()
       assert(gl_error == gl.GL_NO_ERROR, gl_error)
