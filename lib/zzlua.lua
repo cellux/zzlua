@@ -37,7 +37,12 @@ function _G.pf(fmt, ...)
 end
 
 function _G.ef(fmt, ...)
-   error(string.format(fmt, ...), 2)
+   local msg = string.format(fmt, ...)
+   if coroutine.running() then
+      -- append stack trace of the current thread
+      msg = sf("%s%s", msg, debug.traceback("", 2))
+   end
+   error(msg, 2)
 end
 
 --[[ main ]]--
