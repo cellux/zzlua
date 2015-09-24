@@ -92,7 +92,7 @@ $(GLEW_LIB): $(GLEW_DIR)/.stamp
 
 CC := gcc
 CFLAGS := -Wall -iquote ./lib -iquote $(LUAJIT_SRC) -iquote $(NANOMSG_SRC) -iquote $(CMP_DIR)
-LDFLAGS := -Wl,-E -lm -ldl -lpthread -lanl -ljack -lGL
+LDFLAGS := -Wl,-E -lm -ldl -lpthread -lanl -ljack
 
 # Lua libraries
 ZZ_LIB_LUA_SRC := $(wildcard lib/*.lua) $(wildcard app/lib/*.lua)
