@@ -1569,6 +1569,23 @@ local sdl = ffi.load("SDL2")
 
 local M = {}
 
+M.initflags = sdl.SDL_INIT_AUDIO +
+              sdl.SDL_INIT_VIDEO +
+              sdl.SDL_INIT_EVENTS +
+              sdl.SDL_INIT_NOPARACHUTE
+
+function M.Init()
+   if sdl.SDL_WasInit(0) == 0 then
+      util.check_ok("SDL_Init", 0, sdl.SDL_Init(M.initflags))
+   end
+end
+
+function M.Quit()
+   if sdl.SDL_WasInit(0) ~= 0 then
+      sdl.SDL_Quit()
+   end
+end
+
 function M.GetError()
    return ffi.string(sdl.SDL_GetError())
 end
@@ -1899,13 +1916,8 @@ function M.GL_GetAttribute(attr)
    return value[0]
 end
 
-M.initflags = sdl.SDL_INIT_AUDIO +
-              sdl.SDL_INIT_VIDEO +
-              sdl.SDL_INIT_EVENTS +
-              sdl.SDL_INIT_NOPARACHUTE
-
 local function SDL2Module(sched)
-   local self = {}
+   local self = { init = M.Init, done = M.Quit }
    local sdl_event_types = {
       [sdl.SDL_QUIT]                 = 'sdl.quit',
       [sdl.SDL_WINDOWEVENT]          = 'sdl.windowevent',
@@ -1919,9 +1931,6 @@ local function SDL2Module(sched)
       [sdl.SDL_DROPFILE]             = 'sdl.dropfile',
       [sdl.SDL_RENDER_TARGETS_RESET] = 'sdl.render_targets_reset',
    }
-   function self.init()
-      util.check_ok("SDL_Init", 0, sdl.SDL_Init(M.initflags))
-   end
    local tmp_event = ffi.new("SDL_Event")
    function self.tick()
       sdl.SDL_PumpEvents()
@@ -1932,9 +1941,6 @@ local function SDL2Module(sched)
             sched.emit(evtype, evdata)
          end
       end
-   end
-   function self.done()
-      sdl.SDL_Quit()
    end
    return self
 end
