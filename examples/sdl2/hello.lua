@@ -40,6 +40,7 @@ sched(function()
    end)
    sched.on('sdl.quit', sched.quit)
    local fps = w:GetWindowDisplayMode().refresh_rate
+   pf("Window refresh rate: %d", fps)
    if fps == 0 then
       fps = 60
    end
