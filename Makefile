@@ -101,7 +101,7 @@ ZZ_LIB_LUA_OBJ := $(patsubst %.lua,%.lo,$(ZZ_LIB_LUA_SRC))
 # Lua libs are precompiled into object files
 # and then linked into the zzlua executable
 %.lo: %.lua $(LUAJIT_BIN)
-	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -bt o -g $< $@
+	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -b -t o -n $(shell echo $< | sed -r -e 's#.*lib/(.+)\.lua#\1#' -e 's#/#.#g') -g $< $@
 
 # low-level support for Lua libraries
 ZZ_LIB_C_SRC := $(wildcard lib/*.c) $(wildcard app/lib/*.c)
