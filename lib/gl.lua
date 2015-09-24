@@ -243,7 +243,9 @@ void glFinish (void);
 
 local M = {}
 
-M.GetError = ffi.C.glGetError
+function M.GetError()
+   return ffi.C.glGetError()
+end
 
 function M.GetString(name)
    local rv = util.check_bad("glGetString", nil, ffi.C.glGetString(name))
@@ -428,8 +430,13 @@ function M.BufferData(target, size, data, usage)
    ffi.C.glBufferData(target, size, data, usage)
 end
 
-M.EnableVertexAttribArray = ffi.C.glEnableVertexAttribArray
-M.DisableVertexAttribArray = ffi.C.glDisableVertexAttribArray
+function M.EnableVertexAttribArray(index)
+   ffi.C.glEnableVertexAttribArray(index)
+end
+
+function M.DisableVertexAttribArray(index)
+   ffi.C.glDisableVertexAttribArray(index)
+end
 
 function M.VertexAttribPointer(index, size, type, normalized, stride, pointer)
    ffi.C.glVertexAttribPointer(index, size, type, normalized, stride, ffi.cast("GLvoid *", pointer))
@@ -461,7 +468,9 @@ function M.BindTexture(target, texture)
    ffi.C.glBindTexture(target, texture.id)
 end
 
-M.TexParameteri = ffi.C.glTexParameteri
+function M.TexParameteri(target, pname, param)
+   ffi.C.glTexParameteri(target, pname, param)
+end
 
 function M.TexImage2D(target, level, internalFormat,
                       width, height, border,
@@ -471,10 +480,21 @@ function M.TexImage2D(target, level, internalFormat,
                       format, type, ffi.cast("const void *", pixels))
 end
 
-M.ActiveTexture = ffi.C.glActiveTexture
-M.Uniform1i = ffi.C.glUniform1i
-M.Flush = ffi.C.glFlush
-M.Finish = ffi.C.glFinish
+function M.ActiveTexture(texture)
+   ffi.C.glActiveTexture(texture)
+end
+
+function M.Uniform1i(location, v0)
+   ffi.C.glUniform1i(location, v0)
+end
+
+function M.Flush()
+   ffi.C.glFlush()
+end
+
+function M.Finish()
+   ffi.C.glFinish()
+end
 
 --
 
@@ -482,8 +502,13 @@ function M.UseProgram(program)
    ffi.C.glUseProgram(program.id)
 end
 
-M.Clear = ffi.C.glClear
-M.DrawArrays = ffi.C.glDrawArrays
+function M.Clear(mask)
+   ffi.C.glClear(mask)
+end
+
+function M.DrawArrays(mode, first, count)
+   ffi.C.glDrawArrays(mode, first, count)
+end
 
 function M.DrawElements(mode, count, type, indices)
    ffi.C.glDrawElements(mode, count, type, ffi.cast("const GLvoid *", indices))
