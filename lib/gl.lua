@@ -55,6 +55,15 @@ enum {
   GL_RGBA8 = 0x8058
 };
 
+/* Utility */
+
+enum {
+  GL_VENDOR     = 0x1F00,
+  GL_RENDERER   = 0x1F01,
+  GL_VERSION    = 0x1F02,
+  GL_EXTENSIONS = 0x1F03
+};
+
 /* Errors */
 
 enum {
@@ -109,6 +118,8 @@ enum {
   GL_DYNAMIC_READ = 0x88E9,
   GL_DYNAMIC_COPY = 0x88EA
 };
+
+const GLubyte * glGetString (GLenum name);
 
 GLuint glCreateShader (GLenum type);
 void glShaderSource (GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
@@ -233,6 +244,11 @@ void glFinish (void);
 local M = {}
 
 M.GetError = ffi.C.glGetError
+
+function M.GetString(name)
+   local rv = util.check_bad("glGetString", nil, ffi.C.glGetString(name))
+   return ffi.string(rv)
+end
 
 local Shader_mt = {}
 
