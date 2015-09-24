@@ -15,7 +15,6 @@ local util = require('util')
 local app = engine.DesktopApp {
    title = "render-text",
    --fullscreen_desktop = true,
-   --fps = 60,
 }
 
 local function round(x)

@@ -122,7 +122,12 @@ end
 
 function SDLApp_mt:determine_fps()
    local mode = self.window:GetWindowDisplayMode()
-   return mode.refresh_rate > 0 and mode.refresh_rate or 60
+   if mode.refresh_rate == 0 then
+      pf("Warning: cannot determine screen refresh rate, using default (60)")
+      return 60
+   else
+      return mode.refresh_rate
+   end
 end
 
 SDLApp_mt.__index = SDLApp_mt
@@ -175,7 +180,7 @@ end
 local OpenGLApp_mt = setmetatable({}, SDLApp_mt)
 
 function OpenGLApp_mt:main()
-   self.fps = self.fps or self:determine_fps()
+   self.fps = self:determine_fps()
    while true do
       local now = sched.now
       self:draw()
@@ -201,7 +206,6 @@ function M.OpenGLApp(opts)
    opts = opts or {}
    opts.opengl = true
    local self = M.SDLApp(opts)
-   self.fps = opts.fps
    self.gl_profile = opts.gl_profile or 'core'
    self.gl_version = opts.gl_version or '2.1'
    self.exact_frame_timing = opts.exact_frame_timing or false
@@ -213,7 +217,7 @@ end
 local DesktopApp_mt = setmetatable({}, SDLApp_mt)
 
 function DesktopApp_mt:main()
-   self.fps = self.fps or self:determine_fps()
+   self.fps = self:determine_fps()
    while true do
       local now = sched.now
       self:draw()
@@ -241,7 +245,6 @@ function M.DesktopApp(opts)
    end
    opts.create_renderer = true
    local self = M.SDLApp(opts)
-   self.fps = opts.fps
    self.exact_frame_timing = opts.exact_frame_timing or false
    return setmetatable(self, DesktopApp_mt)
 end
