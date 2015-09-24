@@ -14,6 +14,45 @@ local function exact_wait(target)
    end
 end
 
+local function get_gl_profile_mask(gl_profile)
+   local gl_profile_masks = {
+      core = sdl.SDL_GL_CONTEXT_PROFILE_CORE,
+      compatibility = sdl.SDL_GL_CONTEXT_PROFILE_COMPATIBILITY,
+      es = sdl.SDL_GL_CONTEXT_PROFILE_ES
+   }
+   local gl_profile_mask = gl_profile_masks[gl_profile]
+   if not gl_profile_mask then
+      ef("Invalid GL profile: %s", gl_profile)
+   end
+   return gl_profile_mask
+end
+
+local function parse_gl_version(gl_version)
+   local major, minor = string.match(gl_version, "^(%d+)%.(%d+)$")
+   if not major then
+      ef("Invalid GL version string: %s", gl_version)
+   end
+   return tonumber(major), tonumber(minor)
+end
+
+local function is_gl_version_supported(profile, version)
+   sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, get_gl_profile_mask(profile))
+   local major, minor = parse_gl_version(version)
+   sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, major)
+   sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, minor)
+   local function try_create_context()
+      local w = sdl.CreateWindow('opengl version test',0,0,16,16,
+                                 bit.bor(sdl.SDL_WINDOW_OPENGL,
+                                         sdl.SDL_WINDOW_HIDDEN))
+      -- if SDL_WINDOW_OPENGL is set in flags, sdl.CreateWindow() will
+      -- also try to create a context for us. that will only succeed
+      -- if the desired profile and version are supported
+      w:DestroyWindow()
+   end
+   local is_supported = pcall(try_create_context)
+   return is_supported
+end
+
 -- SDLApp
 
 local SDLApp_mt = {}
@@ -27,25 +66,13 @@ end
 function SDLApp_mt:run()
    sched(function()
       if self.gl_profile then
-         local gl_profile_masks = {
-            core = sdl.SDL_GL_CONTEXT_PROFILE_CORE,
-            compatibility = sdl.SDL_GL_CONTEXT_PROFILE_COMPATIBILITY,
-            es = sdl.SDL_GL_CONTEXT_PROFILE_ES
-         }
-         local gl_profile_mask = gl_profile_masks[self.gl_profile]
-         if not gl_profile_mask then
-            ef("Invalid value for gl_profile: %s", self.gl_profile)
-         end
-         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, gl_profile_mask)
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, get_gl_profile_mask(self.gl_profile))
       end
 
       if self.gl_version then
-         local major, minor = string.match(self.gl_version, "^(%d+)%.(%d+)$")
-         if not major then
-            ef("Invalid value for gl_version: %s", self.gl_version)
-         end
-         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, tonumber(major))
-         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, tonumber(minor))
+         local major, minor = parse_gl_version(self.gl_version)
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, major)
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, minor)
       end
 
       -- create window
@@ -206,6 +233,12 @@ DesktopApp_mt.__index = DesktopApp_mt
 
 function M.DesktopApp(opts)
    opts = opts or {}
+   -- use OpenGL ES 2.0 if it's available
+   sdl.Init()
+   if is_gl_version_supported('es', '2.0') then
+      opts.gl_profile = 'es'
+      opts.gl_version = '2.0'
+   end
    opts.create_renderer = true
    local self = M.SDLApp(opts)
    self.fps = opts.fps
