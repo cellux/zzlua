@@ -2,7 +2,10 @@ local engine = require('engine')
 local gl = require('gl')
 local ffi = require('ffi')
 
-local app = engine.OpenGLApp { title = "shader-vbo1" }
+local app = engine.OpenGLApp {
+   title = "shader-vbo1",
+   gl_version = '3.3',
+}
 
 function app:init()
    local FS = ffi.sizeof("GLfloat")
