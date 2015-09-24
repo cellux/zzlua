@@ -176,7 +176,7 @@ function M.OpenGLApp(opts)
    local self = M.SDLApp(opts)
    self.fps = opts.fps
    self.gl_profile = opts.gl_profile or 'core'
-   self.gl_version = opts.gl_version or '3.3'
+   self.gl_version = opts.gl_version or '2.1'
    self.exact_frame_timing = opts.exact_frame_timing or false
    return setmetatable(self, OpenGLApp_mt)
 end
