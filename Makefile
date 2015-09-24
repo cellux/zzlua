@@ -111,7 +111,7 @@ ZZ_LIB_C_OBJ := $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
 lib/buffer.o: lib/buffer.h
 lib/msgpack.o: lib/msgpack.h
 
-zzlua.o: $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ) $(GLEW_LIB)
+zzlua.o: $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
 
 # zzlua + libs + support
 ZZ_OBJ := zzlua.o $(ZZ_LIB_LUA_OBJ) $(ZZ_LIB_C_OBJ)
@@ -120,7 +120,7 @@ ZZ_OBJ := zzlua.o $(ZZ_LIB_LUA_OBJ) $(ZZ_LIB_C_OBJ)
 ZZ_LIB := $(LUAJIT_LIB) $(CMP_OBJ)
 
 # static libraries and object files to be linked in as a whole
-ZZ_LIB_WHOLE := $(NANOMSG_LIB) $(GLEW_LIB)
+ZZ_LIB_WHOLE := $(NANOMSG_LIB)
 
 zzlua: $(ZZ_OBJ) $(ZZ_LIB) $(ZZ_LIB_WHOLE)
 	$(CC) $(CFLAGS) $(ZZ_OBJ) $(ZZ_LIB) -Wl,--whole-archive $(ZZ_LIB_WHOLE) -Wl,--no-whole-archive $(LDFLAGS) -o $@

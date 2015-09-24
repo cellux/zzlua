@@ -1875,8 +1875,8 @@ function M.CreateWindow(title, x, y, w, h, flags)
          ef("SDL_GL_MakeCurrent() failed: %s", M.GetError())
       end
       assert(gl.GetError() == gl.GL_NO_ERROR)
-      local glew = require('glew')
-      glew.init()
+      --local glew = require('glew')
+      --glew.init()
       local gl_error = gl.GetError()
       assert(gl_error == gl.GL_NO_ERROR, gl_error)
    end
