@@ -265,7 +265,7 @@ function Shader_mt:CompileShader()
    ffi.C.glCompileShader(self.id)
    local status = ffi.new("GLint[1]")
    ffi.C.glGetShaderiv(self.id, ffi.C.GL_COMPILE_STATUS, status)
-   if status == ffi.C.GL_FALSE then
+   if status[0] == ffi.C.GL_FALSE then
       ef("glCompileShader() failed: %s", self:GetShaderInfoLog())
    end
 end
@@ -330,7 +330,7 @@ function Program_mt:LinkProgram()
    ffi.C.glLinkProgram(self.id)
    local status = ffi.new("GLint[1]")
    ffi.C.glGetProgramiv(self.id, ffi.C.GL_LINK_STATUS, status)
-   if status == ffi.C.GL_FALSE then
+   if status[0] == ffi.C.GL_FALSE then
       ef("glLinkProgram() failed: %s", self:GetProgramInfoLog())
    end
 end
