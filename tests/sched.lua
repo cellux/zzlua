@@ -150,8 +150,9 @@ sched()
 assert.type(time_after_wait, 'number')
 local elapsed = time_after_wait-time_before_wait
 local diff = math.abs(wait_amount - elapsed) -- error
--- we expect millisecond precision
-assert(diff < 1e-3, "diff > 1e-3: "..tostring(diff))
+-- sched provides us with the precision of its timer
+assert(diff <= sched.precision,
+       sf("diff > sched timer precision (%s)", sched.precision))
 
 -- a thread sleeping in sched.wait() keeps the event loop alive
 local pid = sys.fork()

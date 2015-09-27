@@ -44,6 +44,10 @@ local scheduler_singleton
 local OFF = {}
 M.OFF = OFF
 
+-- after sched.wait(t), math.abs(time.time()-t) is expected to be
+-- less than sched.precision
+M.precision = 0.001 -- seconds
+
 local function Scheduler()
    local self = {}
 
@@ -346,7 +350,8 @@ local function Scheduler()
          poller:close()
          nn.close(event_sub)
          scheduler_singleton = nil
-         -- after this function returns, self will be garbage-collected
+         -- after this function returns, self (the current scheduler
+         -- instance) will be garbage-collected
       end
    end
 

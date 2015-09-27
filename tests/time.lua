@@ -8,8 +8,9 @@ local function test_sleep()
    local t2 = time.time()
    local elapsed = t2 - t1
    local diff = math.abs(elapsed - sleep_time)
-   local max_diff = 1e-3 -- we expect millisecond precision
-   assert(diff < max_diff, string.format("there are problems with timer precision: diff (%f) >= max allowed diff (%f)", diff, max_diff))
+   -- sched provides us with the precision of its timer
+   local max_diff = sched.precision
+   assert(diff <= max_diff, sf("there are problems with timer precision: diff (%f) > max allowed diff (%f)", diff, max_diff))
 end
 
 -- sync 
