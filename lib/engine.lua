@@ -167,11 +167,11 @@ local sdl_window_flags = {
 
 function M.SDLApp(opts)
    opts = opts or {}
-   if opts.gl_profile or opts.gl_version or opts.create_renderer then
+   if opts.gl_profile or opts.gl_version then
       opts.opengl = true
    end
-   if opts.opengl and opts.create_context == nil then
-      opts.create_context = true
+   if opts.create_context == nil then
+      opts.create_context = opts.opengl and true or false
    end
    if opts.create_renderer == nil then
       opts.create_renderer = false
@@ -259,14 +259,10 @@ DesktopApp_mt.__index = DesktopApp_mt
 
 function M.DesktopApp(opts)
    opts = opts or {}
-   -- use OpenGL ES 2.0 if it's available
-   sdl.Init()
-   if is_gl_version_supported('es', '2.0') then
-      opts.gl_profile = 'es'
-      opts.gl_version = '2.0'
-   end
    opts.create_renderer = true
-   opts.create_context = false -- the renderer implicitly creates one
+   -- let the renderer figure out the best way to accelerate rendering
+   opts.opengl = false
+   opts.create_context = false
    local self = M.SDLApp(opts)
    self.exact_frame_timing = opts.exact_frame_timing or false
    return setmetatable(self, DesktopApp_mt)
