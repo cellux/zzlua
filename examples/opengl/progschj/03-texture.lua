@@ -74,7 +74,7 @@ function app:init()
 
    local texture = rm:Texture()
    gl.BindTexture(gl.GL_TEXTURE_2D, texture)
-   local width, height = self.w, self.h
+   local width, height = self.width, self.height
    local image = ffi.new("GLubyte[?]", 4*width*height)
    for y=0,height-1 do
       for x=0,width-1 do
@@ -89,7 +89,7 @@ function app:init()
    gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR);
    gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE);
    gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE);
-   gl.TexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA8, self.w, self.h, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image)
+   gl.TexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA8, self.width, self.height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image)
 
    function app:draw()
       gl.Clear(gl.GL_COLOR_BUFFER_BIT)

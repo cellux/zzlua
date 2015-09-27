@@ -9,6 +9,7 @@ local function getinfo()
                                       sdl.SDL_WINDOW_HIDDEN))
    -- glGetString() returns valid information only after a valid
    -- OpenGL context has been created, hence the hidden SDL window
+   local ctx = w:GL_CreateContext()
    local function p(name)
       pf("%s: %s", name, gl.GetString(gl[name]))
    end
@@ -16,6 +17,7 @@ local function getinfo()
    p("GL_RENDERER")
    p("GL_VERSION")
    p("GL_EXTENSIONS")
+   ctx:GL_DeleteContext()
    w:DestroyWindow()
 end
 

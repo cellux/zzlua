@@ -7,8 +7,7 @@ local time = require('time')
 local M = {}
 
 local function exact_wait(target)
-   -- we wait 2 ms less than required
-   sched.wait(target-0.002)
+   sched.wait(target-sched.precision)
    while time.time() < target do
       -- busy wait to fix timing irregularities
    end
@@ -44,24 +43,29 @@ local function is_gl_version_supported(profile, version)
       local w = sdl.CreateWindow('opengl version test',0,0,16,16,
                                  bit.bor(sdl.SDL_WINDOW_OPENGL,
                                          sdl.SDL_WINDOW_HIDDEN))
-      -- if SDL_WINDOW_OPENGL is set in flags, sdl.CreateWindow() will
-      -- also try to create a context for us. that will only succeed
-      -- if the desired profile and version are supported
+      local ctx = w:GL_CreateContext()
+      ctx:GL_DeleteContext()
       w:DestroyWindow()
    end
    local is_supported = pcall(try_create_context)
    return is_supported
 end
 
+-- AppBase
+
+local AppBase_mt = {}
+
+function AppBase_mt:init() end
+function AppBase_mt:main() end
+function AppBase_mt:done() end
+
+function AppBase_mt:run() end
+
+AppBase_mt.__index = AppBase_mt
+
 -- SDLApp
 
-local SDLApp_mt = {}
-
-function SDLApp_mt:init()
-end
-
-function SDLApp_mt:main()
-end
+local SDLApp_mt = setmetatable({}, AppBase_mt)
 
 function SDLApp_mt:run()
    sched(function()
@@ -75,15 +79,26 @@ function SDLApp_mt:run()
          sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, minor)
       end
 
+      -- always start hidden, show when everything is ready
+      local flags = bit.bor(self.flags, sdl.SDL_WINDOW_HIDDEN)
+
       -- create window
       local w = sdl.CreateWindow(self.title,
                                  self.x, self.y, 
-                                 self.w, self.h,
-                                 self.flags)
+                                 self.width, self.height,
+                                 flags)
       self.window = w
 
       if self.create_renderer then
          self.renderer = w:CreateRenderer()
+      end
+
+      if self.create_context then
+         assert(gl.GetError() == gl.GL_NO_ERROR)
+         self.ctx = w:GL_CreateContext()
+         assert(gl.GetError() == gl.GL_NO_ERROR)
+         self.ctx:GL_MakeCurrent()
+         assert(gl.GetError() == gl.GL_NO_ERROR)
       end
 
       -- user-provided app initialization
@@ -93,7 +108,7 @@ function SDLApp_mt:run()
       w:ShowWindow()
 
       -- update width/height
-      self.w, self.h = w:GetWindowSize()
+      self.width, self.height = w:GetWindowSize()
 
       -- register quit handlers
       sched.on('sdl.keydown', function(evdata)
@@ -108,6 +123,10 @@ function SDLApp_mt:run()
 
       -- cleanup
       self:done()
+      if self.ctx then
+         self.ctx:GL_DeleteContext()
+         self.ctx = nil
+      end
       if self.renderer then
          self.renderer:DestroyRenderer()
          self.renderer = nil
@@ -115,9 +134,6 @@ function SDLApp_mt:run()
       w:DestroyWindow()
    end)
    sched()
-end
-
-function SDLApp_mt:done()
 end
 
 function SDLApp_mt:determine_fps()
@@ -151,19 +167,25 @@ local sdl_window_flags = {
 
 function M.SDLApp(opts)
    opts = opts or {}
-   opts.hidden = true -- always start hidden, show when everything is ready
    if opts.gl_profile or opts.gl_version or opts.create_renderer then
       opts.opengl = true
+   end
+   if opts.opengl and opts.create_context == nil then
+      opts.create_context = true
+   end
+   if opts.create_renderer == nil then
+      opts.create_renderer = false
    end
    local self = {
       x = opts.x or -1, -- -1 means centered
       y = opts.y or -1,
-      w = opts.w or 640,
-      h = opts.h or 480,
+      width = opts.width or 640,
+      height = opts.height or 480,
       title = opts.title or "SDLApp",
       gl_profile = opts.gl_profile,
       gl_version = opts.gl_version,
-      create_renderer = opts.create_renderer or false,
+      create_context = opts.create_context,
+      create_renderer = opts.create_renderer,
    }
    local flags = 0
    for k,v in pairs(sdl_window_flags) do
@@ -205,9 +227,9 @@ OpenGLApp_mt.__index = OpenGLApp_mt
 function M.OpenGLApp(opts)
    opts = opts or {}
    opts.opengl = true
+   opts.gl_profile = opts.gl_profile or 'core'
+   opts.gl_version = opts.gl_version or '2.1'
    local self = M.SDLApp(opts)
-   self.gl_profile = opts.gl_profile or 'core'
-   self.gl_version = opts.gl_version or '2.1'
    self.exact_frame_timing = opts.exact_frame_timing or false
    return setmetatable(self, OpenGLApp_mt)
 end
@@ -244,6 +266,7 @@ function M.DesktopApp(opts)
       opts.gl_version = '2.0'
    end
    opts.create_renderer = true
+   opts.create_context = false -- the renderer implicitly creates one
    local self = M.SDLApp(opts)
    self.exact_frame_timing = opts.exact_frame_timing or false
    return setmetatable(self, DesktopApp_mt)

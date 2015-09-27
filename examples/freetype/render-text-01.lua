@@ -102,7 +102,7 @@ function app:init()
       for i=1,#cp do
          local advance = draw_char(face, cp[i], ox, oy)
          ox = ox + advance
-         if ox >= self.w then
+         if ox >= self.width then
             break
          end
       end
@@ -119,7 +119,7 @@ function app:init()
       for line in lines(script_contents) do
          local advance = draw_string(face, line, 0, top)
          top = top + advance
-         if top >= self.h then
+         if top >= self.height then
             break
          end
       end

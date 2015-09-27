@@ -273,7 +273,7 @@ function app:init()
       for i=1,#cp do
          local advance = draw_char(font, cp[i], ox, oy)
          ox = ox + advance
-         if ox >= self.w then
+         if ox >= self.width then
             break
          end
       end
@@ -299,12 +299,12 @@ function app:init()
             draw_string(font, line, 0, top)
          end
          top = top + font.height
-         if top >= self.h then
+         if top >= self.height then
             break
          end
       end
       local atlas_size = font:atlas_size()
-      font:draw(sdl.Rect(self.w-atlas_size,0,atlas_size,atlas_size))
+      font:draw(sdl.Rect(self.width-atlas_size,0,atlas_size,atlas_size))
       local t2 = time.time()
       local elapsed = t2 - t1
       avg_time:feed(elapsed)

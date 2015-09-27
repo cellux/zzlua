@@ -164,7 +164,7 @@ function app:init()
       for i=1,#cp do
          local advance = draw_char(font, cp[i], ox, oy)
          ox = ox + advance
-         if ox >= self.w then
+         if ox >= self.width then
             break
          end
       end
@@ -190,7 +190,7 @@ function app:init()
             draw_string(font, line, 0, top)
          end
          top = top + font.height
-         if top >= self.h then
+         if top >= self.height then
             break
          end
       end

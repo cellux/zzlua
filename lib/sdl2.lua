@@ -1603,27 +1603,27 @@ function M.GetCPUCount()
 end
 
 function M.GetVersion()
-   local v = ffi.new("SDL_version")
-   sdl.SDL_GetVersion(v)
-   return v.major, v.minor, v.patch
+   local version = ffi.new("SDL_version")
+   sdl.SDL_GetVersion(version)
+   return version.major, version.minor, version.patch
 end
 
 function M.GetNumVideoDisplays()
    return sdl.SDL_GetNumVideoDisplays()
 end
 
-function M.GetDisplayName(d)
-   return ffi.string(sdl.SDL_GetDisplayName(d-1))
+function M.GetDisplayName(display_num)
+   return ffi.string(sdl.SDL_GetDisplayName(display_num-1))
 end
 
-function M.GetDisplayBounds(d)
+function M.GetDisplayBounds(display_num)
    local rect = ffi.new("SDL_Rect")
-   sdl.SDL_GetDisplayBounds(d-1, rect)
+   sdl.SDL_GetDisplayBounds(display_num-1, rect)
    return rect
 end
 
-function M.GetNumDisplayModes(d)
-   return sdl.SDL_GetNumDisplayModes(d-1)
+function M.GetNumDisplayModes(display_num)
+   return sdl.SDL_GetNumDisplayModes(display_num-1)
 end
 
 local DisplayMode_mt = {}
@@ -1637,21 +1637,21 @@ end
 
 local DisplayMode = ffi.metatype("SDL_DisplayMode", DisplayMode_mt)
 
-function M.GetDisplayMode(d, m)
+function M.GetDisplayMode(display_num, mode_num)
    local mode = DisplayMode()
-   sdl.SDL_GetDisplayMode(d-1, m-1, mode)
+   sdl.SDL_GetDisplayMode(display_num-1, mode_num-1, mode)
    return mode
 end
 
-function M.GetDesktopDisplayMode(d)
+function M.GetDesktopDisplayMode(display_num)
    local mode = DisplayMode()
-   sdl.SDL_GetDesktopDisplayMode(d-1, mode)
+   sdl.SDL_GetDesktopDisplayMode(display_num-1, mode)
    return mode
 end
 
-function M.GetCurrentDisplayMode(d)
+function M.GetCurrentDisplayMode(display_num)
    local mode = DisplayMode()
-   sdl.SDL_GetCurrentDisplayMode(d-1, mode)
+   sdl.SDL_GetCurrentDisplayMode(display_num-1, mode)
    return mode
 end
 
@@ -1670,32 +1670,32 @@ M.Rect = ffi.typeof("SDL_Rect")
 local Window_mt = {}
 
 function Window_mt:ShowWindow()
-   sdl.SDL_ShowWindow(self.w)
+   sdl.SDL_ShowWindow(self.window)
 end
 
 function Window_mt:HideWindow()
-   sdl.SDL_HideWindow(self.w)
+   sdl.SDL_HideWindow(self.window)
 end
 
 function Window_mt:GL_SwapWindow()
-   sdl.SDL_GL_SwapWindow(self.w)
+   sdl.SDL_GL_SwapWindow(self.window)
 end
 
 function Window_mt:GetWindowSize()
-   local w = ffi.new("int[1]")
-   local h = ffi.new("int[1]")
-   sdl.SDL_GetWindowSize(self.w, w, h)
-   return w[0], h[0]
+   local width = ffi.new("int[1]")
+   local height = ffi.new("int[1]")
+   sdl.SDL_GetWindowSize(self.window, width, height)
+   return width[0], height[0]
 end
 
 function Window_mt:GetWindowDisplayIndex()
-   return sdl.SDL_GetWindowDisplayIndex(self.w)
+   return sdl.SDL_GetWindowDisplayIndex(self.window)
 end
 
 function Window_mt:GetWindowWMInfo()
    local info = ffi.new("SDL_SysWMinfo")
    sdl.SDL_GetVersion(info.version)
-   local rv = sdl.SDL_GetWindowWMInfo(self.w, info)
+   local rv = sdl.SDL_GetWindowWMInfo(self.window, info)
    if rv == sdl.SDL_TRUE then
       return info
    else
@@ -1720,7 +1720,7 @@ end
 local Texture_mt = {}
 
 function Texture_mt:LockTexture(rect, pixels, pitch)
-   local rv = sdl.SDL_LockTexture(self.t, rect,
+   local rv = sdl.SDL_LockTexture(self.texture, rect,
                                   ffi.cast("void**", pixels),
                                   pitch)
    if rv ~= 0 then
@@ -1729,7 +1729,7 @@ function Texture_mt:LockTexture(rect, pixels, pitch)
 end
 
 function Texture_mt:UpdateTexture(rect, pixels, pitch)
-   local rv = sdl.SDL_UpdateTexture(self.t, rect,
+   local rv = sdl.SDL_UpdateTexture(self.texture, rect,
                                     ffi.cast("const void*", pixels),
                                     pitch)
    if rv ~= 0 then
@@ -1738,18 +1738,18 @@ function Texture_mt:UpdateTexture(rect, pixels, pitch)
 end
 
 function Texture_mt.UnlockTexture()
-   sdl.SDL_UnlockTexture(self.t)
+   sdl.SDL_UnlockTexture(self.texture)
 end
 
 function Texture_mt:SetTextureBlendMode(mode)
    util.check_ok("SDL_SetTextureBlendMode", 0,
-                 sdl.SDL_SetTextureBlendMode(self.t,mode))
+                 sdl.SDL_SetTextureBlendMode(self.texture, mode))
 end
 
 function Texture_mt:DestroyTexture()
-   if self.t then
-      sdl.SDL_DestroyTexture(self.t)
-      self.t = nil
+   if self.texture then
+      sdl.SDL_DestroyTexture(self.texture)
+      self.texture = nil
    end
 end
 
@@ -1761,66 +1761,70 @@ local Renderer_mt = {}
 function Renderer_mt:GetRendererInfo()
    local info = ffi.new("SDL_RendererInfo")
    util.check_ok("SDL_GetRendererInfo", 0,
-                 sdl.SDL_GetRendererInfo(self.r, info))
+                 sdl.SDL_GetRendererInfo(self.renderer, info))
    return info
 end
 
-function Renderer_mt:CreateTexture(format, access, w, h)
-   local t = sdl.SDL_CreateTexture(self.r, format, access, w, h)
-   if t == nil then
+function Renderer_mt:CreateTexture(format, access, width, height)
+   local texture = sdl.SDL_CreateTexture(self.renderer,
+                                         format, access,
+                                         width, height)
+   if texture == nil then
       ef("Cannot create texture: %s", M.GetError())
    end
-   local self = { t = t }
+   local self = { texture = texture }
    return setmetatable(self, Texture_mt)
 end
 
 function Renderer_mt:SetRenderDrawColor(r,g,b,a)
    util.check_ok("SDL_SetRenderDrawColor", 0,
-                 sdl.SDL_SetRenderDrawColor(self.r,r,g,b,a))
+                 sdl.SDL_SetRenderDrawColor(self.renderer,r,g,b,a))
 end
 
 function Renderer_mt:RenderClear()
-   util.check_ok("SDL_RenderClear", 0, sdl.SDL_RenderClear(self.r))
+   util.check_ok("SDL_RenderClear", 0,
+                 sdl.SDL_RenderClear(self.renderer))
 end
 
 function Renderer_mt:RenderCopy(texture, srcrect, dstrect)
    util.check_ok("SDL_RenderCopy", 0,
-                 sdl.SDL_RenderCopy(self.r, texture.t,
+                 sdl.SDL_RenderCopy(self.renderer, texture.texture,
                                     srcrect, dstrect))
 end
 
 function Renderer_mt:RenderReadPixels(rect, format, pixels, pitch)
    util.check_ok("SDL_RenderReadPixels", 0,
-                 sdl.SDL_RenderReadPixels(self.r, rect, format, pixels, pitch))
+                 sdl.SDL_RenderReadPixels(self.renderer,
+                                          rect, format, pixels, pitch))
 end
 
 function Renderer_mt:SetRenderTarget(target)
    if type(target)=="table" then
       -- it's a texture object
-      target = target.t
+      target = target.texture
    elseif type(target)=="cdata" then
       -- it's an SDL_Texture pointer
    else
       ef("invalid target: %s", target)
    end
-   local rv = sdl.SDL_SetRenderTarget(self.r, target)
+   local rv = sdl.SDL_SetRenderTarget(self.renderer, target)
    if rv ~= 0 then
       ef("SDL_SetRenderTarget() failed: %s", M.GetError())
    end
 end
 
 function Renderer_mt:GetRenderTarget()
-   return sdl.SDL_GetRenderTarget(self.r)
+   return sdl.SDL_GetRenderTarget(self.renderer)
 end
 
 function Renderer_mt:RenderPresent()
-   sdl.SDL_RenderPresent(self.r)
+   sdl.SDL_RenderPresent(self.renderer)
 end
 
 function Renderer_mt:DestroyRenderer()
-   if self.r then
-      sdl.SDL_DestroyRenderer(self.r)
-      self.r = nil
+   if self.renderer then
+      sdl.SDL_DestroyRenderer(self.renderer)
+      self.renderer = nil
    end
 end
 
@@ -1832,32 +1836,55 @@ function Window_mt:CreateRenderer(index, flags)
    flags = flags or bit.bor(sdl.SDL_RENDERER_ACCELERATED,
                             sdl.SDL_RENDERER_PRESENTVSYNC,
                             sdl.SDL_RENDERER_TARGETTEXTURE)
-   local r = sdl.SDL_CreateRenderer(self.w, index, flags)
-   if r == nil then
+   local renderer = sdl.SDL_CreateRenderer(self.window, index, flags)
+   if renderer == nil then
       ef("Cannot create renderer: %s", M.GetError())
    end
-   local self = { r = r }
+   local self = { renderer = renderer }
    return setmetatable(self, Renderer_mt)
 end
 
 function Window_mt:GetWindowDisplayMode()
    local mode = DisplayMode()
-   sdl.SDL_GetWindowDisplayMode(self.w, mode)
+   sdl.SDL_GetWindowDisplayMode(self.window, mode)
    return mode
 end
 
-function Window_mt:DestroyWindow()
+local Context_mt = {}
+
+function Context_mt:GL_MakeCurrent()
+   util.check_ok("SDL_GL_MakeCurrent", 0,
+                 sdl.SDL_GL_MakeCurrent(self.window, self.ctx))
+end
+
+function Context_mt:GL_DeleteContext()
    if self.ctx then
       sdl.SDL_GL_DeleteContext(self.ctx)
       self.ctx = nil
    end
-   if self.w then
-      sdl.SDL_DestroyWindow(self.w)
-      self.w = nil
+end
+
+Context_mt.__index = Context_mt
+Context_mt.__gc = Context_mt.GL_DeleteContext
+
+function Window_mt:GL_CreateContext()
+   local ctx = sdl.SDL_GL_CreateContext(self.window)
+   if ctx == nil then
+      ef("SDL_GL_CreateContext() failed: %s", M.GetError())
+   end
+   local self = { window = self.window, ctx = ctx}
+   return setmetatable(self, Context_mt)
+end
+
+function Window_mt:DestroyWindow()
+   if self.window then
+      sdl.SDL_DestroyWindow(self.window)
+      self.window = nil
    end
 end
 
 Window_mt.__index = Window_mt
+Window_mt.__gc = Window_mt.DestroyWindow
 
 function M.CreateWindow(title, x, y, w, h, flags)
    x = x or sdl.SDL_WINDOWPOS_UNDEFINED
@@ -1866,37 +1893,21 @@ function M.CreateWindow(title, x, y, w, h, flags)
    if y == -1 then y = sdl.SDL_WINDOWPOS_CENTERED end
    w = w or 640
    h = h or 480
-   flags = flags or bit.bor(sdl.SDL_WINDOW_RESIZABLE, sdl.SDL_WINDOW_OPENGL)
+   flags = flags or bit.bor(sdl.SDL_WINDOW_RESIZABLE,
+                            sdl.SDL_WINDOW_OPENGL)
    local window = sdl.SDL_CreateWindow(title, x, y, w, h, flags)
    if window == nil then
       ef("SDL_CreateWindow() failed: %s", M.GetError())
    end
-   local self = { w = window }
-   if bit.band(flags, sdl.SDL_WINDOW_OPENGL) ~= 0 then
-      local gl = require('gl')
-      assert(gl.GetError() == gl.GL_NO_ERROR)
-      self.ctx = sdl.SDL_GL_CreateContext(window)
-      if self.ctx == nil then
-         ef("SDL_GL_CreateContext() failed: %s", M.GetError())
-      end
-      assert(gl.GetError() == gl.GL_NO_ERROR)
-      local rv = sdl.SDL_GL_MakeCurrent(window, self.ctx)
-      if rv ~= 0 then
-         ef("SDL_GL_MakeCurrent() failed: %s", M.GetError())
-      end
-      assert(gl.GetError() == gl.GL_NO_ERROR)
-      --local glew = require('glew')
-      --glew.init()
-      local gl_error = gl.GetError()
-      assert(gl_error == gl.GL_NO_ERROR, gl_error)
-   end
+   local self = { window = window }
    return setmetatable(self, Window_mt)
 end
 
 function M.GL_SetAttribute(attr, value)
    local rv = sdl.SDL_GL_SetAttribute(attr, value)
    if rv ~= 0 then
-      ef("SDL_GL_SetAttribute(%d, %d) failed: %s", attr, value, M.GetError())
+      ef("SDL_GL_SetAttribute(%d, %d) failed: %s",
+         attr, value, M.GetError())
    end
 end
 
