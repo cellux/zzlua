@@ -202,8 +202,8 @@ local function Scheduler()
             if timeout_ms < 1 then
                timeout_ms = 1
             end
-            -- round up to a whole number
-            timeout_ms = math.ceil(timeout_ms)
+            -- round to a whole number
+            timeout_ms = math.floor(timeout_ms+0.5)
             poller:wait(timeout_ms, handle_poll_event)
          else
             -- there are runnable threads waiting for execution
