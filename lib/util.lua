@@ -50,4 +50,22 @@ function M.Accumulator()
    return setmetatable(self, { __call = self.feed })
 end
 
+function M.Class(parent)
+   local class = {}
+   local mt = { __index = parent }
+   function mt:__call(...)
+      local self = {}
+      if class.create then
+         self = class:create(...)
+      elseif select('#', ...)==1 then
+         local arg = select(1, ...)
+         if type(arg)=="table" then
+            self = arg
+         end
+      end
+      return setmetatable(self, { __index = class })
+   end
+   return setmetatable(class, mt)
+end
+
 return M
