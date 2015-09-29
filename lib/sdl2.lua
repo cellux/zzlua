@@ -1745,6 +1745,32 @@ function Texture_mt:SetTextureBlendMode(mode)
    util.check_ok("SDL_SetTextureBlendMode", 0,
                  sdl.SDL_SetTextureBlendMode(self.texture, mode))
 end
+Texture_mt.blendmode = Texture_mt.SetTextureBlendMode
+
+function Texture_mt:clear(r,g,b,a)
+   local renderer = self.renderer
+   local old = renderer:GetRenderTarget()
+   renderer:SetRenderTarget(self.texture)
+   renderer:SetRenderDrawColor(r or 0,g or 0,b or 0,a or sdl.SDL_ALPHA_OPAQUE)
+   renderer:RenderClear()
+   renderer:SetRenderTarget(old)
+end
+
+function Texture_mt:update(dst_rect, src, src_rect, src_pitch)
+   if type(src)=="table" then
+      -- another texture
+      local renderer = self.renderer
+      local old = renderer:GetRenderTarget()
+      renderer:SetRenderTarget(self.texture)
+      renderer:RenderCopy(src, src_rect, dst_rect)
+      renderer:SetRenderTarget(old)
+   elseif type(src)=="cdata" then
+      -- pointer to pixel data
+      self:UpdateTexture(dst_rect, src, src_pitch)
+   else
+      ef("invalid update source: %s", src)
+   end
+end
 
 function Texture_mt:DestroyTexture()
    if self.texture then
@@ -1752,6 +1778,7 @@ function Texture_mt:DestroyTexture()
       self.texture = nil
    end
 end
+Texture_mt.delete = Texture_mt.DestroyTexture
 
 Texture_mt.__index = Texture_mt
 Texture_mt.__gc = Texture_mt.DestroyTexture
@@ -1772,7 +1799,12 @@ function Renderer_mt:CreateTexture(format, access, width, height)
    if texture == nil then
       ef("Cannot create texture: %s", M.GetError())
    end
-   local self = { texture = texture }
+   local self = {
+      texture = texture,
+      renderer = self,
+      width = width,
+      height = height,
+   }
    return setmetatable(self, Texture_mt)
 end
 
