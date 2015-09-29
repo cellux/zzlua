@@ -8,6 +8,7 @@ local sys = require('sys')
 local adt = require('adt')
 local inspect = require('inspect')
 local time = require('time')
+local event = require('event')
 
 local M = {}
 
@@ -27,38 +28,6 @@ local cbregistry = nil -- subscriber callbacks
 local initialized = false
 
 M.OFF = {}
-
-local function CallbackRegistry(invoke_fn)
-   local self = {}
-   local callbacks = {}
-   function self.on(evtype, cb)
-      if not callbacks[evtype] then
-         callbacks[evtype] = adt.List()
-      end
-      callbacks[evtype]:push(cb)
-   end
-   function self.off(evtype, cb)
-      if callbacks[evtype] then
-         local cbs = callbacks[evtype]
-         local i = cbs:index(cb)
-         if i then
-            cbs:remove_at(i)
-         end
-         if callbacks[evtype]:empty() then
-            callbacks[evtype] = nil
-         end
-      end
-   end
-   function self.emit(evtype, ...)
-      local cbs = callbacks[evtype]
-      if cbs then
-         for cb in cbs:itervalues() do
-            invoke_fn(cb, evtype, ...)
-         end
-      end
-   end
-   return self
-end
 
 function M.broadcast(evtype, evdata, dest_addr)
    M.wait_until_ready()
@@ -140,7 +109,7 @@ local function subscriber()
        assert(type(unpacked) == "table")
        assert(#unpacked == 4, inspect(unpacked))
        local evtype, evdata, sender_address, sender_port = unpack(unpacked)
-       cbregistry.emit(evtype, evdata, sender_address, sender_port)
+       cbregistry:emit(evtype, evdata, sender_address, sender_port)
    end)
    nn.close(event_sub)
 end
@@ -164,9 +133,9 @@ local function BroadcastModule(sched)
       broadcast_socket_addr = broadcast_socket:getsockname()
       M.sender_address = broadcast_socket_addr.address
       M.sender_port = broadcast_socket_addr.port
-      cbregistry = CallbackRegistry(invoke_subscriber_callback)
-      M.on = cbregistry.on
-      M.off = cbregistry.off
+      cbregistry = event.Emitter({}, invoke_subscriber_callback)
+      M.on = function(...) cbregistry:on(...) end
+      M.off = function(...) cbregistry:off(...) end
       sched.background(listener)
       sched.background(subscriber)
    end
