@@ -102,6 +102,22 @@ function SDLApp:run()
          assert(gl.GetError() == gl.GL_NO_ERROR)
       end
 
+      if self.create_ui then
+         if self.create_context then
+            if self.gl_profile == 'es' then
+               self.ui = require('ui.gles2')(self.window)
+            elseif self.gl_profile == 'core' then
+               self.ui = require('ui.gl')(self.window)
+            else
+               ef("Cannot create UI object: gl_profile should be set to either 'es' or 'core'")
+            end
+         elseif self.create_renderer then
+            self.ui = require('ui.sdl')(self.window, self.renderer)
+         else
+            ef("Cannot create UI object: either create_context or create_renderer must be set")
+         end
+      end
+
       -- user-provided app initialization
       self:init()
 
@@ -110,6 +126,8 @@ function SDLApp:run()
 
       -- update width/height
       self.width, self.height = w:GetWindowSize()
+      self.ui.rect.w, self.ui.rect.h = self.width, self.height
+      self.ui:layout()
 
       -- register quit handlers
       sched.on('sdl.keydown', function(evdata)
@@ -124,6 +142,10 @@ function SDLApp:run()
 
       -- cleanup
       self:done()
+      if self.ui then
+         self.ui:delete()
+         self.ui = nil
+      end
       if self.ctx then
          self.ctx:GL_DeleteContext()
          self.ctx = nil
@@ -185,6 +207,7 @@ function SDLApp:create(opts)
       gl_version = opts.gl_version,
       create_context = opts.create_context,
       create_renderer = opts.create_renderer,
+      create_ui = true,
    }
    local flags = 0
    for k,v in pairs(sdl_window_flags) do
