@@ -3,6 +3,7 @@ local sdl = require('sdl2')
 local bit = require('bit')
 local sched = require('sched')
 local time = require('time')
+local util = require('util')
 
 local M = {}
 
@@ -53,21 +54,21 @@ end
 
 -- AppBase
 
-local AppBase_mt = {}
+local AppBase = util.Class()
 
-function AppBase_mt:init() end
-function AppBase_mt:main() end
-function AppBase_mt:done() end
+function AppBase:init() end
+function AppBase:main() end
+function AppBase:done() end
 
-function AppBase_mt:run() end
+function AppBase:run() end
 
-AppBase_mt.__index = AppBase_mt
+M.AppBase = AppBase
 
 -- SDLApp
 
-local SDLApp_mt = setmetatable({}, AppBase_mt)
+local SDLApp = util.Class(AppBase)
 
-function SDLApp_mt:run()
+function SDLApp:run()
    sched(function()
       if self.gl_profile then
          sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, get_gl_profile_mask(self.gl_profile))
@@ -136,7 +137,7 @@ function SDLApp_mt:run()
    sched()
 end
 
-function SDLApp_mt:determine_fps()
+function SDLApp:determine_fps()
    local mode = self.window:GetWindowDisplayMode()
    if mode.refresh_rate == 0 then
       pf("Warning: cannot determine screen refresh rate, using default (60)")
@@ -145,8 +146,6 @@ function SDLApp_mt:determine_fps()
       return mode.refresh_rate
    end
 end
-
-SDLApp_mt.__index = SDLApp_mt
 
 local sdl_window_flags = {
    fullscreen = sdl.SDL_WINDOW_FULLSCREEN,
@@ -165,7 +164,7 @@ local sdl_window_flags = {
    allow_highdpi = sdl.SDL_WINDOW_ALLOW_HIGHDPI,
 }
 
-function M.SDLApp(opts)
+function SDLApp:create(opts)
    opts = opts or {}
    if opts.gl_profile or opts.gl_version then
       opts.opengl = true
@@ -194,14 +193,16 @@ function M.SDLApp(opts)
       end
    end
    self.flags = flags
-   return setmetatable(self, SDLApp_mt)
+   return self
 end
+
+M.SDLApp = SDLApp
 
 -- OpenGLApp
 
-local OpenGLApp_mt = setmetatable({}, SDLApp_mt)
+local OpenGLApp = util.Class(SDLApp)
 
-function OpenGLApp_mt:main()
+function OpenGLApp:main()
    self.fps = self:determine_fps()
    while true do
       local now = sched.now
@@ -219,26 +220,26 @@ function OpenGLApp_mt:main()
    end
 end
 
-function OpenGLApp_mt:draw()
+function OpenGLApp:draw()
 end
 
-OpenGLApp_mt.__index = OpenGLApp_mt
-
-function M.OpenGLApp(opts)
+function OpenGLApp:create(opts)
    opts = opts or {}
    opts.opengl = true
    opts.gl_profile = opts.gl_profile or 'core'
    opts.gl_version = opts.gl_version or '2.1'
-   local self = M.SDLApp(opts)
+   local self = SDLApp(opts)
    self.exact_frame_timing = opts.exact_frame_timing or false
-   return setmetatable(self, OpenGLApp_mt)
+   return self
 end
+
+M.OpenGLApp = OpenGLApp
 
 -- DesktopApp
 
-local DesktopApp_mt = setmetatable({}, SDLApp_mt)
+local DesktopApp = util.Class(SDLApp)
 
-function DesktopApp_mt:main()
+function DesktopApp:main()
    self.fps = self:determine_fps()
    while true do
       local now = sched.now
@@ -252,12 +253,10 @@ function DesktopApp_mt:main()
    end
 end
 
-function DesktopApp_mt:draw()
+function DesktopApp:draw()
 end
 
-DesktopApp_mt.__index = DesktopApp_mt
-
-function M.DesktopApp(opts)
+function DesktopApp:create(opts)
    opts = opts or {}
    opts.create_renderer = true
    -- let the renderer figure out the best way to accelerate rendering
@@ -265,7 +264,9 @@ function M.DesktopApp(opts)
    opts.create_context = false
    local self = M.SDLApp(opts)
    self.exact_frame_timing = opts.exact_frame_timing or false
-   return setmetatable(self, DesktopApp_mt)
+   return self
 end
+
+M.DesktopApp = DesktopApp
 
 return M
