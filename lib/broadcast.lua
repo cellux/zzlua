@@ -8,7 +8,7 @@ local sys = require('sys')
 local adt = require('adt')
 local inspect = require('inspect')
 local time = require('time')
-local event = require('event')
+local util = require('util')
 
 local M = {}
 
@@ -133,7 +133,7 @@ local function BroadcastModule(sched)
       broadcast_socket_addr = broadcast_socket:getsockname()
       M.sender_address = broadcast_socket_addr.address
       M.sender_port = broadcast_socket_addr.port
-      cbregistry = event.Emitter({}, invoke_subscriber_callback)
+      cbregistry = util.EventEmitter({}, invoke_subscriber_callback)
       M.on = function(...) cbregistry:on(...) end
       M.off = function(...) cbregistry:off(...) end
       sched.background(listener)

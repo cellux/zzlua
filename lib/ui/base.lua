@@ -1,7 +1,6 @@
 local ffi = require('ffi')
 local sdl = require('sdl2')
 local freetype = require('freetype')
-local event = require('event')
 local time = require('time')
 local util = require('util')
 
@@ -108,7 +107,7 @@ end
 
 function UI:TextureAtlas(size)
    local ui = self
-   local self = event.Emitter {
+   local self = util.EventEmitter {
       size = size,
       items = {},
    }
