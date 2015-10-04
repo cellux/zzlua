@@ -6,7 +6,7 @@ add_test() {
   local t="$1"
   if [ -d "$t" ]; then
     # if it's a directory, then all *.lua files below will be included
-    for f in $(find "$t" -type f -name '*.lua'); do
+    for f in $(find "$t" -type f -name '*.lua' | sort); do
       add_test $f
     done
   else
