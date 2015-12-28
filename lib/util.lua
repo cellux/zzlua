@@ -3,6 +3,14 @@ local errno = require('errno')
 
 local M = {}
 
+function M.round(x)
+   if x >= 0 then
+      return math.floor(x+0.5)
+   else
+      return math.ceil(x-0.5)
+   end
+end
+
 function M.check_ok(funcname, okvalue, rv)
    if rv ~= okvalue then
       error(sf("%s() failed: %s", funcname, rv), 2)

@@ -11,15 +11,12 @@ local sdl = require('sdl2')
 local iconv = require('iconv')
 local time = require('time')
 local util = require('util')
+local round = util.round
 
 local app = engine.DesktopApp {
    title = "render-text",
    fullscreen_desktop = true,
 }
-
-local function round(x)
-   return math.floor(tonumber(x)+0.5)
-end
 
 local function Font(source, size, window, renderer)
    local self = {

@@ -3,10 +3,7 @@ local sdl = require('sdl2')
 local freetype = require('freetype')
 local time = require('time')
 local util = require('util')
-
-local function round(x)
-   return math.floor(tonumber(x)+0.5)
-end
+local round = util.round
 
 local M = {}
 

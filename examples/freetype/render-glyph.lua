@@ -7,14 +7,11 @@ local sched = require('sched')
 local freetype = require('freetype')
 local fs = require('fs')
 local sdl = require('sdl2')
+local round = require('util').round
 
 local app = engine.DesktopApp {
    title = "render-glyph",
 }
-
-local function round(x)
-   return math.floor(tonumber(x)+0.5)
-end
 
 local function p26_6(name, value)
    pf("%s=%d (%d px)", name, tonumber(value), round(value/64))

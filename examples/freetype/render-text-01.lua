@@ -10,14 +10,11 @@ local file = require('file')
 local sdl = require('sdl2')
 local iconv = require('iconv')
 local time = require('time')
+local round = require('util').round
 
 local app = engine.DesktopApp {
    title = "render-text",
 }
-
-local function round(x)
-   return math.floor(tonumber(x)+0.5)
-end
 
 function app:init()
    local script_path = arg[0]

@@ -1,5 +1,44 @@
 local util = require('util')
+local ffi = require('ffi')
 local assert = require('assert')
+
+-- round
+
+assert.equals(util.round(0), 0)
+assert.equals(util.round(0.1), 0)
+assert.equals(util.round(-0.1), 0)
+assert.equals(util.round(0.4), 0)
+assert.equals(util.round(-0.4), 0)
+-- we use "round half away from zero" method
+assert.equals(util.round(0.5), 1)
+assert.equals(util.round(-0.5), -1)
+assert.equals(util.round(0.9), 1)
+assert.equals(util.round(-0.9), -1)
+
+assert.equals(util.round(100), 100)
+assert.equals(util.round(100.1), 100)
+assert.equals(util.round(99.9), 100)
+assert.equals(util.round(100.4), 100)
+assert.equals(util.round(99.6), 100)
+assert.equals(util.round(100.5), 101)
+assert.equals(util.round(99.5), 100)
+assert.equals(util.round(100.9), 101)
+assert.equals(util.round(99.1), 99)
+
+-- round shall also work for native floats
+local f = ffi.new("float[1]")
+f[0] = 3.14
+assert.equals(util.round(f[0]), 3)
+f[0] = -3.14
+assert.equals(util.round(f[0]), -3)
+f[0] = 3.5
+assert.equals(util.round(f[0]), 4)
+f[0] = -3.5
+assert.equals(util.round(f[0]), -4)
+f[0] = 3.64
+assert.equals(util.round(f[0]), 4)
+f[0] = -3.64
+assert.equals(util.round(f[0]), -4)
 
 -- accumulator
 
