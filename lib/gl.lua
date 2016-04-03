@@ -293,8 +293,8 @@ Shader_mt.__gc = Shader_mt.DeleteShader
 
 function M.CreateShader(type)
    local id = util.check_bad("glCreateShader", 0, ffi.C.glCreateShader(type))
-   local self = { type = type, id = id }
-   return setmetatable(self, Shader_mt)
+   local shader = { type = type, id = id }
+   return setmetatable(shader, Shader_mt)
 end
 
 local Program_mt = {}
@@ -358,8 +358,8 @@ Program_mt.__gc = Program_mt.DeleteProgram
 
 function M.CreateProgram()
    local id = util.check_bad("glCreateProgram", 0, ffi.C.glCreateProgram())
-   local self = { id = id, shaders = adt.List() }
-   return setmetatable(self, Program_mt)
+   local program = { id = id, shaders = adt.List() }
+   return setmetatable(program, Program_mt)
 end
 
 -- VertexArray (VAO)
@@ -380,8 +380,8 @@ VAO_mt.__gc = VAO_mt.DeleteVertexArray
 function M.VAO()
    local arrays = ffi.new("GLuint[1]")
    ffi.C.glGenVertexArrays(1, arrays)
-   local self = { id = arrays[0] }
-   return setmetatable(self, VAO_mt)
+   local vao = { id = arrays[0] }
+   return setmetatable(vao, VAO_mt)
 end
 
 function M.BindVertexArray(array)
@@ -408,8 +408,8 @@ VBO_mt.__gc = VBO_mt.DeleteBuffer
 function M.VBO()
    local buffers = ffi.new("GLuint[1]")
    ffi.C.glGenBuffers(1, buffers)
-   local self = { id = buffers[0] }
-   return setmetatable(self, VBO_mt)
+   local vbo = { id = buffers[0] }
+   return setmetatable(vbo, VBO_mt)
 end
 
 function M.BindBuffer(target, buffer)
@@ -460,8 +460,8 @@ Texture_mt.__gc = Texture_mt.DeleteTexture
 function M.Texture()
    local textures = ffi.new("GLuint[1]")
    ffi.C.glGenTextures(1, textures)
-   local self = { id = textures[0] }
-   return setmetatable(self, Texture_mt)
+   local texture = { id = textures[0] }
+   return setmetatable(texture, Texture_mt)
 end
 
 function M.BindTexture(target, texture)
