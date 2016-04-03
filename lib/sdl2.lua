@@ -1723,9 +1723,9 @@ end
 local Texture_mt = {}
 
 function Texture_mt:LockTexture(rect, pixels, pitch)
-   local rv = sdl.SDL_LockTexture(self.texture, rect,
+   local rv = sdl.SDL_LockTexture(self.texture, rect or self.rect,
                                   ffi.cast("void**", pixels),
-                                  pitch)
+                                  ffi.cast("int*", pitch))
    if rv ~= 0 then
       ef("SDL_LockTexture() failed: %s", M.GetError())
    end
@@ -1760,12 +1760,13 @@ function Texture_mt:clear(r,g,b,a)
 end
 
 function Texture_mt:update(dst_rect, src, src_rect, src_pitch)
+   dst_rect = dst_rect or self.rect
    if type(src)=="table" then
       -- another texture
       local renderer = self.renderer
       local old = renderer:GetRenderTarget()
       renderer:SetRenderTarget(self.texture)
-      renderer:RenderCopy(src, src_rect, dst_rect)
+      renderer:RenderCopy(src, src_rect or src.rect, dst_rect)
       renderer:SetRenderTarget(old)
    elseif type(src)=="cdata" then
       -- pointer to pixel data
@@ -1779,6 +1780,7 @@ function Texture_mt:DestroyTexture()
    if self.texture then
       sdl.SDL_DestroyTexture(self.texture)
       self.texture = nil
+      self.rect = nil
    end
 end
 Texture_mt.delete = Texture_mt.DestroyTexture
@@ -1805,6 +1807,7 @@ function Renderer_mt:CreateTexture(format, access, width, height)
    local t = {
       texture = texture,
       renderer = self,
+      rect = M.Rect(0, 0, width, height),
       width = width,
       height = height,
    }
