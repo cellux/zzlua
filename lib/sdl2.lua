@@ -1692,7 +1692,7 @@ function Window_mt:GetWindowDisplayMode()
 end
 
 function Window_mt:GetWindowDisplayIndex()
-   return sdl.SDL_GetWindowDisplayIndex(self.window)
+   return sdl.SDL_GetWindowDisplayIndex(self.window)+1
 end
 
 function Window_mt:GetWindowWMInfo()
