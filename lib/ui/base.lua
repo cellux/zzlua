@@ -102,6 +102,59 @@ function UI.Container(ui, opts)
    return Container(opts)
 end
 
+function UI.Packer(ui, opts)
+   local self = ui:Container(opts)
+   self.direction = self.direction or "h" -- horizontal by default
+   function self:layout()
+      local cx, cy = self.rect.x, self.rect.y
+      local cw, ch = self.rect.w, self.rect.h
+      local n_dyn_w = 0 -- number of widgets without explicit width
+      local n_dyn_h = 0 -- number of widgets without explicit height
+      -- remaining width/height for dynamically sized widgets
+      local dyn_w,dyn_h = cw,ch
+      -- we subtract all explicit widths/heights to get the remaining
+      -- space which will be divided evenly among dynamic widgets
+      for _,widget in ipairs(self.children) do
+         local w,h = widget:size()
+         if w then
+            dyn_w = dyn_w - w
+         else
+            n_dyn_w = n_dyn_w + 1
+         end
+         if h then
+            dyn_h = dyn_h - h
+         else
+            n_dyn_h = n_dyn_h + 1
+         end
+      end
+      if dyn_w < 0 then
+         dyn_w = 0
+      end
+      if dyn_h < 0 then
+         dyn_h = 0
+      end
+      -- pack children
+      local x,y = cx,cy
+      for _,widget in ipairs(self.children) do
+         widget.rect.x = x
+         widget.rect.y = y
+         local w,h = widget:size()
+         if self.direction == "h" then
+            widget.rect.w = w or (dyn_w / n_dyn_w)
+            widget.rect.h = ch
+            x = x + widget.rect.w
+         elseif self.direction == "v" then
+            widget.rect.w = cw
+            widget.rect.h = h or (dyn_h / n_dyn_h)
+            y = y + widget.rect.h
+         else
+            ef("invalid pack direction: %s", self.direction)
+         end
+      end
+   end
+   return self
+end
+
 function UI.TextureAtlas(ui, size)
    local self = util.EventEmitter {
       size = size,
