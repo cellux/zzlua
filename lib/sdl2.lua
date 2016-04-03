@@ -1,8 +1,6 @@
 local ffi = require('ffi')
 local bit = require('bit')
 local sched = require('sched')
-local file = require('file')
-local fs = require('fs')
 local util = require('util')
 local xlib = require('xlib')
 
