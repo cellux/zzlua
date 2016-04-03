@@ -61,8 +61,9 @@ local a = A()
 assert.equals(a, {})
 
 -- if we pass a single table to the constructor, it will be the instance
-local a = A { x=5, y=8 }
-assert.equals(a, { x=5, y=8 })
+local inst = { x=5, y=8 }
+local a = A(inst)
+assert(a==inst)
 
 -- if we define a `create' method, it will be used to create instances
 local A = util.Class()
@@ -78,12 +79,14 @@ end
 local a = A { x=1, y=2 }
 assert.equals(a, { x=1, y=2 })
 assert.equals(a:f(), 5)
+assert.equals(a:g(), "hello")
+assert.equals(A(), {"undefined"})
 
 -- inheritance
 
 local B = util.Class(A) -- specify the parent as a single argument
 local b = B()
-assert.equals(b, {"undefined"}) -- create method inherited from A
+assert.equals(b, {"undefined"}) -- create() method inherited from A
 assert.equals(b:g(), "hello")
 
 local C = util.Class(B)
