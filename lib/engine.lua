@@ -7,7 +7,10 @@ local util = require('util')
 
 local M = {}
 
+M.DEFAULT_REFRESH_RATE = 60
+
 local function exact_wait(target)
+   -- WARNING: use of this function considerably increases CPU usage
    sched.wait(target-sched.precision)
    while time.time() < target do
       -- busy wait to fix timing irregularities
@@ -41,15 +44,15 @@ local function is_gl_version_supported(profile, version)
    sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, major)
    sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, minor)
    local function try_create_context()
-      local w = sdl.CreateWindow('opengl version test',0,0,16,16,
+      local w = sdl.CreateWindow('opengl version test', 0, 0, 16, 16,
                                  bit.bor(sdl.SDL_WINDOW_OPENGL,
                                          sdl.SDL_WINDOW_HIDDEN))
       local ctx = w:GL_CreateContext()
       ctx:GL_DeleteContext()
       w:DestroyWindow()
    end
-   local is_supported = pcall(try_create_context)
-   return is_supported
+   local can_create_gl_context = pcall(try_create_context)
+   return can_create_gl_context
 end
 
 -- AppBase
@@ -162,8 +165,8 @@ end
 function SDLApp:determine_fps()
    local mode = self.window:GetWindowDisplayMode()
    if mode.refresh_rate == 0 then
-      pf("Warning: cannot determine screen refresh rate, using default (60)")
-      return 60
+      pf("Warning: cannot determine screen refresh rate, using default (%d)", M.DEFAULT_REFRESH_RATE)
+      return M.DEFAULT_REFRESH_RATE
    else
       return mode.refresh_rate
    end
@@ -285,7 +288,7 @@ function DesktopApp:create(opts)
    -- let the renderer figure out the best way to accelerate rendering
    opts.opengl = false
    opts.create_context = false
-   local self = M.SDLApp(opts)
+   local self = SDLApp(opts)
    self.exact_frame_timing = opts.exact_frame_timing or false
    return self
 end
