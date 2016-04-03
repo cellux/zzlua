@@ -1802,13 +1802,13 @@ function Renderer_mt:CreateTexture(format, access, width, height)
    if texture == nil then
       ef("Cannot create texture: %s", M.GetError())
    end
-   local self = {
+   local t = {
       texture = texture,
       renderer = self,
       width = width,
       height = height,
    }
-   return setmetatable(self, Texture_mt)
+   return setmetatable(t, Texture_mt)
 end
 
 function Renderer_mt:SetRenderDrawColor(r,g,b,a)
@@ -1875,8 +1875,8 @@ function Window_mt:CreateRenderer(index, flags)
    if renderer == nil then
       ef("Cannot create renderer: %s", M.GetError())
    end
-   local self = { renderer = renderer }
-   return setmetatable(self, Renderer_mt)
+   local r = { renderer = renderer }
+   return setmetatable(r, Renderer_mt)
 end
 
 local Context_mt = {}
@@ -1901,8 +1901,11 @@ function Window_mt:GL_CreateContext()
    if ctx == nil then
       ef("SDL_GL_CreateContext() failed: %s", M.GetError())
    end
-   local self = { window = self.window, ctx = ctx}
-   return setmetatable(self, Context_mt)
+   local c = {
+      window = self.window,
+      ctx = ctx,
+   }
+   return setmetatable(c, Context_mt)
 end
 
 function Window_mt:DestroyWindow()
@@ -1927,8 +1930,8 @@ function M.CreateWindow(title, x, y, w, h, flags)
    if window == nil then
       ef("SDL_CreateWindow() failed: %s", M.GetError())
    end
-   local self = { window = window }
-   return setmetatable(self, Window_mt)
+   local win = { window = window }
+   return setmetatable(win, Window_mt)
 end
 
 function M.GL_SetAttribute(attr, value)
