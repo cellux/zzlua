@@ -94,16 +94,15 @@ function UI:clear()
    -- to be implemented
 end
 
-function UI:Widget(opts)
+function UI.Widget(ui, opts)
    return Widget(opts)
 end
 
-function UI:Container(opts)
+function UI.Container(ui, opts)
    return Container(opts)
 end
 
-function UI:TextureAtlas(size)
-   local ui = self
+function UI.TextureAtlas(ui, size)
    local self = util.EventEmitter {
       size = size,
       items = {},
@@ -121,6 +120,7 @@ function UI:TextureAtlas(size)
          -- if it's a texture, src_pitch is ignored
          local width, height = src_rect.w, src_rect.h
          if shelf_x + width > size then
+            -- current shelf is full, open a new one
             shelf_y = shelf_y + shelf_h
             shelf_x = 0
             shelf_h = 0
@@ -197,10 +197,9 @@ function UI:TextureAtlas(size)
    return setmetatable(self, { __gc = self.delete })
 end
 
-function UI:Font(opts)
+function UI.Font(ui, opts)
    opts = opts or {}
    opts.size = opts.size or 12 -- in points
-   local ui = self
    local self = {
       face = freetype.Face(opts.source),
       size = nil, -- initialized below

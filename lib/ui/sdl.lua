@@ -25,16 +25,15 @@ function UI:clear(r,g,b,a)
    renderer:RenderClear()
 end
 
-function UI:Texture(opts)
-   local ui = self
+function UI.Texture(ui, opts)
    local r = ui.renderer
    return r:CreateTexture(opts.format or sdl.SDL_PIXELFORMAT_RGBA8888,
                           opts.access or sdl.SDL_TEXTUREACCESS_TARGET,
                           opts.width or 0, opts.height or 0)
 end
 
-function UI:TextureDisplay(opts)
-   local ui = self
+function UI.TextureDisplay(ui, opts)
+   assert(opts.texture)
    local self = ui:Widget(opts)
    function self:size()
       return self.texture.width, self.texture.height
@@ -47,9 +46,9 @@ function UI:TextureDisplay(opts)
    return self
 end
 
-function UI:Text(opts)
-   local ui = self
+function UI.Text(ui, opts)
    opts = opts or {}
+   assert(opts.font)
    opts.text = opts.text or ""
    local self = ui:Widget(opts)
 
