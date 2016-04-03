@@ -137,7 +137,7 @@ function UI.TextureAtlas(ui, size)
          return dst_rect
       end
    end
-   local function create_texture(size)
+   local function Texture(size)
       local t = ui:Texture {
          format = sdl.SDL_PIXELFORMAT_RGBA8888,
          access = sdl.SDL_TEXTUREACCESS_TARGET,
@@ -148,10 +148,11 @@ function UI.TextureAtlas(ui, size)
       t:blendmode(sdl.SDL_BLENDMODE_BLEND)
       return t
    end
-   self.texture = create_texture(self.size)
+   self.texture = Texture(self.size)
    local pack = Packer(self.texture, self.size)
    function self:resize(new_size)
-      local new_texture = create_texture(new_size)
+      local old_texture = self.texture
+      local new_texture = Texture(new_size)
       local sorted_items = {}
       for k,v in pairs(self.items) do
          table.insert(sorted_items, { key=k, rect=v })
@@ -160,7 +161,7 @@ function UI.TextureAtlas(ui, size)
       local new_pack = Packer(new_texture, new_size)
       local new_items = {}
       for _,v in ipairs(sorted_items) do
-         local dst_rect = new_pack(self.texture, v.rect)
+         local dst_rect = new_pack(old_texture, v.rect)
          assert(dst_rect ~= "full")
          new_items[v.key] = dst_rect
       end
@@ -255,8 +256,8 @@ function UI.Font(ui, opts)
                   rgba_pixels[rgba_pitch*y+x*4+3] = r
                end
             end
-            gd.src_rect = self.atlas:add(charcode, rgba_pixels, gd.width, gd.height)
             gd.texture = self.atlas.texture
+            gd.src_rect = self.atlas:add(charcode, rgba_pixels, gd.width, gd.height)
          end
          glyph_cache[charcode] = gd
       end
