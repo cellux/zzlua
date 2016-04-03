@@ -52,8 +52,8 @@ function Container:layout()
          widget.rect.y = widget.rect.y + widget.top
       end
       local w,h = widget:size()
-      widget.rect.w = w or cw
-      widget.rect.h = h or ch
+      widget.rect.w = w or (cw - (widget.left or 0))
+      widget.rect.h = h or (ch - (widget.top or 0))
       if widget.right then
          -- right overrides left
          widget.rect.x = self.rect.x + cw - widget.right - widget.rect.w
