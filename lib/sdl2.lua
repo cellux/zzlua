@@ -1685,6 +1685,12 @@ function Window_mt:GetWindowSize()
    return width[0], height[0]
 end
 
+function Window_mt:GetWindowDisplayMode()
+   local mode = DisplayMode()
+   sdl.SDL_GetWindowDisplayMode(self.window, mode)
+   return mode
+end
+
 function Window_mt:GetWindowDisplayIndex()
    return sdl.SDL_GetWindowDisplayIndex(self.window)
 end
@@ -1871,12 +1877,6 @@ function Window_mt:CreateRenderer(index, flags)
    end
    local self = { renderer = renderer }
    return setmetatable(self, Renderer_mt)
-end
-
-function Window_mt:GetWindowDisplayMode()
-   local mode = DisplayMode()
-   sdl.SDL_GetWindowDisplayMode(self.window, mode)
-   return mode
 end
 
 local Context_mt = {}
