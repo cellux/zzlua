@@ -1561,14 +1561,14 @@ local sdl = ffi.load("SDL2")
 
 local M = {}
 
-M.initflags = sdl.SDL_INIT_AUDIO +
-              sdl.SDL_INIT_VIDEO +
-              sdl.SDL_INIT_EVENTS +
-              sdl.SDL_INIT_NOPARACHUTE
+M.SDL_INIT_FLAGS = sdl.SDL_INIT_AUDIO +
+                   sdl.SDL_INIT_VIDEO +
+                   sdl.SDL_INIT_EVENTS +
+                   sdl.SDL_INIT_NOPARACHUTE
 
 function M.Init()
    if sdl.SDL_WasInit(0) == 0 then
-      util.check_ok("SDL_Init", 0, sdl.SDL_Init(M.initflags))
+      util.check_ok("SDL_Init", 0, sdl.SDL_Init(M.SDL_INIT_FLAGS))
    end
 end
 
