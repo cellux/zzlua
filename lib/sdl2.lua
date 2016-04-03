@@ -1870,7 +1870,7 @@ Renderer_mt.__index = Renderer_mt
 Renderer_mt.__gc = Renderer_mt.DestroyRenderer
 
 function Window_mt:CreateRenderer(index, flags)
-   index = index or -1
+   index = (index or 0) - 1 -- one-based
    flags = flags or bit.bor(sdl.SDL_RENDERER_ACCELERATED,
                             sdl.SDL_RENDERER_PRESENTVSYNC,
                             sdl.SDL_RENDERER_TARGETTEXTURE)
