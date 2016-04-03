@@ -1561,6 +1561,11 @@ local sdl = ffi.load("SDL2")
 
 local M = {}
 
+M.DEFAULT_WINDOW_WIDTH  = 640
+M.DEFAULT_WINDOW_HEIGHT = 480
+M.DEFAULT_WINDOW_FLAGS = bit.bor(sdl.SDL_WINDOW_RESIZABLE,
+                                 sdl.SDL_WINDOW_OPENGL)
+
 M.SDL_INIT_FLAGS = sdl.SDL_INIT_AUDIO +
                    sdl.SDL_INIT_VIDEO +
                    sdl.SDL_INIT_EVENTS +
@@ -1915,10 +1920,9 @@ function M.CreateWindow(title, x, y, w, h, flags)
    if x == -1 then x = sdl.SDL_WINDOWPOS_CENTERED end
    y = y or sdl.SDL_WINDOWPOS_UNDEFINED
    if y == -1 then y = sdl.SDL_WINDOWPOS_CENTERED end
-   w = w or 640
-   h = h or 480
-   flags = flags or bit.bor(sdl.SDL_WINDOW_RESIZABLE,
-                            sdl.SDL_WINDOW_OPENGL)
+   w = w or M.DEFAULT_WINDOW_WIDTH
+   h = h or M.DEFAULT_WINDOW_HEIGHT
+   flags = flags or M.DEFAULT_WINDOW_FLAGS
    local window = sdl.SDL_CreateWindow(title, x, y, w, h, flags)
    if window == nil then
       ef("SDL_CreateWindow() failed: %s", M.GetError())
