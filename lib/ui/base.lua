@@ -1,7 +1,6 @@
 local ffi = require('ffi')
 local sdl = require('sdl2')
 local freetype = require('freetype')
-local time = require('time')
 local util = require('util')
 local round = util.round
 
@@ -334,42 +333,6 @@ function UI.Font(ui, opts)
       end
    end
    return setmetatable(self, { __gc = self.delete })
-end
-
-function UI:Timer(opts)
-   local ui = self
-   opts = opts or {}
-   local self = ui:Widget(opts)
-   local marks = {}
-   local marks_by_label = {}
-   local function create_mark(time, label, color)
-      return {
-         time = time,
-         label = label,
-         color = color,
-      }
-   end
-   function self:reset(label, color)
-      marks = {}
-      marks_by_label = {}
-      self:mark(label, color)
-   end
-   function self:mark(label, color)
-      local now = time.time()
-      local m = create_mark(now, label, color)
-      table.insert(marks, m)
-      marks_by_label[label] = m
-   end
-   function self:elapsed()
-      return time.time() - marks[1].time
-   end
-   function self:elapsed_since(label)
-      return time.time() - marks_by_label[label].time
-   end
-   function self:elapsed_until(label)
-      return marks_by_label[label].time - marks[1].time
-   end
-   return self
 end
 
 M.UI = UI
