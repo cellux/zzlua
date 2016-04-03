@@ -6,6 +6,7 @@ local fs = require('fs')
 local file = require('file')
 local sdl = require('sdl2')
 local util = require('util')
+local time = require('time')
 
 -- ensure that freetype registers with the scheduler to prevent:
 -- 'FreeType functions can be used only after a call to freetype.init()'
@@ -35,13 +36,6 @@ function app:init()
       font_display.texture = new_texture
    end)
    local text_speed = 1
-   sched(function()
-         while true do
-            text.top = text.top - text_speed
-            ui:layout()
-            sched.sleep(0.1)
-         end
-   end)
    sched.on('sdl.keydown', function(evdata)
       if evdata.key.keysym.sym == sdl.SDLK_SPACE then
          text_speed = 1-text_speed
@@ -54,15 +48,15 @@ function app:init()
          pf("app:draw() takes %s seconds in average", avg_time.avg)
       end
    end)
-   local timer = ui:Timer()
-   ui:add(timer)
-   ui:layout()
    function app:draw()
-      timer:reset("draw.start")
+      local t1 = time.time()
+      text.top = text.top - text_speed
+      ui:layout()
       ui:clear()
       ui:draw()
-      timer:mark("draw.end")
-      avg_time:feed(timer:elapsed_until("draw.end"))
+      local t2 = time.time()
+      local elapsed = t2 - t1
+      avg_time:feed(elapsed)
    end
 end
 
