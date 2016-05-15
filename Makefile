@@ -69,25 +69,6 @@ $(CMP_DIR)/.stamp: deps/$(CMP_TGZ)
 $(CMP_OBJ): $(CMP_DIR)/.stamp
 	cd $(CMP_DIR) && gcc -c cmp.c
 
-# GLEW
-
-GLEW_VER := 1.13.0
-GLEW_TGZ := glew-$(GLEW_VER).tgz
-GLEW_URL := https://sourceforge.net/projects/glew/files/glew/$(GLEW_VER)/$(GLEW_TGZ)/download
-GLEW_DIR := deps/glew-$(GLEW_VER)
-GLEW_LIB := $(GLEW_DIR)/lib/libGLEW.a
-
-deps/$(GLEW_TGZ):
-	mkdir -p deps
-	$(CURL) -o $@ $(GLEW_URL)
-
-$(GLEW_DIR)/.stamp: deps/$(GLEW_TGZ)
-	cd deps && tar xvzf $(GLEW_TGZ)
-	touch $@
-
-$(GLEW_LIB): $(GLEW_DIR)/.stamp
-	$(MAKE) -C $(GLEW_DIR) glew.lib
-
 ### main ###
 
 CC := gcc
