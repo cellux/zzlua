@@ -1089,7 +1089,7 @@ local function SDL_DEFINE_PIXELFORMAT(type, order, layout, bits, bytes)
                   bit.lshift(bytes, 0))
 end
 
-local pixelformats = {
+local pixelformat_enum_items = {
    sf("SDL_PIXELFORMAT_UNKNOWN"),
    sf("SDL_PIXELFORMAT_INDEX1LSB = 0x%08x", SDL_DEFINE_PIXELFORMAT(
          ffi.C.SDL_PIXELTYPE_INDEX1,
@@ -1230,11 +1230,13 @@ local pixelformats = {
          string.byte('U'))),
 }
 
+-- generate a C enum for the pixelformats
 local cdef = "enum {\n"
-for i=1,#pixelformats do
-   cdef = cdef .. sf("  %s,\n", pixelformats[i])
+for i=1,#pixelformat_enum_items do
+   cdef = cdef .. sf("  %s,\n", pixelformat_enum_items[i])
 end
 cdef = cdef .. "  SDL_PIXELFORMAT_LAST\n};\n"
+-- and include it
 ffi.cdef(cdef)
 
 ffi.cdef [[
