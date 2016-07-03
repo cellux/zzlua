@@ -1,8 +1,8 @@
-local engine = require('engine')
+local appfactory = require('appfactory')
 local gl = require('gl')
 local ffi = require('ffi')
 
-local app = engine.OpenGLApp {
+local app = appfactory.OpenGLApp {
    title = "shader-vbo1",
    gl_version = '3.3',
 }

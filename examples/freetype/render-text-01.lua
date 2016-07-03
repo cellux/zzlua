@@ -2,7 +2,7 @@
 
 local ffi = require('ffi')
 local bit = require('bit')
-local engine = require('engine')
+local appfactory = require('appfactory')
 local sched = require('sched')
 local freetype = require('freetype')
 local fs = require('fs')
@@ -12,7 +12,7 @@ local iconv = require('iconv')
 local time = require('time')
 local round = require('util').round
 
-local app = engine.DesktopApp {
+local app = appfactory.DesktopApp {
    title = "render-text",
 }
 

@@ -9,7 +9,7 @@ local M = {}
 
 M.DEFAULT_REFRESH_RATE = 60
 
-local function exact_wait(target)
+local function exact_wait_until(target)
    -- WARNING: use of this function considerably increases CPU usage
    sched.wait(target-sched.precision)
    while time.time() < target do
@@ -17,15 +17,15 @@ local function exact_wait(target)
    end
 end
 
-local function get_gl_profile_mask(gl_profile)
+local function resolve_gl_profile_mask(gl_profile_name)
    local gl_profile_masks = {
       core = sdl.SDL_GL_CONTEXT_PROFILE_CORE,
       compatibility = sdl.SDL_GL_CONTEXT_PROFILE_COMPATIBILITY,
       es = sdl.SDL_GL_CONTEXT_PROFILE_ES
    }
-   local gl_profile_mask = gl_profile_masks[gl_profile]
+   local gl_profile_mask = gl_profile_masks[gl_profile_name]
    if not gl_profile_mask then
-      ef("Invalid GL profile: %s", gl_profile)
+      ef("Invalid GL profile: %s", gl_profile_name)
    end
    return gl_profile_mask
 end
@@ -39,12 +39,12 @@ local function parse_gl_version(gl_version)
 end
 
 local function is_gl_version_supported(profile, version)
-   sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, get_gl_profile_mask(profile))
+   sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, resolve_gl_profile_mask(profile))
    local major, minor = parse_gl_version(version)
    sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, major)
    sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, minor)
    local function try_create_context()
-      local w = sdl.CreateWindow('opengl version test', 0, 0, 16, 16,
+      local w = sdl.CreateWindow('OpenGL version test', 0, 0, 16, 16,
                                  bit.bor(sdl.SDL_WINDOW_OPENGL,
                                          sdl.SDL_WINDOW_HIDDEN))
       local ctx = w:GL_CreateContext()
@@ -70,107 +70,6 @@ M.AppBase = AppBase
 -- SDLApp
 
 local SDLApp = util.Class(AppBase)
-
-function SDLApp:run()
-   sched(function()
-      if self.gl_profile then
-         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, get_gl_profile_mask(self.gl_profile))
-      end
-
-      if self.gl_version then
-         local major, minor = parse_gl_version(self.gl_version)
-         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, major)
-         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, minor)
-      end
-
-      -- always start hidden, show when everything is ready
-      local flags = bit.bor(self.flags, sdl.SDL_WINDOW_HIDDEN)
-
-      -- create window
-      local w = sdl.CreateWindow(self.title,
-                                 self.x, self.y, 
-                                 self.width, self.height,
-                                 flags)
-      self.window = w
-
-      if self.create_renderer then
-         self.renderer = w:CreateRenderer()
-      end
-
-      if self.create_context then
-         assert(gl.GetError() == gl.GL_NO_ERROR)
-         self.ctx = w:GL_CreateContext()
-         assert(gl.GetError() == gl.GL_NO_ERROR)
-         self.ctx:GL_MakeCurrent()
-         assert(gl.GetError() == gl.GL_NO_ERROR)
-      end
-
-      if self.create_ui then
-         if self.create_context then
-            if self.gl_profile == 'es' then
-               self.ui = require('ui.gles2')(self.window)
-            elseif self.gl_profile == 'core' then
-               self.ui = require('ui.gl')(self.window)
-            else
-               ef("Cannot create UI object: gl_profile should be set to either 'es' or 'core'")
-            end
-         elseif self.create_renderer then
-            self.ui = require('ui.sdl')(self.window, self.renderer)
-         else
-            ef("Cannot create UI object: either create_context or create_renderer must be set")
-         end
-      end
-
-      -- user-provided app initialization
-      self:init()
-
-      -- show window
-      w:ShowWindow()
-
-      -- update width/height
-      self.width, self.height = w:GetWindowSize()
-      self.ui.rect.w, self.ui.rect.h = self.width, self.height
-      self.ui:layout()
-
-      -- register quit handlers
-      sched.on('sdl.keydown', function(evdata)
-                  if evdata.key.keysym.sym == sdl.SDLK_ESCAPE then
-                     sched.quit()
-                  end
-      end)
-      sched.on('sdl.quit', sched.quit)
-
-      -- run app
-      self:main()
-
-      -- cleanup
-      self:done()
-      if self.ui then
-         self.ui:delete()
-         self.ui = nil
-      end
-      if self.ctx then
-         self.ctx:GL_DeleteContext()
-         self.ctx = nil
-      end
-      if self.renderer then
-         self.renderer:DestroyRenderer()
-         self.renderer = nil
-      end
-      w:DestroyWindow()
-   end)
-   sched()
-end
-
-function SDLApp:determine_fps()
-   local mode = self.window:GetWindowDisplayMode()
-   if mode.refresh_rate == 0 then
-      pf("Warning: cannot determine screen refresh rate, using default (%d)", M.DEFAULT_REFRESH_RATE)
-      return M.DEFAULT_REFRESH_RATE
-   else
-      return mode.refresh_rate
-   end
-end
 
 local sdl_window_flags = {
    fullscreen = sdl.SDL_WINDOW_FULLSCREEN,
@@ -200,11 +99,14 @@ function SDLApp:create(opts)
    if opts.create_renderer == nil then
       opts.create_renderer = false
    end
+   if opts.create_context and opts.create_renderer then
+      ef("Create either a GL context or a renderer, but not both")
+   end
    local self = {
       x = opts.x or -1, -- -1 means centered
       y = opts.y or -1,
-      width = opts.width or 640,
-      height = opts.height or 480,
+      width = opts.width or sdl.DEFAULT_WINDOW_WIDTH,
+      height = opts.height or sdl.DEFAULT_WINDOW_HEIGHT,
       title = opts.title or "SDLApp",
       gl_profile = opts.gl_profile,
       gl_version = opts.gl_version,
@@ -222,11 +124,125 @@ function SDLApp:create(opts)
    return self
 end
 
+function SDLApp:run()
+   sched(function()
+      if self.gl_profile then
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, resolve_gl_profile_mask(self.gl_profile))
+      end
+
+      if self.gl_version then
+         local major, minor = parse_gl_version(self.gl_version)
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, major)
+         sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, minor)
+      end
+
+      -- always start hidden, show when everything is ready
+      local flags = bit.bor(self.flags, sdl.SDL_WINDOW_HIDDEN)
+
+      -- create window
+      local w = sdl.CreateWindow(self.title,
+                                 self.x, self.y, 
+                                 self.width, self.height,
+                                 flags)
+      self.window = w
+
+      if self.create_context then
+         assert(gl.GetError() == gl.GL_NO_ERROR)
+         self.ctx = w:GL_CreateContext()
+         assert(gl.GetError() == gl.GL_NO_ERROR)
+         self.ctx:GL_MakeCurrent()
+         assert(gl.GetError() == gl.GL_NO_ERROR)
+      elseif self.create_renderer then
+         self.renderer = w:CreateRenderer()
+      end
+
+      if self.create_ui then
+         if self.ctx then
+            if self.gl_profile == 'es' then
+               self.ui = require('ui.gles2')(self.window)
+            elseif self.gl_profile == 'core' then
+               self.ui = require('ui.gl')(self.window)
+            else
+               ef("Cannot create UI object: gl_profile should be either 'es' or 'core'")
+            end
+         elseif self.renderer then
+            self.ui = require('ui.sdl')(self.window, self.renderer)
+         else
+            ef("Cannot create UI object: requires either a GL context or a renderer")
+         end
+      end
+
+      -- user-provided initialization
+      self:init()
+
+      -- show window
+      w:ShowWindow()
+
+      -- update width/height (may change after window gets mapped)
+      self.width, self.height = w:GetWindowSize()
+      if self.ui then
+         self.ui:update_rect(0, 0, self.width, self.height)
+         self.ui:layout()
+      end
+
+      -- register quit handlers
+      sched.on('sdl.keydown', function(evdata)
+                  if evdata.key.keysym.sym == sdl.SDLK_ESCAPE then
+                     sched.quit()
+                  end
+      end)
+      sched.on('sdl.quit', sched.quit)
+
+      -- user-provided main function
+      self:main()
+
+      -- user-provided cleanup
+      self:done()
+
+      if self.ui then
+         self.ui:delete()
+         self.ui = nil
+      end
+      if self.ctx then
+         self.ctx:GL_DeleteContext()
+         self.ctx = nil
+      elseif self.renderer then
+         self.renderer:DestroyRenderer()
+         self.renderer = nil
+      end
+      if self.window then
+         self.window:DestroyWindow()
+         self.window = nil
+      end
+   end)
+   sched()
+end
+
+function SDLApp:determine_fps()
+   local mode = self.window:GetWindowDisplayMode()
+   if mode.refresh_rate == 0 then
+      pf("Warning: cannot determine screen refresh rate, using default (%d)", M.DEFAULT_REFRESH_RATE)
+      return M.DEFAULT_REFRESH_RATE
+   else
+      return mode.refresh_rate
+   end
+end
+
 M.SDLApp = SDLApp
 
 -- OpenGLApp
 
 local OpenGLApp = util.Class(SDLApp)
+
+function OpenGLApp:create(opts)
+   opts = opts or {}
+   opts.opengl = true
+   opts.gl_profile = opts.gl_profile or 'es'
+   opts.gl_version = opts.gl_version or '2.0'
+   local self = SDLApp(opts)
+   self.exact_frame_timing = opts.exact_frame_timing or false
+   return self
+end
 
 function OpenGLApp:main()
    self.fps = self:determine_fps()
@@ -238,10 +254,11 @@ function OpenGLApp:main()
          ef("GL error: %d", gl_error)
       end
       self.window:GL_SwapWindow()
+      local next_frame_start = now+1/self.fps
       if self.exact_frame_timing then
-         exact_wait(now+1/self.fps)
+         exact_wait_until(next_frame_start)
       else
-         sched.wait(now+1/self.fps)
+         sched.wait(next_frame_start)
       end
    end
 end
@@ -249,38 +266,11 @@ end
 function OpenGLApp:draw()
 end
 
-function OpenGLApp:create(opts)
-   opts = opts or {}
-   opts.opengl = true
-   opts.gl_profile = opts.gl_profile or 'core'
-   opts.gl_version = opts.gl_version or '2.1'
-   local self = SDLApp(opts)
-   self.exact_frame_timing = opts.exact_frame_timing or false
-   return self
-end
-
 M.OpenGLApp = OpenGLApp
 
 -- DesktopApp
 
 local DesktopApp = util.Class(SDLApp)
-
-function DesktopApp:main()
-   self.fps = self:determine_fps()
-   while true do
-      local now = sched.now
-      self:draw()
-      self.renderer:RenderPresent()
-      if self.exact_frame_timing then
-         exact_wait(now+1/self.fps)
-      else
-         sched.wait(now+1/self.fps)
-      end
-   end
-end
-
-function DesktopApp:draw()
-end
 
 function DesktopApp:create(opts)
    opts = opts or {}
@@ -291,6 +281,24 @@ function DesktopApp:create(opts)
    local self = SDLApp(opts)
    self.exact_frame_timing = opts.exact_frame_timing or false
    return self
+end
+
+function DesktopApp:main()
+   self.fps = self:determine_fps()
+   while true do
+      local now = sched.now
+      self:draw()
+      self.renderer:RenderPresent()
+      local next_frame_start = now+1/self.fps
+      if self.exact_frame_timing then
+         exact_wait_until(next_frame_start)
+      else
+         sched.wait(next_frame_start)
+      end
+   end
+end
+
+function DesktopApp:draw()
 end
 
 M.DesktopApp = DesktopApp

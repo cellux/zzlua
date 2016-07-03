@@ -1,6 +1,6 @@
 #!/usr/bin/env zzlua
 
-local engine = require('engine')
+local appfactory = require('appfactory')
 local sched = require('sched')
 local fs = require('fs')
 local file = require('file')
@@ -12,7 +12,14 @@ local time = require('time')
 -- 'FreeType functions can be used only after a call to freetype.init()'
 require('freetype')
 
-local app = engine.DesktopApp {
+local apptype = arg[1] or 'DesktopApp'
+
+local appFactory = appfactory[apptype]
+if not appFactory then
+   ef("invalid apptype: %s", apptype)
+end
+
+local app = appFactory {
    title = "render-text",
    fullscreen_desktop = true,
 }

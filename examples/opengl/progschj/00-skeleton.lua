@@ -1,4 +1,4 @@
-local engine = require('engine')
+local appfactory = require('appfactory')
 
-local app = engine.OpenGLApp { title = "skeleton" }
+local app = appfactory.OpenGLApp { title = "skeleton" }
 app:run()

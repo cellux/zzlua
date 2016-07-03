@@ -1,11 +1,11 @@
 #!/usr/bin/env zzlua
 
 local ffi = require('ffi')
-local engine = require('engine')
+local appfactory = require('appfactory')
 local sched = require('sched')
 local sdl = require('sdl2')
 
-local app = engine.DesktopApp {
+local app = appfactory.DesktopApp {
    title = "renderer-test",
 }
 
