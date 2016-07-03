@@ -1278,6 +1278,12 @@ typedef struct SDL_PixelFormat {
 } SDL_PixelFormat;
 
 const char* SDL_GetPixelFormatName(Uint32 format);
+SDL_bool SDL_PixelFormatEnumToMasks(Uint32 format,
+                                    int *bpp,
+                                    Uint32 * Rmask,
+                                    Uint32 * Gmask,
+                                    Uint32 * Bmask,
+                                    Uint32 * Amask);
 Uint32 SDL_MapRGB(const SDL_PixelFormat * format,
                   Uint8 r, Uint8 g, Uint8 b);
 Uint32 SDL_MapRGBA(const SDL_PixelFormat * format,
@@ -1621,6 +1627,22 @@ end
 
 function M.GetNumDisplayModes(display_num)
    return sdl.SDL_GetNumDisplayModes(display_num-1)
+end
+
+function M.PixelFormatEnumToMasks(format)
+   local bpp = ffi.new("int[1]")
+   local rmask = ffi.new("Uint32[1]")
+   local gmask = ffi.new("Uint32[1]")
+   local bmask = ffi.new("Uint32[1]")
+   local amask = ffi.new("Uint32[1]")
+   util.check_ok("SDL_PixelFormatEnumToMasks", sdl.SDL_TRUE,
+                 sdl.SDL_PixelFormatEnumToMasks(format,
+                                                bpp,
+                                                rmask,
+                                                gmask,
+                                                bmask,
+                                                amask))
+   return bpp[0], rmask[0], gmask[0], bmask[0], amask[0]
 end
 
 local DisplayMode_mt = {}
