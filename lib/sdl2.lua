@@ -1629,6 +1629,10 @@ function M.GetNumDisplayModes(display_num)
    return sdl.SDL_GetNumDisplayModes(display_num-1)
 end
 
+function M.GetPixelFormatName(format)
+   return ffi.string(sdl.SDL_GetPixelFormatName(format))
+end
+
 function M.PixelFormatEnumToMasks(format)
    local bpp = ffi.new("int[1]")
    local rmask = ffi.new("Uint32[1]")
@@ -1649,7 +1653,7 @@ local DisplayMode_mt = {}
 
 function DisplayMode_mt:__tostring()
    return sf("%s %dx%d %dHz",
-             ffi.string(sdl.SDL_GetPixelFormatName(self.format)),
+             M.GetPixelFormatName(self.format),
              self.w, self.h,
              self.refresh_rate)
 end
