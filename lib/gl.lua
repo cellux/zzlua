@@ -336,6 +336,28 @@ void glFinish (void);
 
 ]]
 
+local function gl_loaded()
+   local function check_gl_version()
+      ffi.C.glGetString(ffi.C.GL_VERSION)
+   end
+   return pcall(check_gl_version)
+end
+
+if not gl_loaded() then
+   local function try_load(libname)
+      ffi.load(libname, true)
+   end
+   local candidate_libs = {"GL", "GLESv2"}
+   for _,libname in ipairs(candidate_libs) do
+      if pcall(try_load, libname) then
+         --pf("loaded: %s", libname)
+         break
+      end
+   end
+end
+
+-- TODO: throw an error if we could not load GL?
+
 local M = {}
 
 function M.GetError()
