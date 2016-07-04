@@ -679,17 +679,14 @@ function M.Uniform1i(location, v0)
    ffi.C.glUniform1i(location, v0)
 end
 
-function M.Flush()
-   ffi.C.glFlush()
 end
 
-function M.Finish()
-   ffi.C.glFinish()
+end
+
+
 end
 
 --
-
-end
 
 function M.Clear(mask)
    ffi.C.glClear(mask)
@@ -705,6 +702,14 @@ end
 
 function M.DrawElements(mode, count, type, indices)
    ffi.C.glDrawElements(mode, count, type, ffi.cast("const GLvoid *", indices))
+end
+
+function M.Flush()
+   ffi.C.glFlush()
+end
+
+function M.Finish()
+   ffi.C.glFinish()
 end
 
 local ResourceManager_mt = {}
