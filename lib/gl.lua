@@ -453,7 +453,7 @@ function Program_mt:detach_all()
    for shader in self.shaders:itervalues() do
       ffi.C.glDetachShader(self.id, shader.id)
    end
-   self.shaders = adt.List()
+   self.shaders:clear()
 end
 
 function Program_mt:BindAttribLocation(index, name)
