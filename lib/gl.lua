@@ -507,6 +507,10 @@ function M.CreateProgram()
    return setmetatable(program, Program_mt)
 end
 
+function M.UseProgram(program)
+   ffi.C.glUseProgram(program.id)
+end
+
 -- VertexArray (VAO)
 
 local VAO_mt = {}
@@ -681,8 +685,6 @@ end
 
 --
 
-function M.UseProgram(program)
-   ffi.C.glUseProgram(program.id)
 end
 
 function M.Clear(mask)
