@@ -387,6 +387,8 @@ function M.GetString(name)
    return ffi.string(rv)
 end
 
+-- Shader
+
 local Shader_mt = {}
 
 function Shader_mt:ShaderSource(text)
@@ -425,12 +427,15 @@ end
 
 Shader_mt.__index = Shader_mt
 Shader_mt.__gc = Shader_mt.DeleteShader
+Shader_mt.delete = Shader_mt.DeleteShader
 
 function M.CreateShader(type)
    local id = util.check_bad("glCreateShader", 0, ffi.C.glCreateShader(type))
    local shader = { type = type, id = id }
    return setmetatable(shader, Shader_mt)
 end
+
+-- Program
 
 local Program_mt = {}
 
@@ -490,6 +495,7 @@ end
 
 Program_mt.__index = Program_mt
 Program_mt.__gc = Program_mt.DeleteProgram
+Program_mt.delete = Program_mt.DeleteProgram
 
 function M.CreateProgram()
    local id = util.check_bad("glCreateProgram", 0, ffi.C.glCreateProgram())
@@ -508,9 +514,10 @@ function VAO_mt:DeleteVertexArray()
       self.id = nil
    end
 end
-   
+
 VAO_mt.__index = VAO_mt
 VAO_mt.__gc = VAO_mt.DeleteVertexArray
+VAO_mt.delete = VAO_mt.DeleteVertexArray
 
 function M.VAO()
    local arrays = ffi.new("GLuint[1]")
@@ -539,6 +546,7 @@ end
 
 VBO_mt.__index = VBO_mt
 VBO_mt.__gc = VBO_mt.DeleteBuffer
+VBO_mt.delete = VBO_mt.DeleteBuffer
 
 function M.VBO()
    local buffers = ffi.new("GLuint[1]")
@@ -588,9 +596,10 @@ function Texture_mt:DeleteTexture()
       self.id = nil
    end
 end
-   
+
 Texture_mt.__index = Texture_mt
 Texture_mt.__gc = Texture_mt.DeleteTexture
+Texture_mt.delete = Texture_mt.DeleteTexture
 
 function M.Texture()
    local textures = ffi.new("GLuint[1]")
@@ -686,16 +695,16 @@ function ResourceManager_mt:Texture(...)
 end
 
 function ResourceManager_mt:delete()
-   for _,texture in ipairs(self.textures) do texture:DeleteTexture() end
+   for _,texture in ipairs(self.textures) do texture:delete() end
    self.textures = {}
-   for _,vao in ipairs(self.vaos) do vao:DeleteVertexArray() end
+   for _,vao in ipairs(self.vaos) do vao:delete() end
    self.vaos = {}
-   for _,vbo in ipairs(self.vbos) do vbo:DeleteBuffer() end
+   for _,vbo in ipairs(self.vbos) do vbo:delete() end
    self.vbos = {}
    for _,program in ipairs(self.programs) do program:detach_all() end
-   for _,shader in ipairs(self.shaders) do shader:DeleteShader() end
+   for _,shader in ipairs(self.shaders) do shader:delete() end
    self.shaders = {}
-   for _,program in ipairs(self.programs) do program:DeleteProgram() end
+   for _,program in ipairs(self.programs) do program:delete() end
    self.programs = {}
 end
 
