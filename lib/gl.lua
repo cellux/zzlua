@@ -574,11 +574,15 @@ VBO_mt.__index = VBO_mt
 VBO_mt.__gc = VBO_mt.DeleteBuffer
 VBO_mt.delete = VBO_mt.DeleteBuffer
 
-function M.VBO()
+function M.VBO(size, data, usage)
    local buffers = ffi.new("GLuint[1]")
    ffi.C.glGenBuffers(1, buffers)
    local vbo = { id = buffers[0] }
-   return setmetatable(vbo, VBO_mt)
+   setmetatable(vbo, VBO_mt)
+   if size then
+      vbo:BufferData(size, data, usage or ffi.C.GL_STATIC_DRAW)
+   end
+   return vbo
 end
 
 function M.BindBuffer(target, buffer)
