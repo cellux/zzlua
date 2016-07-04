@@ -679,11 +679,31 @@ function M.Uniform1i(location, v0)
    ffi.C.glUniform1i(location, v0)
 end
 
+-- FrameBuffer
+
+M.Framebuffer = util.Class()
+
+function M.Framebuffer:create()
+   local framebuffers = ffi.new("GLuint[1]")
+   ffi.C.glGenFramebuffers(1, framebuffers)
+   local fb = { id = framebuffers[0] }
+   return fb
 end
 
+function M.Framebuffer:delete()
+   if self.id then
+      local framebuffers = ffi.new("GLuint[1]", self.id)
+      ffi.C.glDeleteFramebuffers(1, framebuffers)
+      self.id = nil
+   end
 end
 
+function M.BindFramebuffer(target, fb)
+   ffi.C.glBindFramebuffer(target, fb and fb.id or 0)
+end
 
+function M.FramebufferTexture2D(target, attachment, textarget, texture, level)
+   ffi.C.glFramebufferTexture2D(target, attachment, textarget, texture.id, level or 0)
 end
 
 --
