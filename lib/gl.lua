@@ -732,15 +732,17 @@ function M.Finish()
    ffi.C.glFinish()
 end
 
+-- ResourceManager
+
 local ResourceManager_mt = {}
 
-function ResourceManager_mt:CreateShader(...)
+function ResourceManager_mt:Shader(...)
    local shader = M.CreateShader(...)
    table.insert(self.shaders, shader)
    return shader
 end
 
-function ResourceManager_mt:CreateProgram(...)
+function ResourceManager_mt:Program(...)
    local program = M.CreateProgram(...)
    table.insert(self.programs, program)
    return program
