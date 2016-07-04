@@ -464,6 +464,10 @@ function Program_mt:BindFragDataLocation(index, name)
    ffi.C.glBindFragDataLocation(self.id, index, name)
 end
 
+function Program_mt:GetAttribLocation(name)
+   return util.check_bad("glGetAttribLocation", -1, ffi.C.glGetAttribLocation(self.id, name))
+end
+
 function Program_mt:GetUniformLocation(name)
    return util.check_bad("glGetUniformLocation", -1, ffi.C.glGetUniformLocation(self.id, name))
 end
@@ -536,6 +540,24 @@ M.VertexArray = M.VAO
 
 local VBO_mt = {}
 
+function VBO_mt:BufferData(size, data, usage)
+   ffi.C.glBufferData(ffi.C.GL_ARRAY_BUFFER,
+                      size,
+                      ffi.cast("const void*", data),
+                      usage)
+end
+
+function VBO_mt:BufferSubData(offset, size, data)
+   ffi.C.glBufferSubData(ffi.C.GL_ARRAY_BUFFER,
+                         offset,
+                         size,
+                         ffi.cast("const void*", data))
+end
+
+function VBO_mt:BindBuffer(target)
+   ffi.C.glBindBuffer(target or ffi.C.GL_ARRAY_BUFFER, self.id)
+end
+
 function VBO_mt:DeleteBuffer()
    if self.id then
       local buffers = ffi.new("GLuint[1]", self.id)
@@ -581,6 +603,18 @@ function M.DisableVertexAttribArray(index)
    ffi.C.glDisableVertexAttribArray(index)
 end
 
+function M.VertexAttrib(index, x, y, z, w)
+   if w ~= nil then
+      ffi.C.glVertexAttrib4f(index, x, y, z, w)
+   elseif z ~= nil then
+      ffi.C.glVertexAttrib3f(index, x, y, z)
+   elseif y ~= nil then
+      ffi.C.glVertexAttrib2f(index, x, y)
+   elseif x ~= nil then
+      ffi.C.glVertexAttrib1f(index, x)
+   end
+end
+
 function M.VertexAttribPointer(index, size, type, normalized, stride, pointer)
    ffi.C.glVertexAttribPointer(index, size, type, normalized, stride, ffi.cast("GLvoid *", pointer))
 end
@@ -588,6 +622,11 @@ end
 -- Texture
 
 local Texture_mt = {}
+
+function Texture_mt:BindTexture(target)
+   target = target or ffi.C.GL_TEXTURE_2D
+   ffi.C.glBindTexture(target, self.id)
+end
 
 function Texture_mt:DeleteTexture()
    if self.id then
@@ -648,6 +687,10 @@ end
 
 function M.Clear(mask)
    ffi.C.glClear(mask)
+end
+
+function M.ClearColor(red, green, blue, alpha)
+   ffi.C.glClearColor(red, green, blue, alpha)
 end
 
 function M.DrawArrays(mode, first, count)
