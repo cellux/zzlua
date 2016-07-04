@@ -364,6 +364,24 @@ function M.GetError()
    return ffi.C.glGetError()
 end
 
+function M.GetBoolean(pname)
+   local data = ffi.new("GLboolean[1]")
+   ffi.C.GetBooleanv(pname, data)
+   return data[0]
+end
+
+function M.GetFloat(pname)
+   local data = ffi.new("GLfloat[1]")
+   ffi.C.GetFloatv(pname, data)
+   return data[0]
+end
+
+function M.GetInteger(pname)
+   local data = ffi.new("GLint[1]")
+   ffi.C.GetIntegerv(pname, data)
+   return data[0]
+end
+
 function M.GetString(name)
    local rv = util.check_bad("glGetString", nil, ffi.C.glGetString(name))
    return ffi.string(rv)
