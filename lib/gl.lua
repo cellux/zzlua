@@ -14,23 +14,28 @@ typedef int64_t                khronos_int64_t;
 typedef uint64_t               khronos_uint64_t;
 typedef float                  khronos_float_t;
 
-typedef void             GLvoid;
-typedef char             GLchar;
-typedef unsigned int     GLenum;
-typedef unsigned char    GLboolean;
-typedef unsigned int     GLbitfield;
-typedef khronos_int8_t   GLbyte;
-typedef short            GLshort;
-typedef int              GLint;
-typedef int              GLsizei;
-typedef khronos_uint8_t  GLubyte;
-typedef unsigned short   GLushort;
-typedef unsigned int     GLuint;
-typedef khronos_float_t  GLfloat;
-typedef khronos_float_t  GLclampf;
-typedef khronos_int32_t  GLfixed;
+typedef void                   GLvoid;
+typedef char                   GLchar;
+typedef unsigned int           GLenum;
+typedef unsigned char          GLboolean;
+typedef unsigned int           GLbitfield;
+typedef khronos_int8_t         GLbyte;
+typedef short                  GLshort;
+typedef int                    GLint;
+typedef int                    GLsizei;
+typedef khronos_uint8_t        GLubyte;
+typedef unsigned short         GLhalf;
+typedef unsigned short         GLushort;
+typedef unsigned int           GLuint;
+typedef uint64_t               GLuint64;
+typedef int64_t                GLint64;
+typedef khronos_float_t        GLfloat;
+typedef khronos_float_t        GLclampf;
+typedef double                 GLclampd;
+typedef khronos_int32_t        GLfixed;
 
-typedef ptrdiff_t        GLsizeiptr;
+typedef ptrdiff_t              GLsizeiptr;
+typedef ptrdiff_t              GLintptr;
 
 enum {
   GL_FALSE = 0,
@@ -45,14 +50,27 @@ enum {
   GL_INT            = 0x1404,
   GL_UNSIGNED_INT   = 0x1405,
   GL_FLOAT          = 0x1406,
+  GL_2_BYTES        = 0x1407,
+  GL_3_BYTES        = 0x1408,
+  GL_4_BYTES        = 0x1409,
   GL_DOUBLE         = 0x140A,
   GL_HALF_FLOAT     = 0x140B,
   GL_FIXED          = 0x140C
 };
 
 enum {
-  GL_RGBA = 0x1908,
-  GL_RGBA8 = 0x8058
+  GL_ALPHA                  = 0x1906,
+  GL_RGB                    = 0x1907,
+  GL_RGBA                   = 0x1908,
+  GL_RGBA8                  = 0x8058,
+  GL_LUMINANCE              = 0x1909,
+  GL_LUMINANCE_ALPHA        = 0x190A
+};
+
+enum {
+  GL_UNSIGNED_SHORT_4_4_4_4 = 0x8033,
+  GL_UNSIGNED_SHORT_5_5_5_1 = 0x8034,
+  GL_UNSIGNED_SHORT_5_6_5   = 0x8363
 };
 
 /* Utility */
@@ -63,6 +81,16 @@ enum {
   GL_VERSION    = 0x1F02,
   GL_EXTENSIONS = 0x1F03
 };
+
+enum {
+  GL_SHADING_LANGUAGE_VERSION = 0x8B8C
+};
+
+/* Parameters */
+
+void glGetBooleanv (GLenum pname, GLboolean *data);
+void glGetFloatv (GLenum pname, GLfloat *data);
+void glGetIntegerv (GLenum pname, GLint *data);
 
 /* Errors */
 
@@ -123,7 +151,9 @@ const GLubyte * glGetString (GLenum name);
 
 GLuint glCreateShader (GLenum type);
 void glShaderSource (GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
+void glShaderBinary (GLsizei count, const GLuint *shaders, GLenum binaryformat, const void *binary, GLsizei length);
 void glCompileShader (GLuint shader);
+void glReleaseShaderCompiler (void);
 void glGetShaderiv (GLuint shader, GLenum pname, GLint *params);
 void glGetShaderInfoLog (GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
 void glDeleteShader (GLuint shader);
@@ -132,6 +162,7 @@ GLuint glCreateProgram (void);
 void glAttachShader (GLuint program, GLuint shader);
 void glBindAttribLocation (GLuint program, GLuint index, const GLchar *name);
 void glBindFragDataLocation (GLuint program, GLuint color, const GLchar *name);
+GLint glGetAttribLocation (GLuint program, const GLchar *name);
 GLint glGetUniformLocation (GLuint program, const GLchar *name);
 void glLinkProgram (GLuint program);
 void glUseProgram (GLuint program);
@@ -140,7 +171,34 @@ void glGetProgramInfoLog (GLuint program, GLsizei bufSize, GLsizei *length, GLch
 void glDetachShader (GLuint program, GLuint shader);
 void glDeleteProgram (GLuint program);
 
+void glUniform1f (GLint location, GLfloat v0);
+void glUniform1fv (GLint location, GLsizei count, const GLfloat *value);
 void glUniform1i (GLint location, GLint v0);
+void glUniform1iv (GLint location, GLsizei count, const GLint *value);
+void glUniform2f (GLint location, GLfloat v0, GLfloat v1);
+void glUniform2fv (GLint location, GLsizei count, const GLfloat *value);
+void glUniform2i (GLint location, GLint v0, GLint v1);
+void glUniform2iv (GLint location, GLsizei count, const GLint *value);
+void glUniform3f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
+void glUniform3fv (GLint location, GLsizei count, const GLfloat *value);
+void glUniform3i (GLint location, GLint v0, GLint v1, GLint v2);
+void glUniform3iv (GLint location, GLsizei count, const GLint *value);
+void glUniform4f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+void glUniform4fv (GLint location, GLsizei count, const GLfloat *value);
+void glUniform4i (GLint location, GLint v0, GLint v1, GLint v2, GLint v3);
+void glUniform4iv (GLint location, GLsizei count, const GLint *value);
+void glUniformMatrix2fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+void glUniformMatrix3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+void glUniformMatrix4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
+
+void glVertexAttrib1f (GLuint index, GLfloat x);
+void glVertexAttrib1fv (GLuint index, const GLfloat *v);
+void glVertexAttrib2f (GLuint index, GLfloat x, GLfloat y);
+void glVertexAttrib2fv (GLuint index, const GLfloat *v);
+void glVertexAttrib3f (GLuint index, GLfloat x, GLfloat y, GLfloat z);
+void glVertexAttrib3fv (GLuint index, const GLfloat *v);
+void glVertexAttrib4f (GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
+void glVertexAttrib4fv (GLuint index, const GLfloat *v);
 
 void glGenVertexArrays (GLsizei n, GLuint *arrays);
 void glBindVertexArray (GLuint array);
@@ -152,6 +210,7 @@ void glDeleteVertexArrays (GLsizei n, const GLuint *arrays);
 void glGenBuffers (GLsizei n, GLuint *buffers);
 void glBindBuffer (GLenum target, GLuint buffer);
 void glBufferData (GLenum target, GLsizeiptr size, const void *data, GLenum usage);
+void glBufferSubData (GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
 void glDeleteBuffers (GLsizei n, const GLuint *buffers);
 
 enum {
@@ -204,10 +263,18 @@ enum {
 
 void glGenTextures (GLsizei n, GLuint *textures);
 void glBindTexture (GLenum target, GLuint texture);
+void glTexParameterf (GLenum target, GLenum pname, GLfloat param);
+void glTexParameterfv (GLenum target, GLenum pname, const GLfloat *params);
 void glTexParameteri (GLenum target, GLenum pname, GLint param);
+void glTexParameteriv (GLenum target, GLenum pname, const GLint *params);
 void glTexImage2D (GLenum target, GLint level, GLint internalFormat,
                    GLsizei width, GLsizei height, GLint border,
                    GLenum format, GLenum type, const void *pixels);
+void glTexSubImage2D (GLenum target, GLint level, GLint xoffset, GLint yoffset,
+                      GLsizei width, GLsizei height,
+                      GLenum format, GLenum type, const void *pixels);
+void glCopyTexImage2D (GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border);
+void glCopyTexSubImage2D (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height);
 void glActiveTexture (GLenum texture);
 void glDeleteTextures (GLsizei n, const GLuint *textures);
 
@@ -235,6 +302,34 @@ enum {
 
 void glDrawArrays (GLenum mode, GLint first, GLsizei count);
 void glDrawElements (GLenum mode, GLsizei count, GLenum type, const void *indices);
+
+enum {
+  GL_RENDERBUFFER = 0x8D41
+};
+
+void glGenRenderbuffers (GLsizei n, GLuint *renderbuffers);
+void glBindRenderbuffer (GLenum target, GLuint renderbuffer);
+void glRenderbufferStorage (GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
+void glDeleteRenderbuffers (GLsizei n, const GLuint *renderbuffers);
+
+enum {
+  GL_FRAMEBUFFER = 0x8D40,
+  GL_FRAMEBUFFER_BINDING = 0x8CA6
+};
+
+enum {
+  GL_COLOR_ATTACHMENT0  = 0x8CE0,
+  GL_DEPTH_ATTACHMENT   = 0x8D00,
+  GL_STENCIL_ATTACHMENT = 0x8D20
+};
+
+void glGenFramebuffers (GLsizei n, GLuint *framebuffers);
+void glBindFramebuffer (GLenum target, GLuint framebuffer);
+void glFramebufferRenderbuffer (GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+void glFramebufferTexture2D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+void glDeleteFramebuffers (GLsizei n, const GLuint *framebuffers);
+
+void glViewport (GLint x, GLint y, GLsizei width, GLsizei height);
 
 void glFlush (void);
 void glFinish (void);
