@@ -110,4 +110,23 @@ function M.EventEmitter(self, invoke_fn)
    return self
 end
 
+function M.lines(s)
+   local index = 1
+   local function next()
+      local rv = nil
+      if index <= #s then
+         local lf_pos = s:find("\n", index, true)
+         if lf_pos then
+            rv = s:sub(index, lf_pos-1)
+            index = lf_pos+1
+         else
+            rv = s:sub(index)
+            index = #s+1
+         end
+      end
+      return rv
+   end
+   return next
+end
+
 return M

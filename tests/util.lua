@@ -136,3 +136,19 @@ obj:change_something()
 assert.equals(obj.x, 10)
 assert.equals(obj.s, "hulaboy")
 assert.equals(obj.f, -12.5)
+
+-- lines
+
+local text = [[	hello
+this
+is   
+
+good
+
+]]
+
+local lines = {}
+for line in util.lines(text) do
+   table.insert(lines, line)
+end
+assert.equals(lines, {"	hello","this","is   ","","good",""})
