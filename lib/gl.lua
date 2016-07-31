@@ -366,19 +366,19 @@ end
 
 function M.GetBoolean(pname)
    local data = ffi.new("GLboolean[1]")
-   ffi.C.GetBooleanv(pname, data)
+   ffi.C.glGetBooleanv(pname, data)
    return data[0]
 end
 
 function M.GetFloat(pname)
    local data = ffi.new("GLfloat[1]")
-   ffi.C.GetFloatv(pname, data)
+   ffi.C.glGetFloatv(pname, data)
    return data[0]
 end
 
 function M.GetInteger(pname)
    local data = ffi.new("GLint[1]")
-   ffi.C.GetIntegerv(pname, data)
+   ffi.C.glGetIntegerv(pname, data)
    return data[0]
 end
 
