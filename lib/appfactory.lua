@@ -158,6 +158,13 @@ function SDLApp:run()
          self.renderer = w:CreateRenderer()
       end
 
+      if self.ctx then
+         -- this is what the OpenGL SDL renderer does if
+         -- SDL_RENDERER_PRESENTVSYNC is specified
+         sdl.SDL_GL_SetSwapInterval(1)
+         assert(sdl.SDL_GL_GetSwapInterval()==1)
+      end
+
       if self.create_ui then
          if self.ctx then
             if self.gl_profile == 'es' then
