@@ -79,29 +79,10 @@ function UI.Text(ui, opts)
       return self.font.height
    end
 
-   local function lines(s)
-      local index = 1
-      local function next()
-         local rv = nil
-         if index <= #s then
-            local lf_pos = s:find("\n", index, true)
-            if lf_pos then
-               rv = s:sub(index, lf_pos-1)
-               index = lf_pos+1
-            else
-               rv = s:sub(index)
-               index = #s+1
-            end
-         end
-         return rv
-      end
-      return next
-   end
-
    function self:draw()
       local x,y = self.rect.x,self.rect.y
       local font_height = self.font.height
-      for line in lines(self.text) do
+      for line in util.lines(self.text) do
          if y >= -font_height then
             draw_string(line, x, y)
          end
