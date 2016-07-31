@@ -1,4 +1,4 @@
--- statements in this file are executed once at zzlua startup
+-- statements in this file are executed at startup
 
 local ffi = require('ffi')
 local sched = require('sched')
@@ -47,7 +47,7 @@ end
 
 --[[ main ]]--
 
-local function zz_run(chunk, err)
+local function execute_chunk(chunk, err)
    if chunk then
       chunk()
    else
@@ -55,7 +55,7 @@ local function zz_run(chunk, err)
    end
 end
 
--- process zzlua options
+-- process options
 
 local arg_index = 1
 local opt_e = false
@@ -64,7 +64,7 @@ while arg_index <= #arg do
       opt_e = true
       arg_index = arg_index + 1
       local script = arg[arg_index]
-      zz_run(loadstring(script))
+      execute_chunk(loadstring(script))
    else
       -- the first non-option arg is the path of the script to run
       break
@@ -72,14 +72,14 @@ while arg_index <= #arg do
    arg_index = arg_index + 1
 end
 
--- run zzlua script (from specified file or stdin)
+-- run script (from specified file or stdin)
 
 local script_path = arg[arg_index]
 local script_args = {}
 for i=arg_index+1,#arg do
    table.insert(script_args, arg[i])
 end
-arg = script_args -- the script shall not see any zzlua options
+arg = script_args -- remove framework-specific options
 
 -- save the path of the script to arg[0]
 arg[0] = script_path
@@ -88,5 +88,5 @@ if opt_e and not script_path then
    -- if there was a script passed in via -e, but we didn't get a
    -- script path on the command line, then don't read from stdin
 else
-   zz_run(loadfile(script_path)) -- loadfile(nil) loads from stdin
+   execute_chunk(loadfile(script_path)) -- loadfile(nil) loads from stdin
 end
