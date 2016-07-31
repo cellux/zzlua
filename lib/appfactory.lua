@@ -187,10 +187,12 @@ function SDLApp:run()
       -- show window
       w:ShowWindow()
 
-      -- update width/height (may change after window gets mapped)
+      -- mapping the window may change its width/height
       self.width, self.height = w:GetWindowSize()
+      if self.ctx then
+         gl.Viewport(0,0,self.width,self.height)
+      end
       if self.ui then
-         self.ui:update_rect(0, 0, self.width, self.height)
          self.ui:layout()
       end
 
