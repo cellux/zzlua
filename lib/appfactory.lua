@@ -136,6 +136,8 @@ function SDLApp:run()
          sdl.GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, minor)
       end
 
+      sdl.GL_SetAttribute(sdl.SDL_GL_DOUBLEBUFFER, 1)
+
       -- always start hidden, show when everything is ready
       local flags = bit.bor(self.flags, sdl.SDL_WINDOW_HIDDEN)
 
