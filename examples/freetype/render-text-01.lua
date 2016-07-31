@@ -28,7 +28,7 @@ function app:init()
    sched(function()
          while true do
             text_top = text_top-1
-            sched.sleep(0.1)
+            sched.sleep(0.01)
          end
    end)
 

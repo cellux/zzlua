@@ -113,7 +113,7 @@ function app:init()
    sched(function()
          while true do
             text_top = text_top-text_speed
-            sched.sleep(1/self.fps)
+            sched.sleep(0.01)
          end
    end)
    sched.on('sdl.keydown', function(evdata)
