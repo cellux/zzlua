@@ -1571,6 +1571,9 @@ M.DEFAULT_WINDOW_WIDTH  = 640
 M.DEFAULT_WINDOW_HEIGHT = 480
 M.DEFAULT_WINDOW_FLAGS = bit.bor(sdl.SDL_WINDOW_RESIZABLE,
                                  sdl.SDL_WINDOW_OPENGL)
+M.DEFAULT_RENDERER_FLAGS = bit.bor(sdl.SDL_RENDERER_ACCELERATED,
+                                   sdl.SDL_RENDERER_PRESENTVSYNC,
+                                   sdl.SDL_RENDERER_TARGETTEXTURE)
 
 M.SDL_INIT_FLAGS = sdl.SDL_INIT_AUDIO +
                    sdl.SDL_INIT_VIDEO +
@@ -1687,8 +1690,197 @@ function M.GetRenderDriverInfo(index)
    return info
 end
 
-M.Point = ffi.typeof("SDL_Point")
-M.Rect = ffi.typeof("SDL_Rect")
+-- Point
+
+local Point_mt = {}
+
+function Point_mt:__tostring()
+   return sf("Point(%d,%d)", self.x, self.y)
+end
+
+M.Point = ffi.metatype("SDL_Point", Point_mt)
+
+-- Rect
+
+local Rect_mt = {}
+
+function Rect_mt:__tostring()
+   return sf("Rect(%d,%d,%d,%d)",
+             self.x, self.y,
+             self.w, self.h)
+end
+
+M.Rect = ffi.metatype("SDL_Rect", Rect_mt)
+
+-- Color
+
+local Color_mt = {}
+
+function Color_mt:bytes()
+   return self.r, self.g, self.b, self.a
+end
+
+function Color_mt:floats()
+   return self.r/255, self.g/255, self.b/255, self.a/255
+end
+
+Color_mt.__index = Color_mt
+
+M.Color = ffi.metatype("SDL_Color", Color_mt)
+
+-- Texture
+
+local Texture_mt = {}
+
+function Texture_mt:LockTexture(rect, pixels, pitch)
+   local rv = sdl.SDL_LockTexture(self.texture, rect or self.rect,
+                                  ffi.cast("void**", pixels),
+                                  ffi.cast("int*", pitch))
+   if rv ~= 0 then
+      ef("SDL_LockTexture() failed: %s", M.GetError())
+   end
+end
+
+function Texture_mt:UpdateTexture(rect, pixels, pitch)
+   local rv = sdl.SDL_UpdateTexture(self.texture, rect,
+                                    ffi.cast("const void*", pixels),
+                                    pitch)
+   if rv ~= 0 then
+      ef("SDL_UpdateTexture() failed: %s", M.GetError())
+   end
+end
+
+function Texture_mt.UnlockTexture()
+   sdl.SDL_UnlockTexture(self.texture)
+end
+
+function Texture_mt:SetTextureBlendMode(mode)
+   util.check_ok("SDL_SetTextureBlendMode", 0,
+                 sdl.SDL_SetTextureBlendMode(self.texture, mode))
+end
+Texture_mt.blendmode = Texture_mt.SetTextureBlendMode
+
+function Texture_mt:clear(color)
+   local renderer = self.renderer
+   local prev_render_target = renderer:GetRenderTarget()
+   renderer:SetRenderTarget(self.texture)
+   if color then
+      renderer:SetRenderDrawColor(color)
+   end
+   renderer:RenderClear()
+   renderer:SetRenderTarget(prev_render_target)
+end
+
+function Texture_mt:update(dst_rect, src, src_rect)
+   dst_rect = dst_rect or self.rect
+   if src.is_texture then
+      local renderer = self.renderer
+      local prev_render_target = renderer:GetRenderTarget()
+      renderer:SetRenderTarget(self.texture)
+      renderer:RenderCopy(src, src_rect or src.rect, dst_rect)
+      renderer:SetRenderTarget(prev_render_target)
+   elseif src.is_pixelbuffer then
+      assert(self.format==src.format)
+      self:UpdateTexture(dst_rect, src.buf, src.pitch)
+   else
+      ef("invalid update source: %s", src)
+   end
+end
+
+function Texture_mt:DestroyTexture()
+   if self.texture then
+      sdl.SDL_DestroyTexture(self.texture)
+      self.texture = nil
+      self.rect = nil
+   end
+end
+Texture_mt.delete = Texture_mt.DestroyTexture
+
+Texture_mt.__index = Texture_mt
+Texture_mt.__gc = Texture_mt.delete
+
+-- Renderer
+
+local Renderer_mt = {}
+
+function Renderer_mt:GetRendererInfo()
+   local info = ffi.new("SDL_RendererInfo")
+   util.check_ok("SDL_GetRendererInfo", 0,
+                 sdl.SDL_GetRendererInfo(self.renderer, info))
+   return info
+end
+
+function Renderer_mt:CreateTexture(format, access, width, height)
+   local texture = sdl.SDL_CreateTexture(self.renderer,
+                                         format, access,
+                                         width, height)
+   if texture == nil then
+      ef("Cannot create texture: %s", M.GetError())
+   end
+   local t = {
+      is_texture = true,
+      texture = texture,
+      renderer = self,
+      rect = M.Rect(0, 0, width, height),
+      format = format,
+      access = access,
+      width = width,
+      height = height,
+   }
+   return setmetatable(t, Texture_mt)
+end
+
+function Renderer_mt:SetRenderDrawColor(color)
+   util.check_ok("SDL_SetRenderDrawColor", 0,
+                 sdl.SDL_SetRenderDrawColor(self.renderer,
+                                            color:bytes()))
+end
+
+function Renderer_mt:RenderClear()
+   util.check_ok("SDL_RenderClear", 0,
+                 sdl.SDL_RenderClear(self.renderer))
+end
+
+function Renderer_mt:RenderCopy(texture, src_rect, dst_rect)
+   util.check_ok("SDL_RenderCopy", 0,
+                 sdl.SDL_RenderCopy(self.renderer, texture.texture,
+                                    src_rect, dst_rect))
+end
+
+function Renderer_mt:RenderReadPixels(rect, format, pixels, pitch)
+   util.check_ok("SDL_RenderReadPixels", 0,
+                 sdl.SDL_RenderReadPixels(self.renderer,
+                                          rect, format,
+                                          pixels, pitch))
+end
+
+function Renderer_mt:SetRenderTarget(target)
+   local rv = sdl.SDL_SetRenderTarget(self.renderer, target)
+   if rv ~= 0 then
+      ef("SDL_SetRenderTarget() failed: %s", M.GetError())
+   end
+end
+
+function Renderer_mt:GetRenderTarget()
+   return sdl.SDL_GetRenderTarget(self.renderer)
+end
+
+function Renderer_mt:RenderPresent()
+   sdl.SDL_RenderPresent(self.renderer)
+end
+
+function Renderer_mt:DestroyRenderer()
+   if self.renderer then
+      sdl.SDL_DestroyRenderer(self.renderer)
+      self.renderer = nil
+   end
+end
+Renderer_mt.delete = Renderer_mt.DestroyRenderer
+
+Renderer_mt.__index = Renderer_mt
+Renderer_mt.__gc = Renderer_mt.delete
+
+-- Window
 
 local Window_mt = {}
 
@@ -1734,172 +1926,25 @@ end
 
 function Window_mt:dpi()
    local info = self:GetWindowWMInfo()
-   local dpy = info.info.x11.display
-   local width = xlib.XDisplayWidth(dpy, 0)
-   local height = xlib.XDisplayHeight(dpy, 0)
-   local width_mm = xlib.XDisplayWidthMM(dpy, 0)
-   local height_mm = xlib.XDisplayHeightMM(dpy, 0)
-   local width_inch = width_mm / 25.4 -- 1 inch = 2.54 cm = 25.4 mm
-   local height_inch = height_mm / 25.4
-   local xdpi = math.floor(width / width_inch + 0.5)
-   local ydpi = math.floor(height / height_inch + 0.5)
-   return xdpi, ydpi
-end
-
-local Texture_mt = {}
-
-function Texture_mt:LockTexture(rect, pixels, pitch)
-   local rv = sdl.SDL_LockTexture(self.texture, rect or self.rect,
-                                  ffi.cast("void**", pixels),
-                                  ffi.cast("int*", pitch))
-   if rv ~= 0 then
-      ef("SDL_LockTexture() failed: %s", M.GetError())
-   end
-end
-
-function Texture_mt:UpdateTexture(rect, pixels, pitch)
-   local rv = sdl.SDL_UpdateTexture(self.texture, rect,
-                                    ffi.cast("const void*", pixels),
-                                    pitch)
-   if rv ~= 0 then
-      ef("SDL_UpdateTexture() failed: %s", M.GetError())
-   end
-end
-
-function Texture_mt.UnlockTexture()
-   sdl.SDL_UnlockTexture(self.texture)
-end
-
-function Texture_mt:SetTextureBlendMode(mode)
-   util.check_ok("SDL_SetTextureBlendMode", 0,
-                 sdl.SDL_SetTextureBlendMode(self.texture, mode))
-end
-Texture_mt.blendmode = Texture_mt.SetTextureBlendMode
-
-function Texture_mt:clear(r,g,b,a)
-   local renderer = self.renderer
-   local old = renderer:GetRenderTarget()
-   renderer:SetRenderTarget(self.texture)
-   renderer:SetRenderDrawColor(r or 0,g or 0,b or 0,a or sdl.SDL_ALPHA_OPAQUE)
-   renderer:RenderClear()
-   renderer:SetRenderTarget(old)
-end
-
-function Texture_mt:update(dst_rect, src, src_rect, src_pitch)
-   dst_rect = dst_rect or self.rect
-   if type(src)=="table" then
-      -- another texture
-      local renderer = self.renderer
-      local old = renderer:GetRenderTarget()
-      renderer:SetRenderTarget(self.texture)
-      renderer:RenderCopy(src, src_rect or src.rect, dst_rect)
-      renderer:SetRenderTarget(old)
-   elseif type(src)=="cdata" then
-      -- pointer to pixel data
-      self:UpdateTexture(dst_rect, src, src_pitch)
+   if ffi.os == "Linux" then
+      local dpy = info.info.x11.display
+      local width = xlib.XDisplayWidth(dpy, 0)
+      local height = xlib.XDisplayHeight(dpy, 0)
+      local width_mm = xlib.XDisplayWidthMM(dpy, 0)
+      local height_mm = xlib.XDisplayHeightMM(dpy, 0)
+      local width_inch = width_mm / 25.4 -- 1 inch = 2.54 cm = 25.4 mm
+      local height_inch = height_mm / 25.4
+      local xdpi = math.floor(width / width_inch + 0.5)
+      local ydpi = math.floor(height / height_inch + 0.5)
+      return xdpi, ydpi
    else
-      ef("invalid update source: %s", src)
+      ef("Window:dpi() is not implemented on this platform")
    end
 end
-
-function Texture_mt:DestroyTexture()
-   if self.texture then
-      sdl.SDL_DestroyTexture(self.texture)
-      self.texture = nil
-      self.rect = nil
-   end
-end
-Texture_mt.delete = Texture_mt.DestroyTexture
-
-Texture_mt.__index = Texture_mt
-Texture_mt.__gc = Texture_mt.DestroyTexture
-
-local Renderer_mt = {}
-
-function Renderer_mt:GetRendererInfo()
-   local info = ffi.new("SDL_RendererInfo")
-   util.check_ok("SDL_GetRendererInfo", 0,
-                 sdl.SDL_GetRendererInfo(self.renderer, info))
-   return info
-end
-
-function Renderer_mt:CreateTexture(format, access, width, height)
-   local texture = sdl.SDL_CreateTexture(self.renderer,
-                                         format, access,
-                                         width, height)
-   if texture == nil then
-      ef("Cannot create texture: %s", M.GetError())
-   end
-   local t = {
-      texture = texture,
-      renderer = self,
-      rect = M.Rect(0, 0, width, height),
-      width = width,
-      height = height,
-   }
-   return setmetatable(t, Texture_mt)
-end
-
-function Renderer_mt:SetRenderDrawColor(r,g,b,a)
-   util.check_ok("SDL_SetRenderDrawColor", 0,
-                 sdl.SDL_SetRenderDrawColor(self.renderer,r,g,b,a))
-end
-
-function Renderer_mt:RenderClear()
-   util.check_ok("SDL_RenderClear", 0,
-                 sdl.SDL_RenderClear(self.renderer))
-end
-
-function Renderer_mt:RenderCopy(texture, srcrect, dstrect)
-   util.check_ok("SDL_RenderCopy", 0,
-                 sdl.SDL_RenderCopy(self.renderer, texture.texture,
-                                    srcrect, dstrect))
-end
-
-function Renderer_mt:RenderReadPixels(rect, format, pixels, pitch)
-   util.check_ok("SDL_RenderReadPixels", 0,
-                 sdl.SDL_RenderReadPixels(self.renderer,
-                                          rect, format, pixels, pitch))
-end
-
-function Renderer_mt:SetRenderTarget(target)
-   if type(target)=="table" then
-      -- it's a texture object
-      target = target.texture
-   elseif type(target)=="cdata" then
-      -- it's an SDL_Texture pointer
-   else
-      ef("invalid target: %s", target)
-   end
-   local rv = sdl.SDL_SetRenderTarget(self.renderer, target)
-   if rv ~= 0 then
-      ef("SDL_SetRenderTarget() failed: %s", M.GetError())
-   end
-end
-
-function Renderer_mt:GetRenderTarget()
-   return sdl.SDL_GetRenderTarget(self.renderer)
-end
-
-function Renderer_mt:RenderPresent()
-   sdl.SDL_RenderPresent(self.renderer)
-end
-
-function Renderer_mt:DestroyRenderer()
-   if self.renderer then
-      sdl.SDL_DestroyRenderer(self.renderer)
-      self.renderer = nil
-   end
-end
-
-Renderer_mt.__index = Renderer_mt
-Renderer_mt.__gc = Renderer_mt.DestroyRenderer
 
 function Window_mt:CreateRenderer(index, flags)
-   index = (index or 0) - 1 -- one-based
-   flags = flags or bit.bor(sdl.SDL_RENDERER_ACCELERATED,
-                            sdl.SDL_RENDERER_PRESENTVSYNC,
-                            sdl.SDL_RENDERER_TARGETTEXTURE)
+   index = (index or 0) - 1 -- received argument is one-based
+   flags = flags or M.DEFAULT_RENDERER_FLAGS
    local renderer = sdl.SDL_CreateRenderer(self.window, index, flags)
    if renderer == nil then
       ef("Cannot create renderer: %s", M.GetError())
@@ -1921,9 +1966,10 @@ function Context_mt:GL_DeleteContext()
       self.ctx = nil
    end
 end
+Context_mt.delete = Context_mt.GL_DeleteContext
 
 Context_mt.__index = Context_mt
-Context_mt.__gc = Context_mt.GL_DeleteContext
+Context_mt.__gc = Context_mt.delete
 
 function Window_mt:GL_CreateContext()
    local ctx = sdl.SDL_GL_CreateContext(self.window)
@@ -1943,9 +1989,10 @@ function Window_mt:DestroyWindow()
       self.window = nil
    end
 end
+Window_mt.delete = Window_mt.DestroyWindow
 
 Window_mt.__index = Window_mt
-Window_mt.__gc = Window_mt.DestroyWindow
+Window_mt.__gc = Window_mt.delete
 
 function M.CreateWindow(title, x, y, w, h, flags)
    x = x or sdl.SDL_WINDOWPOS_UNDEFINED
@@ -1997,9 +2044,10 @@ local function SDL2Module(sched)
    }
    local tmp_event = ffi.new("SDL_Event")
    function self.tick()
+      -- poll for SDL events and convert them to scheduler events
       sdl.SDL_PumpEvents()
       while sdl.SDL_PollEvent(tmp_event) == 1 do
-         local evdata = ffi.new("SDL_Event", tmp_event)
+         local evdata = ffi.new("SDL_Event", tmp_event) -- clone it
          local evtype = sdl_event_types[evdata.type]
          if evtype then
             sched.emit(evtype, evdata)

@@ -248,33 +248,48 @@ local OpenGLApp = util.Class(SDLApp)
 function OpenGLApp:create(opts)
    opts = opts or {}
    opts.opengl = true
-   opts.gl_profile = opts.gl_profile or 'es'
-   opts.gl_version = opts.gl_version or '2.0'
+   opts.gl_profile = opts.gl_profile or 'core'
+   opts.gl_version = opts.gl_version or '3.0'
    local self = SDLApp(opts)
    self.exact_frame_timing = opts.exact_frame_timing or false
+   self.frame_time = opts.frame_time
    return self
 end
 
 function OpenGLApp:main()
    self.fps = self:determine_fps()
+   if not self.frame_time then
+      self.frame_time = 1/self.fps
+   end
+   local now = sched.now
+   local prev_now
    while true do
-      local now = sched.now
+      prev_now = now
+      now = sched.now
       self:draw()
       local gl_error = gl.GetError()
       if gl_error ~= gl.GL_NO_ERROR then
-         ef("GL error: %d", gl_error)
+         ef("GL error: %x", gl_error)
       end
       self.window:GL_SwapWindow()
-      local next_frame_start = now+1/self.fps
-      if self.exact_frame_timing then
-         exact_wait_until(next_frame_start)
+      self:update(now-prev_now)
+      if self.frame_time > 0 then
+         local next_frame_start = now + self.frame_time
+         if self.exact_frame_timing then
+            exact_wait_until(next_frame_start)
+         else
+            sched.wait(next_frame_start)
+         end
       else
-         sched.wait(next_frame_start)
+         sched.yield()
       end
    end
 end
 
 function OpenGLApp:draw()
+end
+
+function OpenGLApp:update(delta)
 end
 
 M.OpenGLApp = OpenGLApp
@@ -291,25 +306,40 @@ function DesktopApp:create(opts)
    opts.create_context = false
    local self = SDLApp(opts)
    self.exact_frame_timing = opts.exact_frame_timing or false
+   self.frame_time = opts.frame_time
    return self
 end
 
 function DesktopApp:main()
    self.fps = self:determine_fps()
+   if not self.frame_time then
+      self.frame_time = 1/self.fps
+   end
+   local now = sched.now
+   local prev_now
    while true do
-      local now = sched.now
+      prev_now = now
+      now = sched.now
       self:draw()
       self.renderer:RenderPresent()
-      local next_frame_start = now+1/self.fps
-      if self.exact_frame_timing then
-         exact_wait_until(next_frame_start)
+      self:update(now-prev_now)
+      if self.frame_time > 0 then
+         local next_frame_start = now + self.frame_time
+         if self.exact_frame_timing then
+            exact_wait_until(next_frame_start)
+         else
+            sched.wait(next_frame_start)
+         end
       else
-         sched.wait(next_frame_start)
+         sched.yield()
       end
    end
 end
 
 function DesktopApp:draw()
+end
+
+function DesktopApp:update()
 end
 
 M.DesktopApp = DesktopApp

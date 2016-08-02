@@ -15,7 +15,7 @@ local round = util.round
 
 local app = appfactory.DesktopApp {
    title = "render-text",
-   --fullscreen_desktop = true,
+   fullscreen_desktop = true,
 }
 
 local function TextureAtlas(size, renderer)
@@ -47,7 +47,7 @@ local function TextureAtlas(size, renderer)
          if type(src)=="table" then
             -- it's the texture of an existing atlas
             local old = renderer:GetRenderTarget()
-            renderer:SetRenderTarget(texture)
+            renderer:SetRenderTarget(texture.texture)
             renderer:RenderCopy(src, src_rect, dstrect)
             renderer:SetRenderTarget(old)
          elseif type(src)=="cdata" then
@@ -68,8 +68,8 @@ local function TextureAtlas(size, renderer)
                                        sdl.SDL_TEXTUREACCESS_TARGET,
                                        size, size)
       local old = renderer:GetRenderTarget()
-      renderer:SetRenderTarget(t)
-      renderer:SetRenderDrawColor(0,0,0,0)
+      renderer:SetRenderTarget(t.texture)
+      renderer:SetRenderDrawColor(sdl.Color(0,0,0,0))
       renderer:RenderClear()
       renderer:SetRenderTarget(old)
       t:SetTextureBlendMode(sdl.SDL_BLENDMODE_BLEND)
@@ -286,9 +286,11 @@ function app:init()
       end
    end)
 
+   local black = sdl.Color(0,0,0,255)
+
    function app:draw()
       local t1 = time.time()
-      r:SetRenderDrawColor(0,0,0,255)
+      r:SetRenderDrawColor(black)
       r:RenderClear()
       local top = text_top
       for line in lines(script_contents) do

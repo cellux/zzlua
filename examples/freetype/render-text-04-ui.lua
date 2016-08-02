@@ -5,6 +5,7 @@ local sched = require('sched')
 local fs = require('fs')
 local file = require('file')
 local sdl = require('sdl2')
+local gl = require('gl')
 local util = require('util')
 local time = require('time')
 
@@ -22,6 +23,7 @@ end
 local app = appFactory {
    title = "render-text",
    fullscreen_desktop = true,
+   frame_time = 0,
 }
 
 function app:init()
@@ -34,18 +36,21 @@ function app:init()
    local font = ui:Font { source = ttf_path, size = font_size }
    local text = ui:Text { text = script_contents, font = font }
    ui:add(text)
+   local packer = ui:Packer()
+   packer:add(ui:Spacer())
    local font_display = ui:TextureDisplay {
       texture = font.atlas.texture,
-      right = 0, -- align to the right side of the ui area
    }
-   ui:add(font_display)
+   packer:add(font_display)
+   ui:add(packer)
    font.atlas:on('texture-changed', function(new_texture)
       font_display.texture = new_texture
    end)
-   local text_speed = 1
+   local text_top = 0
+   local text_speed = 60
    sched.on('sdl.keydown', function(evdata)
       if evdata.key.keysym.sym == sdl.SDLK_SPACE then
-         text_speed = 1-text_speed
+         text_speed = -text_speed
       end
    end)
    local avg_time = util.Accumulator()
@@ -55,15 +60,22 @@ function app:init()
          pf("app:draw() takes %s seconds in average", avg_time.avg)
       end
    end)
+   local t1
    function app:draw()
-      local t1 = time.time()
-      text.top = text.top - text_speed
+      ui:calc_size()
       ui:layout()
+      text.rect.y = text_top
       ui:clear()
       ui:draw()
       local t2 = time.time()
-      local elapsed = t2 - t1
-      avg_time:feed(elapsed)
+      if t1 then
+         local elapsed = t2 - t1
+         avg_time:feed(elapsed)
+      end
+      t1 = t2
+   end
+   function app:update(delta)
+      text_top = text_top - text_speed * delta
    end
 end
 

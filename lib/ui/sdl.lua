@@ -2,6 +2,7 @@ local base = require('ui.base')
 local sdl = require('sdl2')
 local iconv = require('iconv')
 local util = require('util')
+local ffi = require('ffi')
 
 local M = {}
 
@@ -11,7 +12,8 @@ function UI:create(window, renderer)
    local self = base.UI()
    self.window = window
    self.renderer = renderer
-   self.rect.w,self.rect.h = window:GetWindowSize()
+   self.pixel_byte_order = ffi.abi("le") and "le" or "be"
+   self.pitch_sign = 1
    return self
 end
 
@@ -19,10 +21,17 @@ function UI:dpi()
    return self.window:dpi()
 end
 
-function UI:clear(r,g,b,a)
-   local renderer = self.renderer
-   renderer:SetRenderDrawColor(r or 0,g or 0,b or 0,a or sdl.SDL_ALPHA_OPAQUE)
-   renderer:RenderClear()
+function UI:layout()
+   self.rect.w, self.rect.h = self.window:GetWindowSize()
+   base.UI.layout(self)
+end
+
+function UI:clear(color)
+   local r = self.renderer
+   if color then
+      r:SetRenderDrawColor(color:bytes())
+   end
+   r:RenderClear()
 end
 
 function UI.Texture(ui, opts)
@@ -32,14 +41,30 @@ function UI.Texture(ui, opts)
                           opts.width or 0, opts.height or 0)
 end
 
+function UI.TextureAtlas(ui, opts)
+   opts.make_texture = function(self, size)
+      local t = ui:Texture {
+         format = self.format or sdl.SDL_PIXELFORMAT_RGBA8888,
+         access = self.access or sdl.SDL_TEXTUREACCESS_TARGET,
+         width = size,
+         height = size,
+      }
+      t:clear(self.clear_color or ui:Color(0,0,0,0))
+      t:blendmode(sdl.SDL_BLENDMODE_BLEND)
+      return t
+   end
+   return base.UI.TextureAtlas(ui, opts)
+end
+
 function UI.TextureDisplay(ui, opts)
    assert(opts.texture)
    local self = ui:Widget(opts)
-   function self:size()
-      return self.texture.width, self.texture.height
+   function self:calc_size()
+      self.size.x = self.texture.width
+      self.size.y = self.texture.height
    end
    function self:draw()
-      local src_rect = sdl.Rect(0, 0, self.texture.width, self.texture.height)
+      local src_rect = ui:Rect(0, 0, self.texture.width, self.texture.height)
       local r = ui.renderer
       r:RenderCopy(self.texture, src_rect, self.rect)
    end
@@ -47,7 +72,6 @@ function UI.TextureDisplay(ui, opts)
 end
 
 function UI.Text(ui, opts)
-   opts = opts or {}
    assert(opts.font)
    opts.text = opts.text or ""
    local self = ui:Widget(opts)
@@ -55,9 +79,9 @@ function UI.Text(ui, opts)
    local function draw_char(charcode, ox, oy)
       local glyph_data = self.font:get_glyph(charcode)
       if glyph_data.width > 0 then
-         local dst_rect = sdl.Rect(ox+glyph_data.bearing_x,
-                                   oy-glyph_data.bearing_y,
-                                   glyph_data.width, glyph_data.height)
+         local dst_rect = ui:Rect(ox+glyph_data.bearing_x,
+                                  oy-glyph_data.bearing_y,
+                                  glyph_data.width, glyph_data.height)
          local r = ui.renderer
          r:RenderCopy(glyph_data.texture, glyph_data.src_rect, dst_rect)
       end

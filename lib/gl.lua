@@ -222,6 +222,13 @@ enum {
 };
 
 enum {
+  GL_TEXTURE_MIN_LOD    = 0x813A,
+  GL_TEXTURE_MAX_LOD    = 0x813B,
+  GL_TEXTURE_BASE_LEVEL = 0x813C,
+  GL_TEXTURE_MAX_LEVEL  = 0x813D
+};
+
+enum {
   GL_TEXTURE0  = 0x84C0,
   GL_TEXTURE1  = 0x84C1,
   GL_TEXTURE2  = 0x84C2,
@@ -257,6 +264,12 @@ enum {
 };
 
 enum {
+  GL_ACTIVE_TEXTURE        = 0x84E0,
+  GL_CLIENT_ACTIVE_TEXTURE = 0x84E1,
+  GL_MAX_TEXTURE_UNITS     = 0x84E2
+};
+
+enum {
   GL_LINEAR = 0x2601,
   GL_CLAMP_TO_EDGE = 0x812F
 };
@@ -270,9 +283,10 @@ void glTexParameteriv (GLenum target, GLenum pname, const GLint *params);
 void glTexImage2D (GLenum target, GLint level, GLint internalFormat,
                    GLsizei width, GLsizei height, GLint border,
                    GLenum format, GLenum type, const void *pixels);
-void glTexSubImage2D (GLenum target, GLint level, GLint xoffset, GLint yoffset,
+void glTexSubImage2D (GLenum target, GLint level,
+                      GLint xoffset, GLint yoffset, 
                       GLsizei width, GLsizei height,
-                      GLenum format, GLenum type, const void *pixels);
+                      GLenum format, GLenum type, void *pixels);
 void glCopyTexImage2D (GLenum target, GLint level, GLenum internalformat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border);
 void glCopyTexSubImage2D (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height);
 void glActiveTexture (GLenum texture);
@@ -303,18 +317,24 @@ enum {
 void glDrawArrays (GLenum mode, GLint first, GLsizei count);
 void glDrawElements (GLenum mode, GLsizei count, GLenum type, const void *indices);
 
-enum {
-  GL_RENDERBUFFER = 0x8D41
-};
-
 void glGenRenderbuffers (GLsizei n, GLuint *renderbuffers);
 void glBindRenderbuffer (GLenum target, GLuint renderbuffer);
 void glRenderbufferStorage (GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
 void glDeleteRenderbuffers (GLsizei n, const GLuint *renderbuffers);
 
 enum {
-  GL_FRAMEBUFFER = 0x8D40,
-  GL_FRAMEBUFFER_BINDING = 0x8CA6
+  GL_FRAMEBUFFER_BINDING      = 0x8CA6,
+  GL_DRAW_FRAMEBUFFER_BINDING = 0x8CA6,
+  GL_RENDERBUFFER_BINDING     = 0x8CA7,
+  GL_READ_FRAMEBUFFER         = 0x8CA8,
+  GL_DRAW_FRAMEBUFFER         = 0x8CA9,
+  GL_READ_FRAMEBUFFER_BINDING = 0x8CAA,
+  GL_RENDERBUFFER_SAMPLES     = 0x8CAB
+};
+
+enum {
+  GL_FRAMEBUFFER  = 0x8D40,
+  GL_RENDERBUFFER = 0x8D41
 };
 
 enum {
@@ -580,6 +600,7 @@ function M.VBO(size, data, usage)
    local vbo = { id = buffers[0] }
    setmetatable(vbo, VBO_mt)
    if size then
+      vbo:BindBuffer()
       vbo:BufferData(size, data, usage or ffi.C.GL_STATIC_DRAW)
    end
    return vbo
@@ -591,12 +612,22 @@ end
 
 M.Buffer = M.VBO
 
+function M.Array(arrtype, elements)
+   if type(elements)=="table" then
+      return ffi.new(arrtype, #elements, elements)
+   elseif type(elements)=="number" then
+      return ffi.new(arrtype, elements)
+   else
+      ef("invalid value for elements: %s", elements)
+   end
+end
+
 function M.FloatArray(elements)
-   return ffi.new("GLfloat[?]", #elements, elements)
+   return M.Array("GLfloat[?]", elements)
 end
 
 function M.UIntArray(elements)
-   return ffi.new("GLuint[?]", #elements, elements)
+   return M.Array("GLuint[?]", elements)
 end
 
 function M.BufferData(target, size, data, usage)
@@ -671,13 +702,33 @@ function M.TexImage2D(target, level, internalFormat,
                       format, type, ffi.cast("const void *", pixels))
 end
 
-function M.ActiveTexture(texture)
-   ffi.C.glActiveTexture(texture)
+function M.TexSubImage2D(target, level,
+                         xoffset, yoffset,
+                         width, height,
+                         format, type, pixels)
+   ffi.C.glTexSubImage2D(target, level,
+                         xoffset, yoffset,
+                         width, height,
+                         format, type, ffi.cast("void *", pixels))
 end
 
-function M.Uniform1i(location, v0)
-   ffi.C.glUniform1i(location, v0)
-end
+M.CopyTexImage2D = ffi.C.glCopyTexImage2D
+M.CopyTexSubImage2D = ffi.C.glCopyTexSubImage2D
+
+M.ActiveTexture = ffi.C.glActiveTexture
+
+M.Uniform1f = ffi.C.glUniform1f
+M.Uniform1i = ffi.C.glUniform1i
+M.Uniform2f = ffi.C.glUniform2f
+M.Uniform2i = ffi.C.glUniform2i
+M.Uniform3f = ffi.C.glUniform3f
+M.Uniform3i = ffi.C.glUniform3i
+M.Uniform4f = ffi.C.glUniform4f
+M.Uniform4i = ffi.C.glUniform4i
+
+M.UniformMatrix2fv = ffi.C.glUniformMatrix2fv
+M.UniformMatrix3fv = ffi.C.glUniformMatrix3fv
+M.UniformMatrix4fv = ffi.C.glUniformMatrix4fv
 
 -- FrameBuffer
 
@@ -690,6 +741,10 @@ function M.Framebuffer:create()
    return fb
 end
 
+function M.Framebuffer:BindFramebuffer(target)
+   ffi.C.glBindFramebuffer(target or M.GL_FRAMEBUFFER, self.id)
+end
+
 function M.Framebuffer:delete()
    if self.id then
       local framebuffers = ffi.new("GLuint[1]", self.id)
@@ -699,7 +754,7 @@ function M.Framebuffer:delete()
 end
 
 function M.BindFramebuffer(target, fb)
-   ffi.C.glBindFramebuffer(target, fb and fb.id or 0)
+   ffi.C.glBindFramebuffer(target or M.GL_FRAMEBUFFER, fb and fb.id or 0)
 end
 
 function M.FramebufferTexture2D(target, attachment, textarget, texture, level)
@@ -723,6 +778,8 @@ end
 function M.DrawElements(mode, count, type, indices)
    ffi.C.glDrawElements(mode, count, type, ffi.cast("const GLvoid *", indices))
 end
+
+M.Viewport = ffi.C.glViewport
 
 function M.Flush()
    ffi.C.glFlush()

@@ -107,10 +107,11 @@ function app:init()
    end
 
    local max_time = 0
+   local black = sdl.Color(0,0,0,255)
 
    function app:draw()
       local t1 = time.time()
-      r:SetRenderDrawColor(0,0,0,255)
+      r:SetRenderDrawColor(black)
       r:RenderClear()
       local top = text_top
       for line in lines(script_contents) do

@@ -81,8 +81,10 @@ function app:init()
                                    width, height)
    texture:UpdateTexture(nil, pixels, pitch)
 
+   local black = sdl.Color(0,0,0,255)
+
    function app:draw()
-      r:SetRenderDrawColor(0,0,0,255)
+      r:SetRenderDrawColor(black)
       r:RenderClear()
       local dstrect = sdl.Rect(0,0,width,height)
       r:RenderCopy(texture, nil, dstrect)
