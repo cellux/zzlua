@@ -2,6 +2,20 @@ local ffi = require('ffi')
 
 ffi.cdef [[
 
+enum {
+  CLOCK_REALTIME           = 0,
+  CLOCK_MONOTONIC          = 1,
+  CLOCK_PROCESS_CPUTIME_ID = 2,
+  CLOCK_THREAD_CPUTIME_ID  = 3,
+  CLOCK_MONOTONIC_RAW      = 4,
+  CLOCK_REALTIME_COARSE    = 5,
+  CLOCK_MONOTONIC_COARSE   = 6,
+  CLOCK_BOOTTIME           = 7,
+  CLOCK_REALTIME_ALARM     = 8,
+  CLOCK_BOOTTIME_ALARM     = 9,
+  CLOCK_TAI                = 11
+};
+
 typedef long int __time_t;
 typedef long int __syscall_slong_t;
 
@@ -37,10 +51,10 @@ int clock_gettime(clockid_t clk_id, struct timespec *tp);
 
 local M = {}
 
-function M.time()
-   -- return number of seconds elapsed since epoch
+function M.time(clock_id)
+   clock_id = clock_id or 0
    local tp = ffi.new("struct timespec")
-   if ffi.C.clock_gettime(0, tp) ~= 0 then
+   if ffi.C.clock_gettime(clock_id, tp) ~= 0 then
       error("clock_gettime() failed")
    end
    -- on 64-bit architectures tp.tv_sec and tp.tv_nsec are boxed
