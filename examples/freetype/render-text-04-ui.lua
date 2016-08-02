@@ -36,7 +36,7 @@ function app:init()
    local font = ui:Font { source = ttf_path, size = font_size }
    local text = ui:Text { text = script_contents, font = font }
    ui:add(text)
-   local packer = ui:Packer()
+   local packer = ui:HBox()
    packer:add(ui:Spacer())
    local font_display = ui:TextureDisplay {
       texture = font.atlas.texture,

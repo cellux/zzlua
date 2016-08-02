@@ -157,7 +157,7 @@ function UI.Spacer(ui)
    return ui:Widget()
 end
 
-function UI.Packer(ui, opts)
+function UI.Box(ui, opts)
    local self = ui:Container(opts)
    self.direction = self.direction or "h" -- horizontal by default
    function self:calc_size()
@@ -235,6 +235,18 @@ function UI.Packer(ui, opts)
       end
    end
    return self
+end
+
+function UI.HBox(ui, opts)
+   local box = ui:Box(opts)
+   box.direction = "h"
+   return box
+end
+
+function UI.VBox(ui, opts)
+   local box = ui:Box(opts)
+   box.direction = "v"
+   return box
 end
 
 function UI.TextureAtlas(ui, opts)

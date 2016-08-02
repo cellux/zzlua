@@ -23,7 +23,7 @@ local function TextureAtlas(size, renderer)
       size = size,
       items = {},
    }
-   local function Packer(texture, size)
+   local function ItemPacker(texture, size)
       local shelf_x = 0
       local shelf_y = 0
       local shelf_h = 0
@@ -76,7 +76,7 @@ local function TextureAtlas(size, renderer)
       return t
    end
    self.texture = create_texture(self.size)
-   local pack = Packer(self.texture, self.size)
+   local pack = ItemPacker(self.texture, self.size)
    function self:resize(new_size)
       pf("resizing atlas to %d", new_size)
       local new_texture = create_texture(new_size)
@@ -85,7 +85,7 @@ local function TextureAtlas(size, renderer)
          table.insert(sorted_items, { key=k, rect=v })
       end
       table.sort(sorted_items, function(a,b) return a.rect.h < b.rect.h end)
-      local new_pack = Packer(new_texture, new_size)
+      local new_pack = ItemPacker(new_texture, new_size)
       local new_items = {}
       for _,v in ipairs(sorted_items) do
          local dstrect = new_pack(self.texture, v.rect)
