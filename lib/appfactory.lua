@@ -2,7 +2,6 @@ local gl = require('gl')
 local sdl = require('sdl2')
 local bit = require('bit')
 local sched = require('sched')
-local time = require('time')
 local util = require('util')
 
 local M = {}
@@ -12,7 +11,7 @@ M.DEFAULT_REFRESH_RATE = 60
 local function exact_wait_until(target)
    -- WARNING: use of this function considerably increases CPU usage
    sched.wait(target-sched.precision)
-   while time.time() < target do
+   while sched.time() < target do
       -- busy wait to fix timing irregularities
    end
 end

@@ -1,3 +1,4 @@
+local ffi = require('ffi')
 local adt = require('adt')
 local time = require('time')
 local nn = require('nanomsg')
@@ -44,7 +45,16 @@ local scheduler_singleton
 local OFF = {}
 M.OFF = OFF
 
--- after sched.wait(t), math.abs(time.time()-t) is expected to be
+-- the clock to use by timers
+local sched_clock_id = ffi.C.CLOCK_MONOTONIC_RAW
+
+local function get_current_time()
+   return time.time(sched_clock_id)
+end
+
+M.time = get_current_time
+
+-- after sched.wait(t), math.abs(sched.time()-t) is expected to be
 -- less than sched.precision
 M.precision = 0.001 -- seconds
 
@@ -163,7 +173,7 @@ local function Scheduler()
 
    -- tick: one iteration of the event loop
    local function tick() 
-      local now = time.time()
+      local now = get_current_time()
       self.now = now
 
       local function wakeup_sleepers(now)
@@ -364,7 +374,7 @@ local function Scheduler()
    self.wait = coroutine.yield
 
    function self.sleep(seconds)
-      return self.wait(time.time() + seconds)
+      return self.wait(get_current_time() + seconds)
    end
 
    function self.emit(evtype, evdata)

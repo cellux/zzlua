@@ -140,11 +140,11 @@ local time_before_wait = nil
 local wait_amount = 0.1 -- seconds
 local time_after_wait = nil
 sched(function()
-         time_before_wait = time.time()
-         sched.wait(time.time() + wait_amount)
+         time_before_wait = sched.time()
+         sched.wait(sched.time() + wait_amount)
          -- we could also use sched.sleep():
-         -- sched.sleep(x) = sched.wait(time.time()+x)
-         time_after_wait = time.time()
+         -- sched.sleep(x) = sched.wait(sched.time()+x)
+         time_after_wait = sched.time()
       end)
 sched()
 assert.type(time_after_wait, 'number')
