@@ -35,7 +35,8 @@ end
 
 function app:draw()
    local r = self.renderer
-   r:SetRenderDrawColor(255,0,0,255)
+   local black = sdl.Color(255,0,0,255)
+   r:SetRenderDrawColor(black)
    r:RenderClear()
 end
 
