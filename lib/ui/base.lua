@@ -1,5 +1,6 @@
 local ffi = require('ffi')
 local sdl = require('sdl2')
+local dim = require('dim')
 local freetype = require('freetype')
 local util = require('util')
 local sys = require('sys')
@@ -28,9 +29,9 @@ function Widget:create(opts)
    local self = Object(opts)
    -- the post-layout location of the widget in screen cordinates
    -- this will be updated by self.parent:layout()
-   self.rect = sdl.Rect(0,0,0,0)
+   self.rect = dim.Rect(0,0,0,0)
    -- the preferred size of the widget, (0,0) means undefined
-   self.size = sdl.Point(0,0)
+   self.size = dim.Size(0,0)
    return self
 end
 
@@ -67,15 +68,15 @@ function Container:add(widget)
 end
 
 function Container:calc_size()
-   self.size.x = 0
-   self.size.y = 0
+   self.size.w = 0
+   self.size.h = 0
    for _,widget in ipairs(self.children) do
       widget:calc_size()
-      if widget.size.x > self.size.x then
-         self.size.x = widget.size.x
+      if widget.size.w > self.size.w then
+         self.size.w = widget.size.w
       end
-      if widget.size.y > self.size.y then
-         self.size.y = widget.size.y
+      if widget.size.h > self.size.h then
+         self.size.h = widget.size.h
       end
    end
 end
@@ -84,13 +85,13 @@ function Container:layout()
    for _,widget in ipairs(self.children) do
       widget.rect.x = self.rect.x
       widget.rect.y = self.rect.y
-      if widget.size.x > 0 then
-         widget.rect.w = widget.size.x
+      if widget.size.w > 0 then
+         widget.rect.w = widget.size.w
       else
          widget.rect.w = self.rect.w
       end
-      if widget.size.y > 0 then
-         widget.rect.h = widget.size.y
+      if widget.size.h > 0 then
+         widget.rect.h = widget.size.h
       else
          widget.rect.h = self.rect.h
       end
@@ -133,10 +134,6 @@ function UI:clear(color)
    -- if color is given, set it as the current clear color
 end
 
-function UI.Rect(ui, x, y, w, h)
-   return sdl.Rect(x, y, w, h)
-end
-
 function UI.Color(ui, r, g, b, a)
    return sdl.Color(r, g, b, a or 255)
 end
@@ -161,20 +158,20 @@ function UI.Box(ui, opts)
    local self = ui:Container(opts)
    self.direction = self.direction or "h" -- horizontal by default
    function self:calc_size()
-      self.size.x = 0
-      self.size.y = 0
+      self.size.w = 0
+      self.size.h = 0
       if self.direction == "h" then
          for _,widget in ipairs(self.children) do
             widget:calc_size()
-            if widget.size.y > self.size.y then
-               self.size.y = widget.size.y
+            if widget.size.h > self.size.h then
+               self.size.h = widget.size.h
             end
          end
       elseif self.direction == "v" then
          for _,widget in ipairs(self.children) do
             widget:calc_size()
-            if widget.size.x > self.size.x then
-               self.size.x = widget.size.x
+            if widget.size.w > self.size.w then
+               self.size.w = widget.size.w
             end
          end
       else
@@ -191,13 +188,13 @@ function UI.Box(ui, opts)
       -- we subtract all explicit widths/heights to get the remaining
       -- space which will be divided evenly among dynamic widgets
       for _,widget in ipairs(self.children) do
-         if widget.size.x > 0 then
-            dyn_w = dyn_w - widget.size.x
+         if widget.size.w > 0 then
+            dyn_w = dyn_w - widget.size.w
          else
             n_dyn_w = n_dyn_w + 1
          end
-         if widget.size.y > 0 then
-            dyn_h = dyn_h - widget.size.y
+         if widget.size.h > 0 then
+            dyn_h = dyn_h - widget.size.h
          else
             n_dyn_h = n_dyn_h + 1
          end
@@ -214,8 +211,8 @@ function UI.Box(ui, opts)
          widget.rect.x = x
          widget.rect.y = y
          if self.direction == "h" then
-            if widget.size.x > 0 then
-               widget.rect.w = widget.size.x
+            if widget.size.w > 0 then
+               widget.rect.w = widget.size.w
             else
                widget.rect.w = dyn_w / n_dyn_w
             end
@@ -223,8 +220,8 @@ function UI.Box(ui, opts)
             x = x + widget.rect.w
          elseif self.direction == "v" then
             widget.rect.w = cw
-            if widget.size.y > 0 then
-               widget.rect.h = widget.size.y
+            if widget.size.h > 0 then
+               widget.rect.h = widget.size.h
             else
                widget.rect.h = dyn_h / n_dyn_h
             end
@@ -269,7 +266,7 @@ function UI.TextureAtlas(ui, opts)
          if shelf_x + width > texture.width or shelf_y + height > texture.height then
             return "full"
          end
-         local dst_rect = ui:Rect(shelf_x, shelf_y, width, height)
+         local dst_rect = dim.Rect(shelf_x, shelf_y, width, height)
          texture:update(dst_rect, src, src_rect)
          shelf_x = shelf_x + width
          if height > shelf_h then
@@ -309,7 +306,7 @@ function UI.TextureAtlas(ui, opts)
       local width, height = pixbuf.width, pixbuf.height
       --pf("add(%s,%d,%d)", key, width, height)
       assert(self.items[key] == nil)
-      local src_rect = ui:Rect(0, 0, width, height)
+      local src_rect = dim.Rect(0, 0, width, height)
       local dst_rect = pack(pixbuf, src_rect)
       if dst_rect == "full" then
          self:resize(self.size*2)
@@ -487,7 +484,7 @@ function UI.Font(ui, opts)
             width = 0,
             height = 0,
             texture = nil,
-            src_rect = ui:Rect(0,0,0,0),
+            src_rect = dim.Rect(0,0,0,0),
          }
          local pixels = g.bitmap.buffer
          -- pixels can be nil when we draw a whitespace character

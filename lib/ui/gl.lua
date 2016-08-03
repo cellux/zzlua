@@ -1,6 +1,7 @@
 local base = require('ui.base')
 local gl = require('gl')
 local sdl = require('sdl2')
+local dim = require('dim')
 local iconv = require('iconv')
 local util = require('util')
 local ffi = require('ffi')
@@ -67,7 +68,7 @@ function UI.Texture(ui, opts)
    local self = {
       is_texture = true,
       texture = texture,
-      rect = ui:Rect(0, 0, width, height),
+      rect = dim.Rect(0, 0, width, height),
       width = width,
       height = height,
       format = sdl_format,
@@ -214,8 +215,8 @@ function UI.TextureDisplay(ui, opts)
    -- we can use the same data for texture coordinates
    local vbo = rm:VBO(ffi.sizeof(vertex_data), vertex_data, gl.GL_STATIC_DRAW)
    function self:calc_size()
-      self.size.x = self.texture.width
-      self.size.y = self.texture.height
+      self.size.w = self.texture.width
+      self.size.h = self.texture.height
    end
    function self:draw()
       gl.UseProgram(shader_program)

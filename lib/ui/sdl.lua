@@ -1,5 +1,6 @@
 local base = require('ui.base')
 local sdl = require('sdl2')
+local dim = require('dim')
 local iconv = require('iconv')
 local util = require('util')
 local ffi = require('ffi')
@@ -60,11 +61,11 @@ function UI.TextureDisplay(ui, opts)
    assert(opts.texture)
    local self = ui:Widget(opts)
    function self:calc_size()
-      self.size.x = self.texture.width
-      self.size.y = self.texture.height
+      self.size.w = self.texture.width
+      self.size.h = self.texture.height
    end
    function self:draw()
-      local src_rect = ui:Rect(0, 0, self.texture.width, self.texture.height)
+      local src_rect = dim.Rect(0, 0, self.texture.width, self.texture.height)
       local r = ui.renderer
       r:RenderCopy(self.texture, src_rect, self.rect)
    end
@@ -79,9 +80,9 @@ function UI.Text(ui, opts)
    local function draw_char(charcode, ox, oy)
       local glyph_data = self.font:get_glyph(charcode)
       if glyph_data.width > 0 then
-         local dst_rect = ui:Rect(ox+glyph_data.bearing_x,
-                                  oy-glyph_data.bearing_y,
-                                  glyph_data.width, glyph_data.height)
+         local dst_rect = dim.Rect(ox+glyph_data.bearing_x,
+                                   oy-glyph_data.bearing_y,
+                                   glyph_data.width, glyph_data.height)
          local r = ui.renderer
          r:RenderCopy(glyph_data.texture, glyph_data.src_rect, dst_rect)
       end
