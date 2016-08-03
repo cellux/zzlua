@@ -93,7 +93,7 @@ local function Font(source, size, window, renderer)
       end
       glyph_cache = {}
       if self.face then
-         face:Done_Face()
+         self.face:Done_Face()
          self.face = nil
       end
    end

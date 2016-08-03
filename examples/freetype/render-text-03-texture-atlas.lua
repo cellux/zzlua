@@ -202,7 +202,7 @@ local function Font(source, size, window, renderer)
       self.atlas:delete()
       glyph_cache = {}
       if self.face then
-         face:Done_Face()
+         self.face:Done_Face()
          self.face = nil
       end
    end
