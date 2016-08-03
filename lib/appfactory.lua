@@ -112,6 +112,8 @@ function SDLApp:create(opts)
       create_context = opts.create_context,
       create_renderer = opts.create_renderer,
       create_ui = true,
+      exact_frame_timing = opts.exact_frame_timing or false,
+      frame_time = opts.frame_time,
    }
    local flags = 0
    for k,v in pairs(sdl_window_flags) do
@@ -121,6 +123,60 @@ function SDLApp:create(opts)
    end
    self.flags = flags
    return self
+end
+
+function SDLApp:determine_fps()
+   local mode = self.window:GetWindowDisplayMode()
+   if mode.refresh_rate == 0 then
+      pf("Warning: cannot determine screen refresh rate, using default (%d)", M.DEFAULT_REFRESH_RATE)
+      return M.DEFAULT_REFRESH_RATE
+   else
+      return mode.refresh_rate
+   end
+end
+
+function SDLApp:main()
+   self.fps = self:determine_fps()
+   if not self.frame_time then
+      self.frame_time = 1/self.fps
+   end
+   local now = sched.now
+   local prev_now
+   local running = true
+   while self.running do
+      prev_now = now
+      now = sched.now
+      self:draw()
+      if self.ctx then
+         local gl_error = gl.GetError()
+         if gl_error ~= gl.GL_NO_ERROR then
+            ef("GL error: %x", gl_error)
+         end
+      end
+      if self.ctx then
+         self.window:GL_SwapWindow()
+      else
+         self.renderer:RenderPresent()
+      end
+      local delta = now - prev_now
+      self:update(delta)
+      if self.frame_time > 0 then
+         local next_frame_start = now + self.frame_time
+         if self.exact_frame_timing then
+            exact_wait_until(next_frame_start)
+         else
+            sched.wait(next_frame_start)
+         end
+      else
+         sched.yield()
+      end
+   end
+end
+
+function SDLApp:draw()
+end
+
+function SDLApp:update(delta)
 end
 
 function SDLApp:run()
@@ -189,22 +245,22 @@ function SDLApp:run()
       -- mapping the window may change its width/height
       self.width, self.height = w:GetWindowSize()
       if self.ctx then
-         gl.Viewport(0,0,self.width,self.height)
+         gl.Viewport(0, 0, self.width, self.height)
       end
       if self.ui then
+         -- ui.layout() gets the current width/height of the window
          self.ui:layout()
       end
 
-      -- register quit handlers
+      self.running = true
       sched.on('sdl.keydown', function(evdata)
                   if evdata.key.keysym.sym == sdl.SDLK_ESCAPE then
-                     sched.quit()
+                     self.running = false
                   end
       end)
-      sched.on('sdl.quit', sched.quit)
+      sched.on('sdl.quit', function() self.running = false end)
 
-      -- user-provided main function
-      self:main()
+      self:main() -- shall exit when self.running becomes false
 
       -- user-provided cleanup
       self:done()
@@ -224,18 +280,11 @@ function SDLApp:run()
          self.window:DestroyWindow()
          self.window = nil
       end
+
+      -- stop all other threads and exit to the OS
+      sched.quit()
    end)
    sched()
-end
-
-function SDLApp:determine_fps()
-   local mode = self.window:GetWindowDisplayMode()
-   if mode.refresh_rate == 0 then
-      pf("Warning: cannot determine screen refresh rate, using default (%d)", M.DEFAULT_REFRESH_RATE)
-      return M.DEFAULT_REFRESH_RATE
-   else
-      return mode.refresh_rate
-   end
 end
 
 M.SDLApp = SDLApp
@@ -247,48 +296,10 @@ local OpenGLApp = util.Class(SDLApp)
 function OpenGLApp:create(opts)
    opts = opts or {}
    opts.opengl = true
+   opts.create_renderer = false
    opts.gl_profile = opts.gl_profile or 'core'
    opts.gl_version = opts.gl_version or '3.0'
-   local self = SDLApp(opts)
-   self.exact_frame_timing = opts.exact_frame_timing or false
-   self.frame_time = opts.frame_time
-   return self
-end
-
-function OpenGLApp:main()
-   self.fps = self:determine_fps()
-   if not self.frame_time then
-      self.frame_time = 1/self.fps
-   end
-   local now = sched.now
-   local prev_now
-   while true do
-      prev_now = now
-      now = sched.now
-      self:draw()
-      local gl_error = gl.GetError()
-      if gl_error ~= gl.GL_NO_ERROR then
-         ef("GL error: %x", gl_error)
-      end
-      self.window:GL_SwapWindow()
-      self:update(now-prev_now)
-      if self.frame_time > 0 then
-         local next_frame_start = now + self.frame_time
-         if self.exact_frame_timing then
-            exact_wait_until(next_frame_start)
-         else
-            sched.wait(next_frame_start)
-         end
-      else
-         sched.yield()
-      end
-   end
-end
-
-function OpenGLApp:draw()
-end
-
-function OpenGLApp:update(delta)
+   return SDLApp(opts)
 end
 
 M.OpenGLApp = OpenGLApp
@@ -302,43 +313,7 @@ function DesktopApp:create(opts)
    opts.create_renderer = true
    -- let the renderer figure out the best way to accelerate rendering
    opts.opengl = false
-   opts.create_context = false
-   local self = SDLApp(opts)
-   self.exact_frame_timing = opts.exact_frame_timing or false
-   self.frame_time = opts.frame_time
-   return self
-end
-
-function DesktopApp:main()
-   self.fps = self:determine_fps()
-   if not self.frame_time then
-      self.frame_time = 1/self.fps
-   end
-   local now = sched.now
-   local prev_now
-   while true do
-      prev_now = now
-      now = sched.now
-      self:draw()
-      self.renderer:RenderPresent()
-      self:update(now-prev_now)
-      if self.frame_time > 0 then
-         local next_frame_start = now + self.frame_time
-         if self.exact_frame_timing then
-            exact_wait_until(next_frame_start)
-         else
-            sched.wait(next_frame_start)
-         end
-      else
-         sched.yield()
-      end
-   end
-end
-
-function DesktopApp:draw()
-end
-
-function DesktopApp:update()
+   return SDLApp(opts)
 end
 
 M.DesktopApp = DesktopApp
