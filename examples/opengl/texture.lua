@@ -14,6 +14,7 @@ local app = appfactory.OpenGLApp {
    title = "texture",
    fullscreen_desktop = true,
    exact_frame_timing = false,
+   frame_time = 0,
 }
 
 function app:init()
