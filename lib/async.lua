@@ -28,11 +28,11 @@ local M = {}
 
 local MAX_ACTIVE_THREADS = 16
 
-local reservable_threads = {} -- a list of threads
-local active_threads = {}     -- a map: event_id -> thread
+local thread_pool        = {} -- a list of reservable threads
+local active_threads     = {} -- event_id -> thread
 
-local n_active_threads = 0
-local n_worker_threads = 0
+local n_active_threads   = 0
+local n_worker_threads   = 0
 
 local request_queue = adt.List()
 
@@ -49,7 +49,7 @@ local function create_worker_thread()
    local self = {
       thread_id = thread_id,
       thread_no = n_worker_threads,
-      socket = nn.socket(nn.AF_SP, nn.PAIR),
+      socket = nn.socket(nn.AF_SP, nn.PAIR)
    }
    local sockaddr = sf("inproc://async_%04x", self.thread_no)
    nn.connect(self.socket, sockaddr)
@@ -71,12 +71,12 @@ local function create_worker_thread()
 end
 
 local function can_reserve_thread()
-   return #reservable_threads > 0 or n_active_threads < MAX_ACTIVE_THREADS
+   return #thread_pool > 0 or n_active_threads < MAX_ACTIVE_THREADS
 end
 
 local function reserve_thread(event_id)
    local t
-   if #reservable_threads == 0 then
+   if #thread_pool == 0 then
       if n_active_threads == MAX_ACTIVE_THREADS then
          ef("exceeded max number of threads (%d), cannot reserve more",
             MAX_ACTIVE_THREADS)
@@ -84,7 +84,7 @@ local function reserve_thread(event_id)
          t = create_worker_thread()
       end
    else
-      t = table.remove(reservable_threads)
+      t = table.remove(thread_pool)
    end
    assert(active_threads[event_id] == nil)
    active_threads[event_id] = t
@@ -95,18 +95,18 @@ end
 local function release_thread(event_id)
    local t = active_threads[event_id]
    assert(t)
-   table.insert(reservable_threads, t)
+   table.insert(thread_pool, t)
    n_active_threads = n_active_threads - 1
    active_threads[event_id] = nil
 end
 
 local function stop_all_threads()
    assert(n_active_threads == 0)
-   for _,t in ipairs(reservable_threads) do
+   for _,t in ipairs(thread_pool) do
       t:stop()
    end
    assert(n_worker_threads == 0)
-   reservable_threads = {}
+   thread_pool = {}
 end
 
 function M.register_worker(handlers)
@@ -126,7 +126,7 @@ end
 local function AsyncModule(sched)
    local self = {}
    function self.init()
-      reservable_threads = {}
+      thread_pool = {}
       active_threads = {}
       n_active_threads = 0
       n_worker_threads = 0
