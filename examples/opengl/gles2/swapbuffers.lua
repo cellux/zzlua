@@ -50,6 +50,7 @@ function app:init()
                      end
                   end
       end)
+      pf("press any key to clear the backbuffer and call glSwapWindow(), CTRL+C to exit")
       sched.wait('quit')
    end
 end
