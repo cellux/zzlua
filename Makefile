@@ -18,37 +18,36 @@ deps/$(LUAJIT_TGZ):
 	mkdir -p deps
 	$(CURL) -o $@ $(LUAJIT_URL)
 
-$(LUAJIT_DIR)/.stamp: deps/$(LUAJIT_TGZ)
+$(LUAJIT_DIR)/.extracted: deps/$(LUAJIT_TGZ)
 	cd deps && tar xvzf $(LUAJIT_TGZ)
 	touch $@
 
-$(LUAJIT_BIN) $(LUAJIT_LIB): $(LUAJIT_DIR)/.stamp
+$(LUAJIT_BIN) $(LUAJIT_LIB): $(LUAJIT_DIR)/.extracted
 	$(MAKE) -C $(LUAJIT_DIR)
 
 # nanomsg
 
-NANOMSG_VER := 0.5-beta
+NANOMSG_VER := 1.0.0
 NANOMSG_TGZ := nanomsg-$(NANOMSG_VER).tar.gz
-#NANOMSG_URL := https://github.com/nanomsg/nanomsg/releases/download/$(NANOMSG_VER)/nanomsg-$(NANOMSG_VER).tar.gz
-NANOMSG_URL := http://download.nanomsg.org/$(NANOMSG_TGZ)
+NANOMSG_URL := https://github.com/nanomsg/nanomsg/archive/$(NANOMSG_VER).tar.gz
 NANOMSG_DIR := deps/nanomsg-$(NANOMSG_VER)
-NANOMSG_LIB := $(NANOMSG_DIR)/.libs/libnanomsg.a
+NANOMSG_LIB := $(NANOMSG_DIR)/libnanomsg.a
 NANOMSG_SRC := $(NANOMSG_DIR)/src
 
 deps/$(NANOMSG_TGZ):
 	mkdir -p deps
 	$(CURL) -o $@ $(NANOMSG_URL)
 
-$(NANOMSG_DIR)/.stamp: deps/$(NANOMSG_TGZ)
+$(NANOMSG_DIR)/.extracted: deps/$(NANOMSG_TGZ)
 	cd deps && tar xvzf $(NANOMSG_TGZ)
+# to make #include <nanomsg/nn.h> (and friends) work
+	ln -sf . $(NANOMSG_DIR)/src/nanomsg
 	touch $@
 
-$(NANOMSG_DIR)/Makefile: $(NANOMSG_DIR)/.stamp
-	cd $(NANOMSG_DIR) && ./configure
-
-$(NANOMSG_LIB): $(NANOMSG_DIR)/Makefile
-	$(MAKE) -C $(NANOMSG_DIR)
-	ln -s . $(NANOMSG_SRC)/nanomsg
+$(NANOMSG_LIB): $(NANOMSG_DIR)/.extracted
+	cd $(NANOMSG_DIR) && cmake -D NN_STATIC_LIB=1 .
+	cd $(NANOMSG_DIR) && cmake --build .
+	cd $(NANOMSG_DIR) && ctest -G Debug .
 
 # cmp
 

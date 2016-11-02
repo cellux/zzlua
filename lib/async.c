@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <time.h>
 #include <math.h>
 
@@ -175,6 +176,11 @@ void *zz_async_worker_thread(void *arg) {
     }
   }
   nn_close(rep_socket);
+  /* nn_close(req_socket) generates a segfault if we don't sleep here
+   *
+   * TODO: figure out why
+   */
+  sleep(0);
   nn_close(req_socket);
   zz_buffer_free(rep_buf);
   zz_buffer_free(req_buf);
