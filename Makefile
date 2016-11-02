@@ -52,7 +52,7 @@ $(NANOMSG_LIB): $(NANOMSG_DIR)/Makefile
 
 # cmp
 
-CMP_VER := 4
+CMP_VER := 10
 CMP_TGZ := cmp-$(CMP_VER).tar.gz
 CMP_URL := https://github.com/camgunz/cmp/archive/v$(CMP_VER).tar.gz
 CMP_DIR := deps/cmp-$(CMP_VER)
@@ -62,11 +62,11 @@ deps/$(CMP_TGZ):
 	mkdir -p deps
 	$(CURL) -o $@ $(CMP_URL)
 
-$(CMP_DIR)/.stamp: deps/$(CMP_TGZ)
+$(CMP_DIR)/.extracted: deps/$(CMP_TGZ)
 	cd deps && tar xvzf $(CMP_TGZ)
 	touch $@
 
-$(CMP_OBJ): $(CMP_DIR)/.stamp
+$(CMP_OBJ): $(CMP_DIR)/.extracted
 	cd $(CMP_DIR) && gcc -c cmp.c
 
 ### main ###
