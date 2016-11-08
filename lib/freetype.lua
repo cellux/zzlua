@@ -363,6 +363,7 @@ end
 
 local M = {}
 
+--M.lcdfilter = freetype.FT_LCD_FILTER_NONE
 M.lcdfilter = freetype.FT_LCD_FILTER_LIGHT
 
 local Face_mt = {}
