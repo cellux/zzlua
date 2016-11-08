@@ -72,7 +72,7 @@ $(CMP_OBJ): $(CMP_DIR)/.extracted
 
 CC := gcc
 CFLAGS := -Wall -iquote ./lib -iquote $(LUAJIT_SRC) -iquote $(NANOMSG_SRC) -iquote $(CMP_DIR)
-LDFLAGS := -Wl,-E -lm -ldl -lpthread -lanl -ljack
+LDFLAGS := -Wl,-E -lm -ldl -lpthread -lanl -ljack -lfluidsynth
 
 # Lua libraries
 ZZ_LIB_LUA_SRC := $(sort $(shell find lib app/lib -name '*.lua'))
