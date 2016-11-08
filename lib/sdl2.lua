@@ -1735,6 +1735,22 @@ function Color_mt:floats()
    return self.r/255, self.g/255, self.b/255, self.a/255
 end
 
+function Color_mt:u32be()
+   return
+      bit.lshift(self.r, 24) +
+      bit.lshift(self.g, 16) +
+      bit.lshift(self.b, 8) +
+      bit.lshift(self.a, 0)
+end
+
+function Color_mt:u32le()
+   return
+      bit.lshift(self.r, 0) +
+      bit.lshift(self.g, 8) +
+      bit.lshift(self.b, 16) +
+      bit.lshift(self.a, 24)
+end
+
 Color_mt.__index = Color_mt
 
 M.Color = ffi.metatype("SDL_Color", Color_mt)
