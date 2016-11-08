@@ -1545,6 +1545,7 @@ typedef struct SDL_SysWMinfo SDL_SysWMinfo;
 
 SDL_bool SDL_GetWindowWMInfo(SDL_Window * window, SDL_SysWMinfo * info);
 
+
 ]]
 
 if ffi.os == "Linux" then
@@ -1562,6 +1563,105 @@ struct SDL_SysWMinfo {
 };
 ]]
 end
+
+ffi.cdef [[
+
+/* SDL_audio.h */
+
+typedef void (*SDL_AudioCallback) (void *userdata,
+                                   uint8_t * stream,
+                                   int len);
+
+int SDL_GetNumAudioDrivers(void);
+const char *SDL_GetAudioDriver(int index);
+const char *SDL_GetCurrentAudioDriver(void);
+int SDL_GetNumAudioDevices(int iscapture);
+const char *SDL_GetAudioDeviceName(int index, int iscapture);
+
+typedef uint16_t SDL_AudioFormat;
+
+enum {
+  AUDIO_U8     = 0x0008,
+  AUDIO_S8     = 0x8008,
+  AUDIO_U16    = 0x0010,
+  AUDIO_U16LSB = 0x0010,
+  AUDIO_S16    = 0x8010,
+  AUDIO_S16LSB = 0x8010,
+  AUDIO_U16MSB = 0x1010,
+  AUDIO_S16MSB = 0x9010,
+  AUDIO_S32    = 0x8020,
+  AUDIO_S32LSB = 0x8020,
+  AUDIO_S32MSB = 0x9020,
+  AUDIO_F32    = 0x8120,
+  AUDIO_F32LSB = 0x8120,
+  AUDIO_F32MSB = 0x9120,
+};
+
+]]
+
+if ffi.abi("le") then
+   ffi.cdef [[
+enum {
+  AUDIO_U16SYS = AUDIO_U16LSB,
+  AUDIO_S16SYS = AUDIO_S16LSB,
+  AUDIO_S32SYS = AUDIO_S32LSB,
+  AUDIO_F32SYS = AUDIO_F32LSB,
+};
+]]
+else
+   ffi.cdef [[
+enum {
+  AUDIO_U16SYS = AUDIO_U16MSB,
+  AUDIO_S16SYS = AUDIO_S16MSB,
+  AUDIO_S32SYS = AUDIO_S32MSB,
+  AUDIO_F32SYS = AUDIO_F32MSB,
+};
+]]
+end
+
+ffi.cdef [[
+
+typedef struct SDL_AudioSpec {
+  int freq;
+  SDL_AudioFormat format;
+  uint8_t channels;
+  uint8_t silence;
+  uint16_t samples;
+  uint16_t padding;
+  uint32_t size;
+  SDL_AudioCallback callback;
+  void *userdata;
+} SDL_AudioSpec;
+
+typedef uint32_t SDL_AudioDeviceID;
+SDL_AudioDeviceID SDL_OpenAudioDevice(const char *device,
+                                      int iscapture,
+                                      const SDL_AudioSpec *desired,
+                                      SDL_AudioSpec *obtained,
+                                      int allowed_changes);
+
+typedef enum {
+  SDL_AUDIO_STOPPED = 0,
+  SDL_AUDIO_PLAYING,
+  SDL_AUDIO_PAUSED
+} SDL_AudioStatus;
+
+SDL_AudioStatus SDL_GetAudioStatus(void);
+SDL_AudioStatus SDL_GetAudioDeviceStatus(SDL_AudioDeviceID dev);
+
+void SDL_PauseAudio(int pause_on);
+void SDL_PauseAudioDevice(SDL_AudioDeviceID dev, int pause_on);
+
+void SDL_LockAudio(void);
+void SDL_LockAudioDevice(SDL_AudioDeviceID dev);
+
+void SDL_UnlockAudio(void);
+void SDL_UnlockAudioDevice(SDL_AudioDeviceID dev);
+
+void SDL_CloseAudio(void);
+void SDL_CloseAudioDevice(SDL_AudioDeviceID dev);
+
+]]
 
 local sdl = ffi.load("SDL2")
 
@@ -2053,6 +2153,116 @@ function M.GL_GetAttribute(attr)
    end
    return value[0]
 end
+
+-- audio
+
+M.GetNumAudioDrivers = sdl.SDL_GetNumAudioDrivers
+
+function M.GetAudioDriver(index)
+   local name = sdl.SDL_GetAudioDriver(index-1)
+   if name == nil then
+      ef("SDL_GetAudioDriver(%d) failed: invalid index", index-1)
+   end
+   return ffi.string(name)
+end
+
+function M.GetCurrentAudioDriver()
+   local name = sdl.SDL_GetCurrentAudioDriver()
+   if name == nil then
+      ef("SDL_GetCurrentAudioDriver() failed")
+   end
+   return ffi.string(name)
+end
+
+function M.GetNumAudioDevices(iscapture)
+   return sdl.SDL_GetNumAudioDevices(iscapture or 0)
+end
+
+function M.GetAudioDeviceName(index, iscapture)
+   local name = sdl.SDL_GetAudioDeviceName(index-1, iscapture or 0)
+   if name == nil then
+      ef("SDL_GetAudioDeviceName(%d, %d) failed", index-1, iscapture)
+   end
+   return ffi.string(name)
+end
+
+local AudioDevice_mt = {}
+
+local audio_status_names = {
+   [sdl.SDL_AUDIO_STOPPED] = "stopped",
+   [sdl.SDL_AUDIO_PLAYING] = "playing",
+   [sdl.SDL_AUDIO_PAUSED] = "paused",
+}
+
+function AudioDevice_mt:status()
+   local status = sdl.SDL_GetAudioDeviceStatus(self.dev)
+   return audio_status_names[status]
+end
+
+function AudioDevice_mt:pause(pause_on)
+   sdl.SDL_PauseAudioDevice(self.dev, pause_on)
+end
+
+function AudioDevice_mt:start()
+   sdl.SDL_PauseAudioDevice(self.dev, 0)
+end
+
+function AudioDevice_mt:stop()
+   sdl.SDL_PauseAudioDevice(self.dev, 1)
+end
+
+function AudioDevice_mt:lock()
+   sdl.SDL_LockAudioDevice(self.dev)
+end
+
+function AudioDevice_mt:unlock()
+   sdl.SDL_LockAudioDevice(self.dev)
+end
+
+function AudioDevice_mt:close()
+   if self.dev then
+      sdl.SDL_CloseAudioDevice(self.dev)
+      self.dev = nil
+   end
+end
+AudioDevice_mt.delete = AudioDevice_mt.close
+
+AudioDevice_mt.__index = AudioDevice_mt
+AudioDevice_mt.__gc = AudioDevice_mt.delete
+
+function M.OpenAudioDevice(opts)
+   local device = opts.device or nil
+   if type(device)=="number" then
+      device = M.GetAudioDeviceName(device)
+   end
+   local iscapture = opts.iscapture or 0
+   local desired = ffi.new("SDL_AudioSpec")
+   desired.freq = opts.freq or 44100
+   desired.format = opts.format or sdl.AUDIO_S16SYS
+   desired.channels = opts.channels or 2
+   desired.samples = opts.samples or 512
+   desired.callback = opts.callback
+   desired.userdata = opts.userdata
+   local obtained = ffi.new("SDL_AudioSpec")
+   local allowed_changes = opts.allowed_changes or 0
+   local dev = sdl.SDL_OpenAudioDevice(device, iscapture, desired, obtained, allowed_changes)
+   if dev == 0 then
+      ef("SDL_OpenAudioDevice() failed: %s", sdl.GetError())
+   end
+   local self = {
+      dev = dev,
+      id = dev,
+      freq = obtained.freq,
+      format = obtained.format,
+      channels = obtained.channels,
+      samples = obtained.samples,
+      silence = obtained.silence,
+      size = obtained.size,
+   }
+   return setmetatable(self, AudioDevice_mt)
+end
+
+-- scheduler module
 
 local function SDL2Module(sched)
    local self = { init = M.Init, done = M.Quit }
