@@ -1710,6 +1710,17 @@ function Rect_mt:__tostring()
              self.w, self.h)
 end
 
+function Rect_mt:update(x,y,w,h)
+   self.x = x or self.x
+   self.y = y or self.y
+   self.w = w or self.w
+   self.h = h or self.h
+end
+
+function Rect_mt:clear()
+   self:update(0,0,0,0)
+end
+
 M.Rect = ffi.metatype("SDL_Rect", Rect_mt)
 
 -- Color
