@@ -26,6 +26,8 @@ local app = appFactory {
    frame_time = 0,
 }
 
+local avg_time = util.Accumulator()
+
 function app:init()
    local script_path = arg[0]
    local script_contents = file.read(script_path)
@@ -53,13 +55,6 @@ function app:init()
          text_speed = -text_speed
       end
    end)
-   local avg_time = util.Accumulator()
-   sched(function()
-      while true do
-         sched.sleep(1)
-         pf("app:draw() takes %s seconds in average", avg_time.avg)
-      end
-   end)
    local t1
    function app:draw()
       ui:calc_size()
@@ -80,3 +75,5 @@ function app:init()
 end
 
 app:run()
+
+pf("app:draw() took %s seconds in average", avg_time.avg)
