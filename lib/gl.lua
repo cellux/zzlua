@@ -92,6 +92,12 @@ void glGetBooleanv (GLenum pname, GLboolean *data);
 void glGetFloatv (GLenum pname, GLfloat *data);
 void glGetIntegerv (GLenum pname, GLint *data);
 
+/* Capabilities */
+
+void glEnable (GLenum cap);
+void glDisable (GLenum cap);
+GLboolean glIsEnabled (GLenum cap);
+
 /* Errors */
 
 enum {
@@ -270,6 +276,7 @@ enum {
 };
 
 enum {
+  GL_NEAREST = 0x2600,
   GL_LINEAR = 0x2601,
   GL_CLAMP_TO_EDGE = 0x812F
 };
@@ -354,6 +361,25 @@ void glViewport (GLint x, GLint y, GLsizei width, GLsizei height);
 void glFlush (void);
 void glFinish (void);
 
+/* Blending */
+
+enum {
+  GL_BLEND               = 0x0BE2,
+  GL_BLEND_SRC           = 0x0BE1,
+  GL_BLEND_DST           = 0x0BE0,
+  GL_ZERO                = 0,
+  GL_ONE                 = 1,
+  GL_SRC_COLOR           = 0x0300,
+  GL_ONE_MINUS_SRC_COLOR = 0x0301,
+  GL_SRC_ALPHA           = 0x0302,
+  GL_ONE_MINUS_SRC_ALPHA = 0x0303,
+  GL_DST_ALPHA           = 0x0304,
+  GL_ONE_MINUS_DST_ALPHA = 0x0305,
+  GL_DST_COLOR           = 0x0306,
+  GL_ONE_MINUS_DST_COLOR = 0x0307,
+  GL_SRC_ALPHA_SATURATE	 = 0x0308
+};
+
 ]]
 
 local function gl_loaded()
@@ -406,6 +432,10 @@ function M.GetString(name)
    local rv = util.check_bad("glGetString", nil, ffi.C.glGetString(name))
    return ffi.string(rv)
 end
+
+M.Enable = ffi.C.glEnable
+M.Disable = ffi.C.glDisable
+M.IsEnabled = ffi.C.glIsEnabled
 
 -- Shader
 
