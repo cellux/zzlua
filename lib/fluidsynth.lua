@@ -7,6 +7,7 @@ ffi.cdef [[
 
 typedef struct _fluid_hashtable_t fluid_settings_t;
 typedef struct _fluid_synth_t fluid_synth_t;
+typedef struct _fluid_synth_channel_info_t fluid_synth_channel_info_t;
 typedef struct _fluid_sfont_t fluid_sfont_t;
 
 /* misc.h */
@@ -55,6 +56,20 @@ int fluid_synth_channel_pressure(fluid_synth_t* synth, int chan, int val);
 int fluid_synth_bank_select(fluid_synth_t* synth, int chan, unsigned int bank);
 int fluid_synth_sfont_select(fluid_synth_t* synth, int chan, unsigned int sfont_id);
 int fluid_synth_program_select(fluid_synth_t* synth, int chan, unsigned int sfont_id, unsigned int bank_num, unsigned int preset_num);
+
+static const int FLUID_SYNTH_CHANNEL_INFO_NAME_SIZE = 32;
+
+typedef struct _fluid_synth_channel_info_t
+{
+  int assigned : 1;
+  int sfont_id;
+  int bank;
+  int program;
+  char name[FLUID_SYNTH_CHANNEL_INFO_NAME_SIZE];
+  char reserved[32];
+};
+
+int fluid_synth_get_channel_info (fluid_synth_t *synth, int chan, fluid_synth_channel_info_t *info);
 
 int fluid_synth_program_reset(fluid_synth_t* synth);
 int fluid_synth_system_reset(fluid_synth_t* synth);
@@ -204,6 +219,18 @@ end
 
 function Synth_mt:program_select(chan, sfont_id, bank_num, preset_num)
    fluid.fluid_synth_program_select(self.synth, chan, sfont_id, bank_num, preset_num)
+end
+
+function Synth_mt:get_channel_info(chan)
+   local info = ffi.new("fluid_synth_channel_info_t")
+   util.check_ok("fluid_synth_get_channel_info", fluid.FLUID_OK, fluid.fluid_synth_get_channel_info(self.synth, chan, info))
+   return {
+      assigned = info.assigned == 1,
+      sfont_id = info.sfont_id,
+      bank = info.bank,
+      program = info.program,
+      name = ffi.string(info.name),
+   }
 end
 
 function Synth_mt:program_reset()
