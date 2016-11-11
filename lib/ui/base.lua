@@ -150,7 +150,9 @@ end
 
 function UI.Box(ui, opts)
    local self = ui:Container(opts)
-   self.direction = self.direction or "h" -- horizontal by default
+   if not self.direction then
+      error("UI.Box needs direction")
+   end
    function self:calc_size()
       self.size.w = 0
       self.size.h = 0
@@ -229,15 +231,15 @@ function UI.Box(ui, opts)
 end
 
 function UI.HBox(ui, opts)
-   local box = ui:Box(opts)
-   box.direction = "h"
-   return box
+   opts = opts or {}
+   opts.direction = "h"
+   return ui:Box(opts)
 end
 
 function UI.VBox(ui, opts)
-   local box = ui:Box(opts)
-   box.direction = "v"
-   return box
+   opts = opts or {}
+   opts.direction = "v"
+   return ui:Box(opts)
 end
 
 function UI.TextureAtlas(ui, opts)
