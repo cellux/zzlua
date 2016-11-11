@@ -467,7 +467,7 @@ function UI.Font(ui, opts)
    end
    self:set_size(opts.size)
    local glyph_cache = {}
-   function self:get_glyph(charcode)
+   function self:load_glyph(charcode)
       if not glyph_cache[charcode] then
          self.face:Load_Char(charcode)
          self.face:Render_Glyph(freetype.FT_RENDER_MODE_LCD)
@@ -504,6 +504,9 @@ function UI.Font(ui, opts)
          end
          glyph_cache[charcode] = gd
       end
+   end
+   function self:get_glyph(charcode)
+      self:load_glyph(charcode)
       local gd = glyph_cache[charcode]
       if gd.texture and gd.texture ~= self.atlas.texture then
          -- stale reference to a texture which has been deleted
