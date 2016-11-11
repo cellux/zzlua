@@ -1,10 +1,12 @@
 local ffi = require('ffi')
 local sdl = require('sdl2')
-local dim = require('dim')
 local freetype = require('freetype')
 local util = require('util')
 local sys = require('sys')
 local round = util.round
+
+local Rect = require('dim').Rect
+local Size = require('dim').Size
 
 local M = {}
 
@@ -29,9 +31,9 @@ function Widget:create(opts)
    local self = Object(opts)
    -- the post-layout location of the widget in screen cordinates
    -- this will be updated by self.parent:layout()
-   self.rect = dim.Rect(0,0,0,0)
+   self.rect = Rect(0,0,0,0)
    -- the preferred size of the widget, (0,0) means undefined
-   self.size = dim.Size(0,0)
+   self.size = Size(0,0)
    return self
 end
 
@@ -266,7 +268,7 @@ function UI.TextureAtlas(ui, opts)
          if shelf_x + width > texture.width or shelf_y + height > texture.height then
             return "full"
          end
-         local dst_rect = dim.Rect(shelf_x, shelf_y, width, height)
+         local dst_rect = Rect(shelf_x, shelf_y, width, height)
          texture:update(dst_rect, src, src_rect)
          shelf_x = shelf_x + width
          if height > shelf_h then
@@ -306,7 +308,7 @@ function UI.TextureAtlas(ui, opts)
       local width, height = pixbuf.width, pixbuf.height
       --pf("add(%s,%d,%d)", key, width, height)
       assert(self.items[key] == nil)
-      local src_rect = dim.Rect(0, 0, width, height)
+      local src_rect = Rect(0, 0, width, height)
       local dst_rect = pack(pixbuf, src_rect)
       if dst_rect == "full" then
          self:resize(self.size*2)
@@ -484,7 +486,7 @@ function UI.Font(ui, opts)
             width = 0,
             height = 0,
             texture = nil,
-            src_rect = dim.Rect(0,0,0,0),
+            src_rect = Rect(0,0,0,0),
          }
          local pixels = g.bitmap.buffer
          -- pixels can be nil when we draw a whitespace character
