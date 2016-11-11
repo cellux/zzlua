@@ -46,14 +46,6 @@ function Widget:draw()
    -- draw the widget so that it fills self.rect
 end
 
-function Widget:update_rect(x,y,w,h)
-   local r = self.rect
-   r.x = x
-   r.y = y
-   r.w = w
-   r.h = h
-end
-
 -- Container
 
 local Container = util.Class(Widget)
