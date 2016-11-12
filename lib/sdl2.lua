@@ -617,6 +617,8 @@ static const uint32_t KMOD_SHIFT = (KMOD_LSHIFT|KMOD_RSHIFT);
 static const uint32_t KMOD_ALT   = (KMOD_LALT|KMOD_RALT);
 static const uint32_t KMOD_GUI   = (KMOD_LGUI|KMOD_RGUI);
 
+SDL_Keymod SDL_GetModState(void);
+
 /* SDL_keyboard.h */
 
 typedef struct SDL_Keysym {
@@ -2260,6 +2262,10 @@ function M.OpenAudioDevice(opts)
       size = obtained.size,
    }
    return setmetatable(self, AudioDevice_mt)
+end
+
+function M.GetModState()
+   return sdl.SDL_GetModState()
 end
 
 -- scheduler module
