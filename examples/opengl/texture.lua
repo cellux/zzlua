@@ -18,19 +18,14 @@ local app = appfactory.OpenGLApp {
    quit_on_escape = true,
 }
 
+local avg_time = util.Accumulator()
+
 function app:init()
    local ui = app.ui
    local texture = ui:Texture { width = 256, height = 256 }
    texture:clear(ui:Color(255,255,0,255))
    local texture_display = ui:TextureDisplay { texture = texture }
    ui:add(texture_display)
-   local avg_time = util.Accumulator()
-   sched(function()
-      while true do
-         sched.sleep(1)
-         pf("app:draw() takes %s seconds in average", avg_time.avg)
-      end
-   end)
    local tt = 0
    function app:draw()
       local t1 = time.time()
@@ -47,3 +42,5 @@ function app:init()
 end
 
 app:run()
+
+pf("app:draw() took %s seconds in average", avg_time.avg)
