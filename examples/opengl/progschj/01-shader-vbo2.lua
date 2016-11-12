@@ -6,6 +6,7 @@ local app = appfactory.OpenGLApp {
    title = "shader-vbo1",
    gl_profile = 'core',
    gl_version = '3.3',
+   quit_on_escape = true,
 }
 
 function app:init()

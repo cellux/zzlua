@@ -15,6 +15,7 @@ local app = appfactory.OpenGLApp {
    fullscreen_desktop = true,
    exact_frame_timing = false,
    frame_time = 0,
+   quit_on_escape = true,
 }
 
 function app:init()

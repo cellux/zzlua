@@ -24,6 +24,7 @@ local app = appFactory {
    title = "render-text",
    fullscreen_desktop = true,
    frame_time = 0,
+   quit_on_escape = true,
 }
 
 local avg_time = util.Accumulator()

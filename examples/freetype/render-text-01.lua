@@ -14,6 +14,7 @@ local round = require('util').round
 
 local app = appfactory.DesktopApp {
    title = "render-text",
+   quit_on_escape = true,
 }
 
 function app:init()

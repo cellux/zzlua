@@ -16,6 +16,7 @@ local round = util.round
 local app = appfactory.DesktopApp {
    title = "render-text",
    fullscreen_desktop = true,
+   quit_on_escape = true,
 }
 
 local function TextureAtlas(size, renderer)

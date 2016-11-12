@@ -14,6 +14,7 @@ local app = appfactory.OpenGLApp {
    title = "swapbuffers",
    gl_profile = 'es',
    gl_version = '2.0',
+   quit_on_escape = true,
 }
 
 function app:init()

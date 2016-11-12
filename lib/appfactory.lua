@@ -114,6 +114,7 @@ function SDLApp:create(opts)
       create_ui = true,
       exact_frame_timing = opts.exact_frame_timing or false,
       frame_time = opts.frame_time,
+      quit_on_escape = opts.quit_on_escape or false,
    }
    local flags = 0
    for k,v in pairs(sdl_window_flags) do
@@ -253,11 +254,13 @@ function SDLApp:run()
       end
 
       self.running = true
-      sched.on('sdl.keydown', function(evdata)
-                  if evdata.key.keysym.sym == sdl.SDLK_ESCAPE then
-                     self.running = false
-                  end
-      end)
+      if self.quit_on_escape then
+         sched.on('sdl.keydown', function(evdata)
+                     if evdata.key.keysym.sym == sdl.SDLK_ESCAPE then
+                        sched.quit()
+                     end
+         end)
+      end
       sched.on('sdl.quit', function() self.running = false end)
 
       self:main() -- shall exit when self.running becomes false

@@ -7,6 +7,7 @@ local sdl = require('sdl2')
 
 local app = appfactory.DesktopApp {
    title = "renderer-test",
+   quit_on_escape = true,
 }
 
 local function print_renderer_info(info)

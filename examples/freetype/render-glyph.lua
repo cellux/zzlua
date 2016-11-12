@@ -11,6 +11,7 @@ local round = require('util').round
 
 local app = appfactory.DesktopApp {
    title = "render-glyph",
+   quit_on_escape = true,
 }
 
 local function p26_6(name, value)
