@@ -12,11 +12,11 @@ local SAMPLE_RATE = 48000
 
 local sf2_path = arg[1]
 if not fs.exists(sf2_path) then
-   ef("Usage: fluidtracker <sf2-path>")
+   ef("Usage: fluidsynth <sf2-path>")
 end
 
 local app = appfactory.OpenGLApp {
-   title = "FluidTracker",
+   title = "FluidSynth",
    fullscreen_desktop = true,
 }
 
