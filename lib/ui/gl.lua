@@ -708,11 +708,6 @@ function UI.CharGrid(ui, opts)
    end
    function self:write_char(x, y, cp)
       local pos = self.width * y + x
-      if pos >= (ffi.sizeof(grid) / ffi.sizeof("struct zz_ui_gl_CharGridCell")) then
-         ef("x=%d, y=%d, cp=%d", x, y, cp)
-      end
-      assert((pos*6) < (ffi.sizeof(vertex_buffer_fg) / ffi.sizeof("struct zz_ui_gl_CharGridVertexFG")))
-      assert((pos*6) < (ffi.sizeof(vertex_buffer_bg) / ffi.sizeof("struct zz_ui_gl_CharGridVertexBG")))
       grid[pos].cp = cp
       grid[pos].fg = cm:fg()
       grid[pos].bg = cm:bg()
