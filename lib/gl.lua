@@ -364,6 +364,14 @@ void glFinish (void);
 /* Blending */
 
 enum {
+  GL_FUNC_ADD				       = 0x8006,
+  GL_FUNC_SUBTRACT			   = 0x800A,
+  GL_FUNC_REVERSE_SUBTRACT = 0x800B
+};
+
+void glBlendEquation (GLenum mode);
+
+enum {
   GL_BLEND               = 0x0BE2,
   GL_BLEND_SRC           = 0x0BE1,
   GL_BLEND_DST           = 0x0BE0,
@@ -379,6 +387,8 @@ enum {
   GL_ONE_MINUS_DST_COLOR = 0x0307,
   GL_SRC_ALPHA_SATURATE	 = 0x0308
 };
+
+void glBlendFunc (GLenum sfactor, GLenum dfactor);
 
 ]]
 
