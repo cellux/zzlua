@@ -410,11 +410,12 @@ function Face_mt:Load_Char(charcode, load_flags)
 end
 
 function Face_mt:Done_Face()
-   if self.face then
+   if self.face ~= nil then
       util.check_ok("FT_Done_Face", 0, freetype.FT_Done_Face(self.face))
       self.face = nil
    end
 end
+Face_mt.delete = Face_mt.Done_Face
 
 Face_mt.__index = Face_mt
 Face_mt.__gc = Face_mt.Done_Face
