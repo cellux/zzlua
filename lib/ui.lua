@@ -28,8 +28,8 @@ function Widget:create(opts)
    -- the post-layout location of the widget in screen cordinates
    -- this will be updated by self.parent:layout()
    self.rect = Rect(0,0,0,0)
-   -- the preferred size of the widget, (0,0) means undefined
-   self.preferred_size = Size(0,0)
+   -- the preferred size of the widget, nil means undefined
+   self.preferred_size = nil
    return self
 end
 
@@ -58,7 +58,6 @@ local Container = util.Class(Widget)
 function Container:create(opts)
    local self = Widget(opts)
    self.children = {}
-   self._preferred_size_initialized = false
    return self
 end
 
@@ -72,26 +71,35 @@ function Container:set_preferred_size()
    self.preferred_size = Size(0,0)
    for _,widget in ipairs(self.children) do
       widget:set_preferred_size()
-      if widget.preferred_size.w > self.preferred_size.w then
-         self.preferred_size.w = widget.preferred_size.w
+      local wps = widget.preferred_size
+      if wps and wps.w > self.preferred_size.w then
+         self.preferred_size.w = wps.w
       end
-      if widget.preferred_size.h > self.preferred_size.h then
-         self.preferred_size.h = widget.preferred_size.h
+      if wps and wps.h > self.preferred_size.h then
+         self.preferred_size.h = wps.h
       end
    end
-   self._preferred_size_initialized = true
 end
 
 function Container:layout()
    -- top -> down
-   if not self._preferred_size_initialized then
+   if not self.preferred_size then
       self:set_preferred_size()
    end
    for _,widget in ipairs(self.children) do
       widget.rect.x = self.rect.x
       widget.rect.y = self.rect.y
-      widget.rect.w = widget.preferred_size.w > 0 and widget.preferred_size.w or self.rect.w
-      widget.rect.h = widget.preferred_size.h > 0 and widget.preferred_size.h or self.rect.h
+      local wps = widget.preferred_size
+      if wps and wps.w > 0 then
+         widget.rect.w = wps.w
+      else
+         widget.rect.w = self.rect.w
+      end
+      if wps and wps.h > 0 then
+         widget.rect.h = wps.h
+      else
+         widget.rect.h = self.rect.h
+      end
       if widget.layout then
          widget:layout()
       end

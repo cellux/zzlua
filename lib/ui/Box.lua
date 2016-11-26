@@ -6,20 +6,21 @@ function UI.Box(ui, opts)
       error("UI.Box needs direction")
    end
    function self:set_preferred_size()
-      self.preferred_size.w = 0
-      self.preferred_size.h = 0
+      self.preferred_size = Size(0,0)
       if self.direction == "h" then
          for _,widget in ipairs(self.children) do
             widget:set_preferred_size()
-            if widget.preferred_size.h > self.preferred_size.h then
-               self.preferred_size.h = widget.preferred_size.h
+            local wps = widget.preferred_size
+            if wps and wps.h > self.preferred_size.h then
+               self.preferred_size.h = wps.h
             end
          end
       elseif self.direction == "v" then
          for _,widget in ipairs(self.children) do
             widget:set_preferred_size()
-            if widget.preferred_size.w > self.preferred_size.w then
-               self.preferred_size.w = widget.preferred_size.w
+            local wps = widget.preferred_size
+            if wps and wps.w > self.preferred_size.w then
+               self.preferred_size.w = wps.w
             end
          end
       else
@@ -36,13 +37,14 @@ function UI.Box(ui, opts)
       -- we subtract all explicit widths/heights to get the remaining
       -- space which will be divided evenly among dynamic widgets
       for _,widget in ipairs(self.children) do
-         if widget.preferred_size.w > 0 then
-            dyn_w = dyn_w - widget.preferred_size.w
+         local wps = widget.preferred_size
+         if wps and wps.w > 0 then
+            dyn_w = dyn_w - wps.w
          else
             n_dyn_w = n_dyn_w + 1
          end
-         if widget.preferred_size.h > 0 then
-            dyn_h = dyn_h - widget.preferred_size.h
+         if wps and wps.h > 0 then
+            dyn_h = dyn_h - wps.h
          else
             n_dyn_h = n_dyn_h + 1
          end
@@ -58,9 +60,10 @@ function UI.Box(ui, opts)
       for _,widget in ipairs(self.children) do
          widget.rect.x = x
          widget.rect.y = y
+         local wps = widget.preferred_size
          if self.direction == "h" then
-            if widget.preferred_size.w > 0 then
-               widget.rect.w = widget.preferred_size.w
+            if wps and wps.w > 0 then
+               widget.rect.w = wps.w
             else
                widget.rect.w = dyn_w / n_dyn_w
             end
@@ -68,8 +71,8 @@ function UI.Box(ui, opts)
             x = x + widget.rect.w
          elseif self.direction == "v" then
             widget.rect.w = cw
-            if widget.preferred_size.h > 0 then
-               widget.rect.h = widget.preferred_size.h
+            if wps and wps.h > 0 then
+               widget.rect.h = wps.h
             else
                widget.rect.h = dyn_h / n_dyn_h
             end
