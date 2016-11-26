@@ -80,6 +80,9 @@ function UI.Box(ui, opts)
          else
             ef("invalid pack direction: %s", self.direction)
          end
+         if widget.layout then
+            widget:layout()
+         end
       end
    end
    return self
