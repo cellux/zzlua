@@ -462,6 +462,7 @@ include('Text')
 include('Palette')
 include('CharGrid')
 include('Quad')
+include('KeyMapper')
 
 M.UI = UI
 

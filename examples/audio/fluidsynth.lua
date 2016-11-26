@@ -106,6 +106,26 @@ local function main()
    local max_prognum = 127
    local min_prognum = 0
 
+   local function log_channel_info(chan)
+      local info = synth:get_channel_info(chan)
+      log("sfont_id=%d bank=%d program=%d: %s", info.sfont_id, info.bank, info.program, info.name)
+   end
+
+   local keymapper = ui:KeyMapper()
+
+   local function quit()
+      keymapper:disable()
+      log("pausing audio device")
+      dev:stop()
+      log("closing audio device")
+      dev:close()
+      log("cleanup fluidsynth")
+      synth:delete()
+      settings:delete()
+      log("exiting")
+      sched.quit()
+   end
+
    local key_map = {
       [sdl.SDLK_z] = 0,
       [sdl.SDLK_s] = 1,
@@ -133,30 +153,8 @@ local function main()
       [sdl.SDLK_7] = 22,
       [sdl.SDLK_u] = 23,
    }
-   
-   local function log_channel_info(chan)
-      local info = synth:get_channel_info(chan)
-      log("sfont_id=%d bank=%d program=%d: %s", info.sfont_id, info.bank, info.program, info.name)
-   end
-   
-   local handle_keys = true
-   
-   local function quit()
-      handle_keys = false
-      log("pausing audio device")
-      dev:stop()
-      log("closing audio device")
-      dev:close()
-      log("cleanup fluidsynth")
-      synth:delete()
-      settings:delete()
-      log("exiting")
-      sched.quit()
-   end
 
-   local function handle_keydown(evdata)
-      if not handle_keys then return end
-      local sym = evdata.key.keysym.sym
+   local function handle_keydown(sym)
       if sym == sdl.SDLK_UP then
          if octave < max_octave then
             octave = octave + 1
@@ -188,18 +186,7 @@ local function main()
          end
       end
    end
-
-   local function handle_keyup(evdata)
-      if not handle_keys then return end
-      local sym = evdata.key.keysym.sym
-      local key = key_map[sym]
-      if key then
-         synth:noteoff(0, octave*12+key)
-      end
-   end
-
-   sched.on('sdl.keydown', handle_keydown)
-   --sched.on('sdl.keyup', handle_keyup)
+   keymapper:push(handle_keydown)
 end
 
 sched(main)

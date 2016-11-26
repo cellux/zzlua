@@ -23,11 +23,12 @@ local function main()
    ui:add(text)
    local text_top = 0
    local text_speed = 60
-   sched.on('sdl.keydown', function(evdata)
-      if evdata.key.keysym.sym == sdl.SDLK_SPACE then
+   local keymapper = ui:KeyMapper()
+   keymapper:push {
+      [sdl.SDLK_SPACE] = function()
          text_speed = -text_speed
-      end
-   end)
+      end,
+   }
    local loop = ui:RenderLoop {
       frame_time = 0,
       measure = true,

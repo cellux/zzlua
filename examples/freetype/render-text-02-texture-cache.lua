@@ -102,11 +102,13 @@ local function main()
             sched.sleep(0.01)
          end
    end)
-   sched.on('sdl.keydown', function(evdata)
-      if evdata.key.keysym.sym == sdl.SDLK_SPACE then
+
+   local keymapper = ui:KeyMapper()
+   keymapper:push {
+      [sdl.SDLK_SPACE] = function()
          text_speed = 1-text_speed
-      end
-   end)
+      end,
+   }
 
    local function lines(s)
       local index = 1
