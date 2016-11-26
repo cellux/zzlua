@@ -67,8 +67,6 @@ end
 
 function UI.CharGrid(ui, opts)
    assert(opts.font)
-   assert(opts.width)
-   assert(opts.height)
    local cm = CharGridColorManager(ui, opts.palette, opts.fg, opts.bg)
    local self = ui:Widget(opts)
    self.palette = cm.palette
@@ -109,7 +107,11 @@ function UI.CharGrid(ui, opts)
       self.height = new_height
       needs_upload = true
    end
-   self:resize(self.width, self.height)
+   function self:layout()
+      local new_width = self.parent:width() / self.font.max_advance
+      local new_height = self.parent:height() / self.font.height
+      self:resize(new_width, new_height)
+   end
    local function update_vertex_buffer_fg()
       local ox = 0
       local oy = self.font.ascender

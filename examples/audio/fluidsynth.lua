@@ -43,15 +43,9 @@ local function main()
    end
    local font = ui:Font { source = ttf_path, size = FONT_SIZE }
 
-   ui:show()
-
-   local grid = ui:CharGrid {
-      font = font,
-      width = math.floor(ui:width() / font.max_advance),
-      height = math.floor(ui:height() / font.height),
-   }
+   local grid = ui:CharGrid { font = font }
    ui:add(grid)
-
+   ui:show()
    ui:layout()
 
    local loop = ui:RenderLoop { measure = true }

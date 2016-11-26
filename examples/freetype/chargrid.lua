@@ -16,13 +16,11 @@ local function main()
    local ttf_path = fs.join(script_dir, "DroidSansMono.ttf")
    local font_size = 12 -- initial font size in points
    local font = ui:Font { source = ttf_path, size = font_size }
-   local grid = ui:CharGrid { font = font, width = 80, height = 25 }
-   grid:write(0,0, "Hello, world! www")
-   grid:write(1,1, "Hello, Mikey!")
-   grid:bg(1)
-   grid:write(2,2, "ÁRVÍZTŰRŐ TÜKÖRFÚRÓGÉP")
-   ui:add(grid)
+
+   local grid = ui:CharGrid { font = font }
+
    local packer = ui:HBox()
+   packer:add(grid)
    packer:add(ui:Spacer())
    local palette_display = ui:Quad {
       texture = grid.palette.texture,
@@ -35,6 +33,12 @@ local function main()
    ui:add(packer)
    ui:show()
    ui:layout()
+
+   grid:write(0,0, "Hello, world! www")
+   grid:write(1,1, "Hello, Mikey!")
+   grid:bg(1)
+   grid:write(2,2, "ÁRVÍZTŰRŐ TÜKÖRFÚRÓGÉP")
+
    local loop = ui:RenderLoop { measure = true }
    sched(loop)
    sched.wait('quit')
