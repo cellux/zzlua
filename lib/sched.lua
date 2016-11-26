@@ -346,6 +346,18 @@ local function Scheduler()
 
    function self.sched(fn, data)
       if fn then
+         -- coerce to function
+         if type(fn) ~= "function" then
+            if getmetatable(fn).__call then
+               -- it's a callable object
+               local callable = fn
+               fn = function(...)
+                  callable(...)
+               end
+            else
+               ef("sched() expects something callable, got: %s", fn)
+            end
+         end
          -- add fn to the list of runnable threads
          local t = coroutine.create(fn)
          runnables:push(Runnable(t, data))
