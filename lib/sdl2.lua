@@ -989,6 +989,8 @@ int SDL_PollEvent (SDL_Event * event);
 
 /* SDL_rect.h */
 
+/* these have been already defined in globals.lua
+
 typedef struct SDL_Point {
   int x;
   int y;
@@ -998,6 +1000,8 @@ typedef struct SDL_Rect {
   int x, y;
   int w, h;
 } SDL_Rect;
+
+*/
 
 /* SDL_surface.h */
 
@@ -1243,12 +1247,16 @@ ffi.cdef(cdef)
 
 ffi.cdef [[
 
+/* SDL_Color has been already defined in globals.lua
+
 typedef struct SDL_Color {
   Uint8 r;
   Uint8 g;
   Uint8 b;
   Uint8 a;
 } SDL_Color;
+
+*/
 
 typedef struct SDL_Palette {
   int ncolors;
@@ -1280,6 +1288,7 @@ typedef struct SDL_PixelFormat {
 } SDL_PixelFormat;
 
 const char* SDL_GetPixelFormatName(Uint32 format);
+
 SDL_bool SDL_PixelFormatEnumToMasks(Uint32 format,
                                     int *bpp,
                                     Uint32 * Rmask,
@@ -1842,71 +1851,6 @@ function M.GetRenderDriverInfo(index)
    return info
 end
 
--- Point
-
-local Point_mt = {}
-
-function Point_mt:__tostring()
-   return sf("Point(%d,%d)", self.x, self.y)
-end
-
-M.Point = ffi.metatype("SDL_Point", Point_mt)
-
--- Rect
-
-local Rect_mt = {}
-
-function Rect_mt:__tostring()
-   return sf("Rect(%d,%d,%d,%d)",
-             self.x, self.y,
-             self.w, self.h)
-end
-
-function Rect_mt:update(x,y,w,h)
-   self.x = x or self.x
-   self.y = y or self.y
-   self.w = w or self.w
-   self.h = h or self.h
-end
-
-function Rect_mt:clear()
-   self:update(0,0,0,0)
-end
-
-M.Rect = ffi.metatype("SDL_Rect", Rect_mt)
-
--- Color
-
-local Color_mt = {}
-
-function Color_mt:bytes()
-   return self.r, self.g, self.b, self.a
-end
-
-function Color_mt:floats()
-   return self.r/255, self.g/255, self.b/255, self.a/255
-end
-
-function Color_mt:u32be()
-   return
-      bit.lshift(self.r, 24) +
-      bit.lshift(self.g, 16) +
-      bit.lshift(self.b, 8) +
-      bit.lshift(self.a, 0)
-end
-
-function Color_mt:u32le()
-   return
-      bit.lshift(self.r, 0) +
-      bit.lshift(self.g, 8) +
-      bit.lshift(self.b, 16) +
-      bit.lshift(self.a, 24)
-end
-
-Color_mt.__index = Color_mt
-
-M.Color = ffi.metatype("SDL_Color", Color_mt)
-
 -- Texture
 
 local Texture_mt = {}
@@ -2000,7 +1944,7 @@ function Renderer_mt:CreateTexture(format, access, width, height)
       is_texture = true,
       texture = texture,
       renderer = self,
-      rect = M.Rect(0, 0, width, height),
+      rect = Rect(0, 0, width, height),
       format = format,
       access = access,
       width = width,

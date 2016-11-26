@@ -1,28 +1,30 @@
 #!/usr/bin/env zzlua
 
 local ffi = require('ffi')
-local bit = require('bit')
-local appfactory = require('appfactory')
+local ui = require('ui')
 local sched = require('sched')
 local freetype = require('freetype')
 local fs = require('fs')
-local sdl = require('sdl2')
+local gl = require('gl')
+
 local round = require('util').round
 
-local app = appfactory.DesktopApp {
-   title = "render-glyph",
-   quit_on_escape = true,
-}
+local function main()
+   local ui = ui {
+      title = "render-glyph",
+      quit_on_escape = true,
+   }
 
-local function p26_6(name, value)
-   pf("%s=%d (%d px)", name, tonumber(value), round(value/64))
-end
+   ui:show()
 
-function app:init()
+   local function p26_6(name, value)
+      pf("%s=%d (%d px)", name, tonumber(value), round(value/64))
+   end
+
    local script_dir = fs.dirname(arg[0])
    local ttf_path = fs.join(script_dir, "DejaVuSerif.ttf")
    local face = freetype.Face(ttf_path)
-   face:Set_Pixel_Sizes(self.height)
+   face:Set_Pixel_Sizes(ui:height())
    pf("face info:")
    pf("  num_glyphs=%d", tonumber(face.face.num_glyphs))
    pf("  family_name=%s", ffi.string(face.face.family_name))
@@ -76,25 +78,40 @@ function app:init()
    local width = glyph.bitmap.width/3
    local height = glyph.bitmap.rows
 
-   local r = self.renderer
-   local texture = r:CreateTexture(sdl.SDL_PIXELFORMAT_RGB24,
-                                   sdl.SDL_TEXTUREACCESS_STATIC,
-                                   width, height)
-   texture:UpdateTexture(nil, pixels, pitch)
+   local pbuf = ui:PixelBuffer("rgb", width, height)
+   local writer = pbuf:Writer { format = "rgb" }
+   writer:write(pixels, pitch)
 
-   local black = sdl.Color(0,0,0,255)
+   local texture = ui:Texture {
+      format = "rgb",
+      width = width,
+      height = height,
+   }
+   texture:update(pbuf)
 
-   function app:draw()
-      r:SetRenderDrawColor(black)
-      r:RenderClear()
-      local dstrect = sdl.Rect(0,0,width,height)
-      r:RenderCopy(texture, nil, dstrect)
+   local blitter = ui:TextureBlitter()
+   local dst_rect = Rect(0, 0, width, height)
+
+   local loop = ui:RenderLoop()
+   function loop:clear()
+      ui:clear(Color(64,0,0,255))
    end
-
-   function app:done()
-      texture:DestroyTexture()
-      face:Done_Face()
+   function loop:draw()
+      gl.glEnable(gl.GL_BLEND)
+      gl.glBlendEquation(gl.GL_FUNC_ADD)
+      gl.glBlendFunc(gl.GL_ONE, gl.GL_ONE_MINUS_SRC_COLOR)
+      blitter:blit(texture, dst_rect)
    end
+   sched(loop)
+
+   ui:show()
+   ui:layout()
+
+   sched.wait('quit')
+
+   texture:delete()
+   face:delete()
 end
 
-app:run()
+sched(main)
+sched()

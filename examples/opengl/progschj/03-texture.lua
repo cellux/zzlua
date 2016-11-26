@@ -1,15 +1,16 @@
-local appfactory = require('appfactory')
+local ui = require('ui')
 local gl = require('gl')
 local ffi = require('ffi')
+local sched = require('sched')
 
-local app = appfactory.OpenGLApp {
-   title = "shader-vbo1",
-   gl_profile = 'core',
-   gl_version = '3.3',
-   quit_on_escape = true,
-}
+local function main()
+   local window = ui.Window {
+      title = "shader-vbo1",
+      gl_profile = 'core',
+      gl_version = '3.3',
+      quit_on_escape = true,
+   }
 
-function app:init()
    local FS = ffi.sizeof("GLfloat")
 
    local rm = gl.ResourceManager()
@@ -74,9 +75,11 @@ function app:init()
                  gl.GL_STATIC_DRAW)
    gl.BindVertexArray(nil)
 
+   window:show()
+
    local texture = rm:Texture()
    gl.BindTexture(gl.GL_TEXTURE_2D, texture)
-   local width, height = self.width, self.height
+   local width, height = window:width(), window:height()
    local image = ffi.new("GLubyte[?]", 4*width*height)
    for y=0,height-1 do
       for x=0,width-1 do
@@ -84,15 +87,16 @@ function app:init()
          image[4*index+0] = 0xFF*(y/10%2)*(x/10%2) -- R
          image[4*index+1] = 0xFF*(y/13%2)*(x/13%2) -- G
          image[4*index+2] = 0xFF*(y/17%2)*(x/17%2) -- B
-         image[4*index+3] = 0xFF                    -- A
+         image[4*index+3] = 0xFF                   -- A
       end
    end
    gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR);
    gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR);
    gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE);
    gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE);
-   gl.TexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA8, self.width, self.height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image)
+   gl.TexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA8, width, height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, image)
 
+   local app = ui.Widget()
    function app:draw()
       gl.Clear(gl.GL_COLOR_BUFFER_BIT)
       gl.UseProgram(shader_program)
@@ -102,10 +106,11 @@ function app:init()
       gl.BindVertexArray(vao)
       gl.DrawElements(gl.GL_TRIANGLES, 6, gl.GL_UNSIGNED_INT, 0)
    end
-
-   function app:done()
-      rm:delete()
-   end
+   window:add(app)
+   sched(window:RenderLoop())
+   sched.wait('quit')
+   rm:delete()
 end
 
-app:run()
+sched(main)
+sched()

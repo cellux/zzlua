@@ -1,15 +1,16 @@
-local appfactory = require('appfactory')
+local ui = require('ui')
 local gl = require('gl')
 local ffi = require('ffi')
+local sched = require('sched')
 
-local app = appfactory.OpenGLApp {
-   title = "shader-vbo1",
-   gl_profile = 'core',
-   gl_version = '3.3',
-   quit_on_escape = true,
-}
+local function main()
+   local window = ui.Window {
+      title = "shader-vbo1",
+      gl_profile = 'core',
+      gl_version = '3.3',
+      quit_on_escape = true,
+   }
 
-function app:init()
    local FS = ffi.sizeof("GLfloat")
 
    local rm = gl.ResourceManager()
@@ -72,16 +73,20 @@ function app:init()
                  gl.GL_STATIC_DRAW)
    gl.BindVertexArray(nil)
 
+   local app = ui.Widget()
    function app:draw()
       gl.Clear(gl.GL_COLOR_BUFFER_BIT)
       gl.UseProgram(shader_program)
       gl.BindVertexArray(vao)
       gl.DrawElements(gl.GL_TRIANGLES, 6, gl.GL_UNSIGNED_INT, 0)
    end
-
-   function app:done()
-      rm:delete()
-   end
+   window:add(app)
+   window:show()
+   sched(window:RenderLoop())
+   sched.wait('quit')
+   rm:delete()
+   pf("all resources cleaned up, exiting")
 end
 
-app:run()
+sched(main)
+sched()

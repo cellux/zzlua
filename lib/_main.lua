@@ -1,49 +1,11 @@
 -- statements in this file are executed at startup
 
+require('globals')
+
 local ffi = require('ffi')
 local sched = require('sched')
 local epoll = require('epoll')
 sched.poller_factory = epoll.poller_factory
-
--- commonly used C types and functions
-
-ffi.cdef [[
-
-typedef long int ssize_t;
-
-/* types of struct stat fields */
-
-typedef unsigned long long int __dev_t;
-typedef unsigned long int __ino_t;
-typedef unsigned int __mode_t;
-typedef unsigned int __nlink_t;
-typedef unsigned int __uid_t;
-typedef unsigned int __gid_t;
-typedef long int __off_t;
-typedef long int __blksize_t;
-typedef long int __blkcnt_t;
-
-void *malloc (size_t size);
-void free (void *ptr);
-
-]]
-
--- global definitions
-
-_G.sf = string.format
-
-function _G.pf(fmt, ...)
-   print(string.format(fmt, ...))
-end
-
-function _G.ef(fmt, ...)
-   local msg = string.format(fmt, ...)
-   if coroutine.running() then
-      -- append stack trace of the current thread
-      msg = sf("%s%s", msg, debug.traceback("", 2))
-   end
-   error(msg, 2)
-end
 
 --[[ main ]]--
 

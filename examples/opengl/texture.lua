@@ -1,46 +1,41 @@
 #!/usr/bin/env zzlua
 
-local appfactory = require('appfactory')
 local sched = require('sched')
+local ui = require('ui')
 local fs = require('fs')
 local file = require('file')
 local sdl = require('sdl2')
 local util = require('util')
 local time = require('time')
 
-local app = appfactory.OpenGLApp {
-   gl_profile = 'core',
-   gl_version = '3.0',
-   title = "texture",
-   fullscreen_desktop = true,
-   exact_frame_timing = false,
-   frame_time = 0,
-   quit_on_escape = true,
-}
-
-local avg_time = util.Accumulator()
-
-function app:init()
-   local ui = app.ui
+local function main()
+   local ui = ui {
+      gl_profile = 'core',
+      gl_version = '3.0',
+      title = "texture",
+      fullscreen_desktop = true,
+      quit_on_escape = true,
+   }
    local texture = ui:Texture { width = 256, height = 256 }
-   texture:clear(ui:Color(255,255,0,255))
-   local texture_display = ui:TextureDisplay { texture = texture }
-   ui:add(texture_display)
-   local tt = 0
-   function app:draw()
-      local t1 = time.time()
-      ui:calc_size()
-      ui:layout()
-      texture_display.rect.x = 256*math.sin(sched.now)
-      texture_display.rect.y = 256*math.cos(sched.now)
-      ui:clear(ui:Color(64,0,0))
-      ui:draw()
-      local t2 = time.time()
-      local elapsed = t2 - t1
-      avg_time:feed(elapsed)
+   texture:clear(Color(255,255,0,255))
+   local blitter = ui:TextureBlitter()
+   ui:show()
+   ui:layout()
+   local loop = ui:RenderLoop {
+      frame_time = 0,
+      measure = true,
+   }
+   function loop:clear()
+      ui:clear(Color(64,0,0))
    end
+   function loop:draw()
+      local x = (ui:width()-texture.width)/2 + 100*math.sin(sched.now*2)
+      local y = (ui:height()-texture.height)/2 + 100*math.cos(sched.now*2.5)
+      local dst_rect = Rect(x, y, texture.width, texture.height)
+      blitter:blit(texture, dst_rect)
+   end
+   sched(loop)
 end
 
-app:run()
-
-pf("app:draw() took %s seconds in average", avg_time.avg)
+sched(main)
+sched()

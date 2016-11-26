@@ -1,8 +1,14 @@
-local appfactory = require('appfactory')
+local ui = require('ui')
+local sched = require('sched')
 
-local app = appfactory.OpenGLApp {
-   title = "skeleton",
-   quit_on_escape = true,
-}
+function main()
+   local window = ui.Window {
+      title = "skeleton",
+      quit_on_escape = true,
+   }
+   window:show()
+   sched(window:RenderLoop())
+end
 
-app:run()
+sched(main)
+sched()

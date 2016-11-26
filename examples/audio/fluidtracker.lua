@@ -2,11 +2,9 @@ local ffi = require('ffi')
 local sched = require('sched')
 local sdl = require('sdl2')
 local fluid = require('fluidsynth')
-local appfactory = require('appfactory')
+local ui = require('ui')
 local fs = require('fs')
 local time = require('time')
-
-require('freetype')
 
 local FONT_SIZE = 11
 local SAMPLE_RATE = 48000
@@ -26,22 +24,6 @@ local log = Logger()
 local sf2_path = arg[1]
 if not fs.exists(sf2_path) then
    ef("Usage: fluidtracker <sf2-path>")
-end
-
-local app = appfactory.OpenGLApp {
-   title = "FluidTracker",
-   fullscreen_desktop = true,
-}
-
-local function font_path()
-   local script_path = arg[0]
-   local script_dir = fs.dirname(script_path)
-   local examples_dir = fs.dirname(script_dir)
-   local font_path = fs.join(examples_dir, "freetype/DroidSansMono.ttf")
-   if not fs.exists(font_path) then
-      ef("missing font: %s", font_path)
-   end
-   return font_path
 end
 
 local piano_key_map = {
@@ -680,9 +662,22 @@ local function Tracker(synth, grid, keymapper, global_env)
    return self
 end
 
-function app:init()
-   log("initializing UI")
-   local ui = app.ui
+local function font_path()
+   local script_path = arg[0]
+   local script_dir = fs.dirname(script_path)
+   local examples_dir = fs.dirname(script_dir)
+   local font_path = fs.join(examples_dir, "freetype/DroidSansMono.ttf")
+   if not fs.exists(font_path) then
+      ef("missing font: %s", font_path)
+   end
+   return font_path
+end
+
+local function main()
+   local ui = ui {
+      title = "FluidTracker",
+      fullscreen_desktop = true,
+   }
 
    local font_path = font_path()
    log("loading font: %s", font_path)
@@ -691,86 +686,83 @@ function app:init()
       size = FONT_SIZE
    }
 
-   local function main()
-      log("creating grid")
-      local grid = ui:CharGrid {
-         font = font,
-         width = math.floor(ui.rect.w / font.max_advance),
-         height = math.floor(ui.rect.h / font.height),
-      }
-      ui:add(grid)
-      ui:layout()
+   ui:show()
 
-      log("assembling synth settings")
-      local settings = fluid.Settings()
-      settings:setnum("synth.gain", 1)
-      settings:setint("synth.midi-channels", 256)
-      settings:setnum("synth.sample-rate", SAMPLE_RATE)
+   log("creating grid")
+   local grid = ui:CharGrid {
+      font = font,
+      width = math.floor(ui:width() / font.max_advance),
+      height = math.floor(ui:height() / font.height),
+   }
+   ui:add(grid)
 
-      log("creating synth")
-      local synth = fluid.Synth(settings)
-      log("loading soundfont: %s", sf2_path)
-      local sf_id = synth:sfload(sf2_path, true)
+   ui:layout()
 
-      log("opening audio device")
-      local dev = sdl.OpenAudioDevice {
-         freq = SAMPLE_RATE,
-         format = sdl.AUDIO_S16SYS,
-         channels = 2,
-         samples = 1024,
-         callback = ffi.C.zz_fluidsynth_sdl_audio_callback,
-         userdata = synth.synth
-      }
-      log("starting audio thread")
-      dev:start()
+   log("assembling synth settings")
+   local settings = fluid.Settings()
+   settings:setnum("synth.gain", 1)
+   settings:setint("synth.midi-channels", 256)
+   settings:setnum("synth.sample-rate", SAMPLE_RATE)
 
-      log("creating keymapper")
-      local keymapper = KeyMapper()
+   log("creating synth")
+   local synth = fluid.Synth(settings)
+   log("loading soundfont: %s", sf2_path)
+   local sf_id = synth:sfload(sf2_path, true)
 
-      log("creating top-level keymap")
-      local keymap = {
-         [sdl.SDLK_ESCAPE] = function()
-            handle_keys = false
-            log("stopping audio thread")
-            dev:stop()
-            log("closing audio device")
-            dev:close()
-            log("deleting synth")
-            synth:delete()
-            settings:delete()
-            log("exiting")
-            sched.quit()
-         end,
-      }
-      keymapper:push(keymap)
+   log("opening audio device")
+   local dev = sdl.OpenAudioDevice {
+      freq = SAMPLE_RATE,
+      format = sdl.AUDIO_S16SYS,
+      channels = 2,
+      samples = 1024,
+      callback = ffi.C.zz_fluidsynth_sdl_audio_callback,
+      userdata = synth.synth
+   }
+   log("starting audio thread")
+   dev:start()
 
-      local global_env = {
-         noteon = function(chan, key, vel)
-            if chan and key and vel then
-               synth:noteon(chan, key, vel)
-            end
-         end,
-         noteoff = function(chan, key)
-            if chan and key then
-               synth:noteoff(chan, key)
-            end
-         end,
-      }
+   log("creating keymapper")
+   local keymapper = KeyMapper()
 
-      log("creating tracker")
-      local tracker = Tracker(synth, grid, keymapper, global_env)
-      tracker:draw()
+   log("creating top-level keymap")
+   local keymap = {
+      [sdl.SDLK_ESCAPE] = function()
+         handle_keys = false
+         log("stopping audio thread")
+         dev:stop()
+         log("closing audio device")
+         dev:close()
+         log("deleting synth")
+         synth:delete()
+         settings:delete()
+         log("exiting")
+         sched.quit()
+      end,
+   }
+   keymapper:push(keymap)
 
-      log("entering main loop")
-      sched.wait('quit')
-   end
+   local global_env = {
+      noteon = function(chan, key, vel)
+         if chan and key and vel then
+            synth:noteon(chan, key, vel)
+         end
+      end,
+      noteoff = function(chan, key)
+         if chan and key then
+            synth:noteoff(chan, key)
+         end
+      end,
+   }
 
-   function app:draw()
-      ui:clear()
-      ui:draw()
-   end
+   log("creating tracker")
+   local tracker = Tracker(synth, grid, keymapper, global_env)
+   tracker:draw() -- this draws into the grid only
 
-   sched(main)
+   log("starting render loop")
+   local loop = ui:RenderLoop { measure = true }
+   sched(loop)
+   sched.wait('quit')
 end
 
-app:run()
+sched(main)
+sched()

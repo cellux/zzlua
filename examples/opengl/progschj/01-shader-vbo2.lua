@@ -1,15 +1,16 @@
-local appfactory = require('appfactory')
+local ui = require('ui')
 local gl = require('gl')
 local ffi = require('ffi')
+local sched = require('sched')
 
-local app = appfactory.OpenGLApp {
-   title = "shader-vbo1",
-   gl_profile = 'core',
-   gl_version = '3.3',
-   quit_on_escape = true,
-}
+local function main()
+   local window = ui.Window {
+      title = "shader-vbo1",
+      gl_profile = 'core',
+      gl_version = '3.3',
+      quit_on_escape = true,
+   }
 
-function app:init()
    local FS = ffi.sizeof("GLfloat")
 
    local vertex_shader = gl.CreateShader(gl.GL_VERTEX_SHADER)
@@ -66,22 +67,27 @@ function app:init()
    gl.VertexAttribPointer(1, 3, gl.GL_FLOAT, gl.GL_FALSE, 6*FS, 3*FS)
    gl.BindVertexArray(nil)
 
+   local app = ui.Widget()
    function app:draw()
       gl.Clear(gl.GL_COLOR_BUFFER_BIT)
       gl.UseProgram(shader_program)
       gl.BindVertexArray(vao)
       gl.DrawArrays(gl.GL_TRIANGLES, 0, 6)
    end
+   window:add(app)
+   window:show()
+   sched(window:RenderLoop())
 
-   function app:done()
-      vao:DeleteVertexArray()
-      vbo:DeleteBuffer()
-      shader_program:DetachShader(vertex_shader)
-      shader_program:DetachShader(fragment_shader)
-      vertex_shader:DeleteShader()
-      fragment_shader:DeleteShader()
-      shader_program:DeleteProgram()
-   end
+   sched.wait('quit')
+
+   vao:DeleteVertexArray()
+   vbo:DeleteBuffer()
+   shader_program:DetachShader(vertex_shader)
+   shader_program:DetachShader(fragment_shader)
+   vertex_shader:DeleteShader()
+   fragment_shader:DeleteShader()
+   shader_program:DeleteProgram()
 end
 
-app:run()
+sched(main)
+sched()
