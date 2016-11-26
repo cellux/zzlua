@@ -11,6 +11,14 @@ function M.round(x)
    end
 end
 
+function M.align_down(x, alignment)
+   return x - x % alignment
+end
+
+function M.align_up(x, alignment)
+   return x + (alignment - (x % alignment)) % alignment
+end
+
 function M.check_ok(funcname, okvalue, rv)
    if rv ~= okvalue then
       error(sf("%s() failed: %s", funcname, rv), 2)
