@@ -1286,6 +1286,19 @@ SDL_bool SDL_PixelFormatEnumToMasks(Uint32 format,
                                     Uint32 * Gmask,
                                     Uint32 * Bmask,
                                     Uint32 * Amask);
+
+Uint32 SDL_MasksToPixelFormatEnum(int bpp,
+                                  Uint32 Rmask,
+                                  Uint32 Gmask,
+                                  Uint32 Bmask,
+                                  Uint32 Amask);
+
+SDL_Palette * SDL_AllocPalette(int ncolors);
+int SDL_SetPaletteColors(SDL_Palette * palette,
+                         const SDL_Color * colors,
+                         int firstcolor, int ncolors);
+void SDL_FreePalette(SDL_Palette * palette);
+
 Uint32 SDL_MapRGB(const SDL_PixelFormat * format,
                   Uint8 r, Uint8 g, Uint8 b);
 Uint32 SDL_MapRGBA(const SDL_PixelFormat * format,
@@ -1752,6 +1765,43 @@ function M.PixelFormatEnumToMasks(format)
                                                 bmask,
                                                 amask))
    return bpp[0], rmask[0], gmask[0], bmask[0], amask[0]
+end
+
+-- Palette
+
+ffi.cdef [[ struct zz_sdl2_Palette { SDL_Palette *palette; }; ]]
+
+local Palette_mt = {}
+
+function Palette_mt:get_color(index)
+   return self.palette.colors[index]
+end
+
+function Palette_mt:set_color(index, color)
+   self.palette.colors[index] = color
+end
+
+function Palette_mt:SetPaletteColors(colors, firstcolor, ncolors)
+   firstcolor = firstcolor or 0
+   ncolors = ncolors or (self.ncolors - firstcolor)
+   sdl.SDL_SetPaletteColors(self.palette, colors, firstcolor, ncolors)
+end
+
+function Palette_mt:FreePalette()
+   if self.palette ~= nil then
+      sdl.SDL_FreePalette(self.palette)
+      self.palette = nil
+   end
+end
+Palette_mt.delete = Palette_mt.FreePalette
+
+Palette_mt.__index = Palette_mt
+Palette_mt.__gc = Palette_mt.delete
+
+local Palette = ffi.metatype("struct zz_sdl2_Palette", Palette_mt)
+
+function M.Palette(ncolors)
+   return Palette(sdl.SDL_AllocPalette(ncolors))
 end
 
 local DisplayMode_mt = {}
