@@ -13,7 +13,11 @@ local function main()
 
    local script_path = arg[0]
    local script_dir = fs.dirname(script_path)
-   local ttf_path = fs.join(script_dir, "DroidSansMono.ttf")
+   local examples_dir = fs.dirname(script_dir)
+   local ttf_path = fs.join(examples_dir, "freetype/DroidSansMono.ttf")
+   if not fs.exists(ttf_path) then
+      ef("missing ttf: %s", ttf_path)
+   end
    local font_size = 12 -- initial font size in points
    local font = ui:Font { source = ttf_path, size = font_size }
 
