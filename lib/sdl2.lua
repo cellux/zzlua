@@ -2272,6 +2272,7 @@ local function SDL2Module(sched)
       [sdl.SDL_SYSWMEVENT]           = 'sdl.syswmevent',
       [sdl.SDL_KEYDOWN]              = 'sdl.keydown',
       [sdl.SDL_KEYUP]                = 'sdl.keyup',
+      [sdl.SDL_TEXTINPUT]            = 'sdl.textinput',
       [sdl.SDL_MOUSEMOTION]          = 'sdl.mousemotion',
       [sdl.SDL_MOUSEBUTTONDOWN]      = 'sdl.mousebuttondown',
       [sdl.SDL_MOUSEBUTTONUP]        = 'sdl.mousebuttonup',

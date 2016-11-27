@@ -1,5 +1,6 @@
 #!/usr/bin/env zzlua
 
+local ffi = require('ffi')
 local sdl = require('sdl2')
 local bit = require('bit')
 local sched = require('sched')
@@ -37,6 +38,10 @@ sched(function()
       if evdata.key.keysym.sym == sdl.SDLK_ESCAPE then
          sched.quit()
       end
+   end)
+   sched.on('sdl.textinput', function(evdata)
+      local text = ffi.string(evdata.text.text)
+      pf("got sdl.textinput event, text=%s, length=%d", text, #text)
    end)
    sched.on('sdl.quit', sched.quit)
    local fps = w:GetWindowDisplayMode().refresh_rate
