@@ -275,11 +275,16 @@ function UI.CharGrid(ui, opts)
       self.font:load_glyph(cp)
       needs_upload = true
    end
-   function self:write(x, y, str)
-      local cps = iconv.utf8_codepoints(str)
-      for i=1,#cps do
-         self:write_char(x+i-1, y, cps[i])
+   function self:write_cps(x, y, cps, offset)
+      local maxlen = self.width - x
+      local len = math.min(#cps-offset, maxlen)
+      for i=1,len do
+         self:write_char(x+i-1, y, cps[offset+i])
       end
+   end
+   function self:write(x, y, str, offset)
+      local cps = iconv.utf8_codepoints(str)
+      self:write_cps(x, y, cps, offset)
    end
    function self:erase_row(y)
       for x=0,self.width-1 do
