@@ -461,6 +461,7 @@ include('Font')
 include('Text')
 include('Palette')
 include('CharGrid')
+include('GridEdit')
 include('Quad')
 include('KeyMapper')
 
