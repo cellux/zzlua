@@ -108,8 +108,8 @@ function UI.CharGrid(ui, opts)
       needs_upload = true
    end
    function self:layout()
-      local new_width = self.parent:width() / self.font.max_advance
-      local new_height = self.parent:height() / self.font.height
+      local new_width = math.floor(self.parent:width() / self.font.max_advance)
+      local new_height = math.floor(self.parent:height() / self.font.height)
       self:resize(new_width, new_height)
    end
    local function update_vertex_buffer_fg()
