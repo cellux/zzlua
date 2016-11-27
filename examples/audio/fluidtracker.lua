@@ -9,8 +9,6 @@ local time = require('time')
 local FONT_SIZE = 11
 local SAMPLE_RATE = 48000
 
-local handle_keys = true
-
 local function Logger()
    return function(template, ...)
       if template then
@@ -73,57 +71,8 @@ local digit_key_map = {
    [sdl.SDLK_f] = 0x0f,
 }
 
-local function KeyMapper()
-   local self = {}
-   local keymaps = {}
-   function self:push(keymap)
-      table.insert(keymaps, keymap)
-   end
-   function self:pop()
-      return table.remove(keymaps)
-   end
-   local function handle_keydown(evdata)
-      if not handle_keys then return end
-      local sym = evdata.key.keysym.sym
-      for i=#keymaps,1,-1 do
-         local keymap = keymaps[i]
-         if keymap then
-            local handler
-            if type(keymap)=="table" then
-               handler = keymap[sym]
-            elseif type(keymap)=="function" then
-               handler = keymap
-            end
-            if handler then
-               local propagate_further = handler(sym)
-               if not propagate_further then break end
-            end
-         end
-      end
-   end
-   sched.on('sdl.keydown', handle_keydown)
-   return self
-end
-
-local function key_down(key)
-   local state = sdl.GetModState()
-   return bit.band(state, key) ~= 0
-end
-
-local function ctrl_down()
-   return key_down(sdl.KMOD_CTRL)
-end
-
-local function shift_down()
-   return key_down(sdl.KMOD_SHIFT)
-end
-
-local function alt_down()
-   return key_down(sdl.KMOD_ALT)
-end
-
 local function Tracker(synth, grid, keymapper, global_env)
-   local octave = 5
+   local octave = 4
    local min_octave = 0
    local max_octave = 10
 
@@ -131,7 +80,7 @@ local function Tracker(synth, grid, keymapper, global_env)
    local max_prognum = 127
    local min_prognum = 0
 
-   local event_edit_mode = false
+   local mode = nil
 
    local normal_fg = 7
 
@@ -141,6 +90,7 @@ local function Tracker(synth, grid, keymapper, global_env)
    local edit_bg = 4
 
    local playing_pattern = nil
+   local tick_duration = 1/4 -- seconds
 
    local self = {
       env = global_env,
@@ -150,11 +100,11 @@ local function Tracker(synth, grid, keymapper, global_env)
    local pattern_area_height
    local visible_track_count
    function self:resize()
-      local row_number_width = 4 + 1
+      local row_number_width = 4 + 1 -- "0000 "
       pattern_area_width = grid.width - row_number_width
       local header_height = 1
       pattern_area_height = grid.height - header_height
-      local track_width = 6
+      local track_width = 6 -- "C-370 "
       visible_track_count = math.floor(pattern_area_width / track_width)
    end
    self:resize()
@@ -164,7 +114,7 @@ local function Tracker(synth, grid, keymapper, global_env)
       local label = nil
       local note = nil
       local arg = nil
-      local fn = ''
+      local code = ''
       local chunk = nil
       local env = {
          note = function()
@@ -181,17 +131,17 @@ local function Tracker(synth, grid, keymapper, global_env)
          local arg_str = arg and sf('%02x', arg) or '  '
          return label_str..arg_str
       end
-      function self:fn(new_fn)
-         if new_fn then
-            local new_chunk, err = loadstring(new_fn)
+      function self:code(new_code)
+         if new_code then
+            local new_chunk, err = loadstring(new_code)
             if not new_chunk then
-               pf("event compilation failed")
+               pf("event compilation failed: %s", err)
             else
                chunk = setfenv(new_chunk, env)
-               fn = new_fn
+               code = new_code
             end
          end
-         return fn
+         return code
       end
       function self:play()
          sched(chunk)
@@ -211,10 +161,10 @@ local function Tracker(synth, grid, keymapper, global_env)
          end
          return label
       end
-      function self:note(new_note)
+      function self:note(new_note, new_label)
          if new_note then
             note = new_note
-            label = note2label(note)
+            label = new_label or note2label(new_note)
          end
          return note
       end
@@ -247,7 +197,7 @@ local function Tracker(synth, grid, keymapper, global_env)
       function self:clear_arg()
          arg = nil
       end
-      self:fn [[ noteon(0, note(), arg()) ]]
+      self:code [[ noteon(0, note(), arg()) ]]
       return self
    end
 
@@ -262,14 +212,9 @@ local function Tracker(synth, grid, keymapper, global_env)
          local y_end = math.min(y + pattern_area_height, grid.height)
          while y < y_end do
             local e = events[row]
-            local display
-            if e then
-               display = e:display()
-            else
-               display = '...  '
-            end
+            local display = e and e:display() or '...  '
             local hilite = is_current and row == pattern.current_row
-            if event_edit_mode and hilite then
+            if mode=="event-edit" and hilite then
                local col = 1
                local offset = event_column_offsets[col]
                grid:bg(col == pattern.event_column and edit_bg or normal_bg)
@@ -290,7 +235,7 @@ local function Tracker(synth, grid, keymapper, global_env)
             row = row + 1
          end
       end
-      function self:del_note(row)
+      function self:del_event(row)
          events[row] = nil
       end
       function self:clear_note(row)
@@ -298,11 +243,11 @@ local function Tracker(synth, grid, keymapper, global_env)
             events[row]:clear_note()
          end
       end
-      function self:set_note(row, note)
+      function self:set_note(row, note, label)
          if not events[row] then
             events[row] = Event(self)
          end
-         events[row]:note(note)
+         events[row]:note(note, label)
       end
       function self:set_arg(row, arg)
          if not events[row] then
@@ -340,11 +285,12 @@ local function Tracker(synth, grid, keymapper, global_env)
       local self = {
          length = 0,
          play_from = 0,
+         play_end = 0,
          play_pos = 0,
-         top_row = 0,
          current_row = 0,
-         left_track = 1,
+         top_row = 0,
          current_track = 1,
+         left_track = 1,
          event_column = 1,
          page_size = 16,
          env = setmetatable({}, { __index = tracker.env }),
@@ -366,6 +312,12 @@ local function Tracker(synth, grid, keymapper, global_env)
                grid:bg(normal_bg)
             end
             grid:write(x, 1+i, sf('%04x', row))
+            if row == self.play_end then
+               grid:bg(play_pos_bg)
+            else
+               grid:bg(normal_bg)
+            end
+            grid:write(x+4, 1+i, ' ')
             grid:fg(normal_fg)
          end
          -- track numbers and tracks
@@ -408,7 +360,7 @@ local function Tracker(synth, grid, keymapper, global_env)
       end
 
       function self:home()
-         if key_down(sdl.KMOD_CTRL) then
+         if is_key_down(sdl.KMOD_CTRL) then
             self.top_row = 0
             self.current_row = self.top_row
             self.left_track = 1
@@ -433,7 +385,7 @@ local function Tracker(synth, grid, keymapper, global_env)
       end
 
       function self:end_()
-         if key_down(sdl.KMOD_CTRL) then
+         if is_key_down(sdl.KMOD_CTRL) then
             local track = tracks[self.current_track]
             self.current_row = track:last_event_index()
          else
@@ -443,7 +395,7 @@ local function Tracker(synth, grid, keymapper, global_env)
       end
 
       function self:left()
-         if event_edit_mode then
+         if mode=="event-edit" then
             if self.event_column > 1 then
                self.event_column = self.event_column - 1
             elseif self.current_track > 1 then
@@ -459,7 +411,7 @@ local function Tracker(synth, grid, keymapper, global_env)
       end
 
       function self:right()
-         if event_edit_mode then
+         if mode=="event-edit" then
             if self.event_column < 3 then
                self.event_column = self.event_column + 1
             elseif self.current_track < #tracks then
@@ -478,8 +430,8 @@ local function Tracker(synth, grid, keymapper, global_env)
          table.insert(tracks, Track(self))
       end
 
-      function self:del_note()
-         tracks[self.current_track]:del_note(self.current_row)
+      function self:del_event()
+         tracks[self.current_track]:del_event(self.current_row)
       end
 
       function self:clear_note()
@@ -526,12 +478,11 @@ local function Tracker(synth, grid, keymapper, global_env)
       self:current_pattern():draw(0,0)
    end
 
-   local function event_edit_mode_keymap(sym)
+   local function event_edit_mode_keymap(sym, mod)
       local p = self:current_pattern()
-      if sym == sdl.SDLK_TAB or sym == sdl.SDLK_ESCAPE then
+      if sym == sdl.SDLK_TAB then
          keymapper:pop()
-         event_edit_mode = false
-         playing_pattern = nil
+         mode = nil
       elseif sym == sdl.SDLK_PERIOD then
          if p.event_column == 1 then
             p:clear_note()
@@ -556,7 +507,7 @@ local function Tracker(synth, grid, keymapper, global_env)
       p:draw()
    end
 
-   local keymap = {
+   local tracker_keymap = {
       [sdl.SDLK_ESCAPE] = function()
          if playing_pattern then
             playing_pattern = nil
@@ -566,25 +517,36 @@ local function Tracker(synth, grid, keymapper, global_env)
       end,
       [sdl.SDLK_SPACE] = function()
          local p = self:current_pattern()
-         if alt_down() then
-            p.play_from = p.current_row
-            if not playing_pattern then
-               p.play_pos = p.play_from
-            end
+         p.play_pos = p.play_from
+         playing_pattern = p
+         p:draw()
+      end,
+      [sdl.SDLK_b] = function(sym, mod)
+         local p = self:current_pattern()
+         if mod.shift then
+            p.play_from = 0
          else
-            p.play_pos = p.play_from
-            playing_pattern = p
+            p.play_from = p.current_row
+         end
+         p:draw()
+      end,
+      [sdl.SDLK_e] = function(sym, mod)
+         local p = self:current_pattern()
+         if mod.shift then
+            p.play_end = 0
+         else
+            p.play_end = p.current_row
          end
          p:draw()
       end,
       [sdl.SDLK_DELETE] = function()
          local p = self:current_pattern()
-         p:del_note()
+         p:del_event()
          p:draw()
       end,
       [sdl.SDLK_TAB] = function()
          keymapper:push(event_edit_mode_keymap)
-         event_edit_mode = true
+         mode = "event-edit"
          local p = self:current_pattern()
          p:draw()
       end,
@@ -628,8 +590,8 @@ local function Tracker(synth, grid, keymapper, global_env)
          p:right()
          p:draw()
       end,
-      [sdl.SDLK_KP_PLUS] = function()
-         if ctrl_down() then
+      [sdl.SDLK_KP_PLUS] = function(sym, mod)
+         if mod.shift then
             local p = self:current_pattern()
             p:add_track()
             p:draw()
@@ -645,14 +607,17 @@ local function Tracker(synth, grid, keymapper, global_env)
          end
       end,
    }
-   keymapper:push(keymap)
+   keymapper:push(tracker_keymap)
 
    local function play()
-      local tick_duration = 1/4
       while true do
-         if playing_pattern then
-            playing_pattern:play_row()
-            playing_pattern:draw()
+         local pp = playing_pattern
+         if pp then
+            pp:play_row()
+            pp:draw()
+            if pp.play_pos == pp.play_end then
+               playing_pattern = nil
+            end
          end
          sched.wait(sched.now + tick_duration)
       end
@@ -686,16 +651,11 @@ local function main()
       size = FONT_SIZE
    }
 
-   ui:show()
-
    log("creating grid")
-   local grid = ui:CharGrid {
-      font = font,
-      width = math.floor(ui:width() / font.max_advance),
-      height = math.floor(ui:height() / font.height),
-   }
+   local grid = ui:CharGrid { font = font }
    ui:add(grid)
 
+   ui:show()
    ui:layout()
 
    log("assembling synth settings")
@@ -722,12 +682,12 @@ local function main()
    dev:start()
 
    log("creating keymapper")
-   local keymapper = KeyMapper()
+   local keymapper = ui:KeyMapper()
 
    log("creating top-level keymap")
-   local keymap = {
+   local top_level_keymap = {
       [sdl.SDLK_ESCAPE] = function()
-         handle_keys = false
+         keymapper:disable()
          log("stopping audio thread")
          dev:stop()
          log("closing audio device")
@@ -739,7 +699,7 @@ local function main()
          sched.quit()
       end,
    }
-   keymapper:push(keymap)
+   keymapper:push(top_level_keymap)
 
    local global_env = {
       noteon = function(chan, key, vel)
