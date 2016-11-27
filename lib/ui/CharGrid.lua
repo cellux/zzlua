@@ -286,6 +286,10 @@ function UI.CharGrid(ui, opts)
          self:write_char(x, y, 0x20)
       end
    end
+   function self:erase()
+      ffi.fill(grid, ffi.sizeof(grid), 0)
+      needs_upload = true
+   end
    function self:scroll_up()
       local dst = grid
       local src = grid + self.width
