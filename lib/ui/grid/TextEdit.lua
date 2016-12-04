@@ -3,12 +3,8 @@ local util = require('util')
 local iconv = require('iconv')
 local sdl = require('sdl2')
 
-local UI = {}
-
-function UI.GridEdit(ui, opts)
-   local self = ui:Widget(opts)
-   local grid = ui:CharGrid { font = opts.font }
-   grid.parent = self
+local function TextEdit(grid, opts)
+   local self = grid:Widget(opts)
    local lines = {}
    local current_row = 0
    local top_row = 0
@@ -20,18 +16,20 @@ function UI.GridEdit(ui, opts)
    local overwrite = false
    local needs_redraw = true
    local function redraw()
-      grid:erase()
+      local r = self.rect
+      grid:erase_rect(r)
       local row = top_row
-      local y = 0
-      while y < grid.height and row < #lines do
-         grid:write_cps(0, y, lines[row+1], left_col)
+      local y = r.y
+      local yend = math.min(r.y + r.h, grid.height)
+      while y < yend and row < #lines do
+         grid:write_cps(r.x, y, lines[row+1], left_col, r.w)
          row = row + 1
          y = y + 1
       end
       local x = current_col - left_col
       local y = current_row - top_row
       grid:bg(1)
-      grid:write_char(x, y, current_cp or 0x20)
+      grid:write_char(r.x+x, r.y+y, current_cp or 0x20)
       grid:bg(0)
       needs_redraw = false
    end
@@ -44,8 +42,8 @@ function UI.GridEdit(ui, opts)
       end
       if current_row < top_row then
          top_row = current_row
-      elseif current_row - top_row >= grid.height then
-         top_row = current_row - grid.height + 1
+      elseif current_row - top_row >= self.rect.h then
+         top_row = current_row - self.rect.h + 1
       end
       -- line
       current_line = lines[current_row+1]
@@ -67,8 +65,8 @@ function UI.GridEdit(ui, opts)
       end
       if current_col < left_col then
          left_col = current_col
-      elseif current_col - left_col >= grid.width then
-         left_col = current_col - grid.width + 1
+      elseif current_col - left_col >= self.rect.w then
+         left_col = current_col - self.rect.w + 1
       end
       -- cp
       current_cp = current_line[current_col+1]
@@ -105,15 +103,10 @@ function UI.GridEdit(ui, opts)
          next_cp = nil
       end
    end
-   function self:layout()
-      grid:layout()
-      adjust()
-   end
    function self:draw()
       if needs_redraw then
          redraw()
       end
-      grid:draw()
    end
    function self:text(new_text)
       lines = {}
@@ -188,6 +181,7 @@ function UI.GridEdit(ui, opts)
          end
       end
    end
+   -- ws here really means "not a word-constituent character"
    local ws_map = {}
    local function def_ws_range(lo, hi)
       for cp = lo,hi do
@@ -350,4 +344,4 @@ function UI.GridEdit(ui, opts)
    return self
 end
 
-return UI
+return TextEdit

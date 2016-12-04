@@ -1,7 +1,5 @@
 local util = require('util')
 
-local UI = {}
-
 local function make_resolver(x)
    if type(x)=="function" then
       return function() return x() end
@@ -10,7 +8,7 @@ local function make_resolver(x)
    end
 end
 
-function UI.Quad(ui, opts)
+local function Quad(ui, opts)
    assert(opts.texture)
    local self = ui:Widget(opts)
    local blitter = ui:TextureBlitter()
@@ -26,4 +24,4 @@ function UI.Quad(ui, opts)
    return self
 end
 
-return UI
+return Quad

@@ -1,6 +1,4 @@
-local UI = {}
-
-function UI.Box(ui, opts)
+local function Box(ui, opts)
    local self = ui:Container(opts)
    if not self.direction then
       error("UI.Box needs direction")
@@ -88,16 +86,4 @@ function UI.Box(ui, opts)
    return self
 end
 
-function UI.HBox(ui, opts)
-   opts = opts or {}
-   opts.direction = "h"
-   return ui:Box(opts)
-end
-
-function UI.VBox(ui, opts)
-   opts = opts or {}
-   opts.direction = "v"
-   return ui:Box(opts)
-end
-
-return UI
+return Box

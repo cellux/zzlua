@@ -79,7 +79,7 @@ local function main()
 
    local texture = rm:Texture()
    gl.BindTexture(gl.GL_TEXTURE_2D, texture)
-   local width, height = window:width(), window:height()
+   local width, height = window.rect.w, window.rect.h
    local image = ffi.new("GLubyte[?]", 4*width*height)
    for y=0,height-1 do
       for x=0,width-1 do

@@ -106,7 +106,7 @@ local function main()
       for i=1,#cp do
          local advance = draw_char(face, cp[i], ox, oy)
          ox = ox + advance
-         if ox >= ui:width() then
+         if ox >= ui.rect.w then
             break
          end
       end
@@ -124,7 +124,7 @@ local function main()
       for line in lines(script_contents) do
          local advance = draw_string(face, line, 0, top)
          top = top + advance
-         if top >= ui:height() then
+         if top >= ui.rect.h then
             break
          end
       end

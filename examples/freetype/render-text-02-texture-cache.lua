@@ -152,7 +152,7 @@ local function main()
       for i=1,#cp do
          local advance = draw_char(font, cp[i], ox, oy)
          ox = ox + advance
-         if ox >= ui:width() then
+         if ox >= ui.rect.w then
             break
          end
       end
@@ -174,7 +174,7 @@ local function main()
             draw_string(font, line, 0, top)
          end
          top = top + font.height
-         if top >= ui:height() then
+         if top >= ui.rect.h then
             break
          end
       end

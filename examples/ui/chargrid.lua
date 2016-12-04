@@ -21,7 +21,7 @@ local function main()
    local font_size = 12 -- initial font size in points
    local font = ui:Font { source = ttf_path, size = font_size }
 
-   local grid = ui:CharGrid { font = font }
+   local grid = ui:Grid { font = font }
 
    local packer = ui:HBox()
    packer:add(grid)

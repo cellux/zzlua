@@ -1,7 +1,5 @@
-local UI = {}
-
-function UI.Spacer(ui)
+local function Spacer(ui)
    return ui:Widget()
 end
 
-return UI
+return Spacer

@@ -4,6 +4,9 @@ local util = require('util')
 local sched = require('sched')
 local time = require('time')
 
+-- preload freetype to ensure it's initialized by the scheduler
+require('freetype')
+
 local M = {}
 
 -- Object
@@ -31,14 +34,6 @@ function Widget:create(opts)
    -- the preferred size of the widget, nil means undefined
    self.preferred_size = nil
    return self
-end
-
-function Widget:width()
-   return self.rect.w
-end
-
-function Widget:height()
-   return self.rect.h
 end
 
 function Widget:set_preferred_size()
@@ -81,24 +76,26 @@ function Container:set_preferred_size()
    end
 end
 
-function Container:layout()
+function Container:layout(layout_rect)
+   -- callers may override the rect in which children are laid out
+   layout_rect = layout_rect or self.rect
    -- top -> down
    if not self.preferred_size then
       self:set_preferred_size()
    end
    for _,widget in ipairs(self.children) do
-      widget.rect.x = self.rect.x
-      widget.rect.y = self.rect.y
+      widget.rect.x = layout_rect.x
+      widget.rect.y = layout_rect.y
       local wps = widget.preferred_size
       if wps and wps.w > 0 then
          widget.rect.w = wps.w
       else
-         widget.rect.w = self.rect.w
+         widget.rect.w = layout_rect.w
       end
       if wps and wps.h > 0 then
          widget.rect.h = wps.h
       else
-         widget.rect.h = self.rect.h
+         widget.rect.h = layout_rect.h
       end
       if widget.layout then
          widget:layout()
@@ -444,28 +441,8 @@ function UI.RenderLoop(ui, opts)
    return ui.window:RenderLoop(opts)
 end
 
-local function include(widget_module)
-   local m = require('ui.' .. widget_module)
-   for k,v in pairs(m) do
-      UI[k] = v
-   end
-end
-
-include('Spacer')
-include('Box')
-include('Texture')
-include('TextureAtlas')
-include('TextureBlitter')
-include('PixelBuffer')
-include('Font')
-include('Text')
-include('Palette')
-include('CharGrid')
-include('GridEdit')
-include('Quad')
-include('KeyMapper')
-
-M.UI = UI
+-- turn UI into a factory of ui.* classes
+UI = util.ClassLoader(UI, 'ui')
 
 local M_mt = {}
 

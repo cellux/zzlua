@@ -2,9 +2,7 @@ local ffi = require('ffi')
 local sched = require('sched')
 local sdl = require('sdl2')
 
-local UI = {}
-
-function UI.KeyMapper(ui)
+local function KeyMapper(ui)
    local self = {}
    local handle_keys = true
    local keymaps = {}
@@ -63,4 +61,4 @@ function UI.KeyMapper(ui)
    return self
 end
 
-return UI
+return KeyMapper

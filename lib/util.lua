@@ -85,6 +85,49 @@ function M.Class(parent)
    return setmetatable(class, mt)
 end
 
+function M.chain(self, index)
+   local function lookup(index, name)
+      if type(index)=="table" then
+         return index[name]
+      elseif type(index)=="function" then
+         return index(self, name)
+      else
+         ef("invalid index: %s", index)
+      end
+   end
+   local mt = getmetatable(self)
+   local old_index = mt.__index
+   local function new_index(self, name)
+      return lookup(index, name) or lookup(old_index, name)
+   end
+   mt.__index = new_index
+   return self
+end
+
+function M.ClassLoader(self, package_path)
+   -- turn any object into a class loader
+   -- which can autoload classes from package_path
+   function self:require(name)
+      return require(sf("%s.%s", package_path, name))
+   end
+   function self:new(name, ...)
+      local constructor = self:require(name)
+      return constructor(...)
+   end
+   local function is_classname(name)
+      -- it's a class name if it starts with a capital letter
+      local first_byte = name:byte(1,1)
+      return first_byte >= 0x41 and first_byte <= 0x5A
+   end
+   local function index(self, name)
+      if is_classname(name) then
+         local ok, pkg = pcall(self.require, self, name)
+         return ok and pkg
+      end
+   end
+   return M.chain(self, index)
+end
+
 function M.EventEmitter(self, invoke_fn)
    self = self or {}
    invoke_fn = invoke_fn or function(cb, evtype, ...) cb(...) end

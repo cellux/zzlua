@@ -1,9 +1,7 @@
 local ffi = require('ffi')
 local gl = require('gl')
 
-local UI = {}
-
-function UI.TextureBlitter(ui, opts)
+local function TextureBlitter(ui, opts)
    opts = opts or {}
    local self = {}
    self.gl_Position = opts.gl_Position
@@ -82,8 +80,8 @@ function UI.TextureBlitter(ui, opts)
    local vbo = rm:VBO()
    function self:blit(texture, dst_rect, src_rect)
       gl.UseProgram(shader_program)
-      local sx = 2.0 / ui:width()
-      local sy = 2.0 / ui:height()
+      local sx = 2.0 / ui.rect.w
+      local sy = 2.0 / ui.rect.h
       vscale[0*3+0] = sx * dst_rect.w
       vscale[1*3+1] = -sy * dst_rect.h -- OpenGL y increases bottom->up
       gl.UniformMatrix3fv(loc.vscale, 1, gl.GL_FALSE, vscale)
@@ -152,4 +150,4 @@ function UI.TextureBlitter(ui, opts)
    return self
 end
 
-return UI
+return TextureBlitter

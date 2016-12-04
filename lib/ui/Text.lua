@@ -3,9 +3,7 @@ local util = require('util')
 local iconv = require('iconv')
 local gl = require('gl')
 
-local UI = {}
-
-function UI.Text(ui, opts)
+local function Text(ui, opts)
    assert(opts.text)
    assert(opts.font)
    local self = ui:Widget(opts)
@@ -153,8 +151,8 @@ function UI.Text(ui, opts)
    local vbo = rm:VBO(ffi.sizeof(vertex_attribs), vertex_attribs, gl.GL_STATIC_DRAW)
    function self:draw()
       gl.UseProgram(shader_program)
-      local sx = 2 / ui:width()
-      local sy = 2 / ui:height()
+      local sx = 2 / ui.rect.w
+      local sy = 2 / ui.rect.h
       vscale[0*3+0] = sx
       vscale[1*3+1] = sy
       --pf("vscale=(%s,%s)", vscale[0*3+0], vscale[1*3+1])
@@ -180,4 +178,4 @@ function UI.Text(ui, opts)
    return self
 end
 
-return UI
+return Text

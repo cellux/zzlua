@@ -2,8 +2,6 @@ local ffi = require('ffi')
 local sdl = require('sdl2')
 local util = require('util')
 
-local UI = {}
-
 local function compile_write_row(src_components, dst_components, opts)
    local code = ""
    local function codegen(line)
@@ -104,7 +102,7 @@ local function make_write_row(src_format, dst_format, opts)
    return compile_write_row(src_components, dst_components, opts)
 end
 
-function UI.PixelBuffer(ui, format, width, height, buf, pitch_sign)
+local function PixelBuffer(ui, format, width, height, buf, pitch_sign)
    local self = {
       is_pixelbuffer = true, -- very primitive (but fast) type id
       format = format,
@@ -148,4 +146,4 @@ function UI.PixelBuffer(ui, format, width, height, buf, pitch_sign)
    return self
 end
 
-return UI
+return PixelBuffer

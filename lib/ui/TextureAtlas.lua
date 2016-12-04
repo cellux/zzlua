@@ -1,9 +1,7 @@
 local sdl = require('sdl2')
 local util = require('util')
 
-local UI = {}
-
-function UI.TextureAtlas(ui, opts)
+local function TextureAtlas(ui, opts)
    local self = util.EventEmitter(opts)
    self.items = {}
    local function ItemPacker(texture)
@@ -94,4 +92,4 @@ function UI.TextureAtlas(ui, opts)
    return setmetatable(self, { __gc = self.delete })
 end
 
-return UI
+return TextureAtlas

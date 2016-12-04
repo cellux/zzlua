@@ -31,10 +31,11 @@ local function main()
 
    local font_size = 12 -- initial font size in points
    local font = ui:Font { source = ttf_path, size = font_size }
-
-   local editor = ui:GridEdit { font = font }
+   local grid = ui:Grid { font = font }
+   local editor = grid:TextEdit()
    editor:text(text)
-   ui:add(editor)
+   grid:add(editor)
+   ui:add(grid)
    ui:show()
    ui:layout()
 

@@ -2,9 +2,7 @@ local sdl = require('sdl2')
 local freetype = require('freetype')
 local round = require('util').round
 
-local UI = {}
-
-function UI.Font(ui, opts)
+local function Font(ui, opts)
    opts = opts or {}
    local self = {
       face = freetype.Face(opts.source),
@@ -101,4 +99,4 @@ function UI.Font(ui, opts)
    return setmetatable(self, { __gc = self.delete })
 end
 
-return UI
+return Font

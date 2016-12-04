@@ -43,7 +43,7 @@ local function main()
    end
    local font = ui:Font { source = ttf_path, size = FONT_SIZE }
 
-   local grid = ui:CharGrid { font = font }
+   local grid = ui:Grid { font = font }
    ui:add(grid)
    ui:show()
    ui:layout()

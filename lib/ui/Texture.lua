@@ -1,7 +1,5 @@
 local gl = require('gl')
 
-local UI = {}
-
 -- singleton framebuffer object used for rendering to textures
 local texture_fbo = nil
 
@@ -22,7 +20,7 @@ local function gl_pixelformat(format)
    end
 end
 
-function UI.Texture(ui, opts)
+local function Texture(ui, opts)
    local texture = gl.Texture()
    local target = gl.GL_TEXTURE_2D
    gl.BindTexture(target, texture)
@@ -120,4 +118,4 @@ function UI.Texture(ui, opts)
    return self
 end
 
-return UI
+return Texture

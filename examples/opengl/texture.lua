@@ -29,8 +29,8 @@ local function main()
       ui:clear(Color(64,0,0))
    end
    function loop:draw()
-      local x = (ui:width()-texture.width)/2 + 100*math.sin(sched.now*2)
-      local y = (ui:height()-texture.height)/2 + 100*math.cos(sched.now*2.5)
+      local x = (ui.rect.w - texture.width) / 2 + 100 * math.sin(sched.now*2)
+      local y = (ui.rect.h - texture.height) / 2 + 100 * math.cos(sched.now*2.5)
       local dst_rect = Rect(x, y, texture.width, texture.height)
       blitter:blit(texture, dst_rect)
    end

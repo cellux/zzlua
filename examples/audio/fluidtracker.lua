@@ -652,7 +652,7 @@ local function main()
    }
 
    log("creating grid")
-   local grid = ui:CharGrid { font = font }
+   local grid = ui:Grid { font = font }
    ui:add(grid)
 
    ui:show()

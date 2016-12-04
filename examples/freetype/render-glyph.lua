@@ -27,7 +27,7 @@ local function main()
       local face = freetype.Face(ttf_path)
       local texture -- this will store the glyph
       function self:layout()
-         face:Set_Pixel_Sizes(self.parent:height())
+         face:Set_Pixel_Sizes(self.parent.rect.h)
          pf("face info:")
          pf("  num_glyphs=%d", tonumber(face.face.num_glyphs))
          pf("  family_name=%s", ffi.string(face.face.family_name))

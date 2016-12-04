@@ -2,26 +2,25 @@ local ffi = require('ffi')
 local bit = require('bit')
 local gl = require('gl')
 local iconv = require('iconv')
-
-local UI = {}
+local util = require('util')
 
 ffi.cdef [[
-struct zz_ui_gl_CharGridCell {
+struct zz_ui_GridCell {
   uint32_t cp; // code point
   uint8_t fg;  // foreground color index
   uint8_t bg;  // background color index
 };
 
-struct zz_ui_gl_CharGridVertexFG {
+struct zz_ui_GridVertexFG {
   GLfloat x, y, tx, ty, fg;
 };
 
-struct zz_ui_gl_CharGridVertexBG {
+struct zz_ui_GridVertexBG {
   GLfloat x, y, bg;
 };
 ]]
 
-local function CharGridColorManager(ui, palette, fg, bg)
+local function GridColorManager(ui, palette, fg, bg)
    local self = {}
    if not palette then
       palette = ui:Palette(8)
@@ -65,10 +64,10 @@ local function CharGridColorManager(ui, palette, fg, bg)
    return self
 end
 
-function UI.CharGrid(ui, opts)
+local function Grid(ui, opts)
    assert(opts.font)
-   local cm = CharGridColorManager(ui, opts.palette, opts.fg, opts.bg)
-   local self = ui:Widget(opts)
+   local cm = GridColorManager(ui, opts.palette, opts.fg, opts.bg)
+   local self = util.ClassLoader(ui:Container(opts), "ui.grid")
    self.palette = cm.palette
    self.fg = cm.fg
    self.bg = cm.bg
@@ -83,9 +82,9 @@ function UI.CharGrid(ui, opts)
    end)
    function self:resize(new_width, new_height)
       local old_grid, old_width, old_height = grid, self.width, self.height
-      grid = ffi.new("struct zz_ui_gl_CharGridCell[?]", new_width * new_height)
-      vertex_buffer_fg = ffi.new("struct zz_ui_gl_CharGridVertexFG[?]", new_width * new_height * 6)
-      vertex_buffer_bg = ffi.new("struct zz_ui_gl_CharGridVertexBG[?]", new_width * new_height * 6)
+      grid = ffi.new("struct zz_ui_GridCell[?]", new_width * new_height)
+      vertex_buffer_fg = ffi.new("struct zz_ui_GridVertexFG[?]", new_width * new_height * 6)
+      vertex_buffer_bg = ffi.new("struct zz_ui_GridVertexBG[?]", new_width * new_height * 6)
       if vbo_fg then
          vbo_fg:delete()
       end
@@ -107,15 +106,22 @@ function UI.CharGrid(ui, opts)
       self.height = new_height
       needs_upload = true
    end
+   local super_layout = self.layout -- TODO: find a more elegant way
    function self:layout()
-      local new_width = math.floor(self.parent:width() / self.font.max_advance)
-      local new_height = math.floor(self.parent:height() / self.font.height)
+      local new_width = math.floor(self.parent.rect.w / self.font.max_advance)
+      local new_height = math.floor(self.parent.rect.h / self.font.height)
       self:resize(new_width, new_height)
+      -- grid children are special in that their rects contain grid
+      -- coordinates instead of screen coordinates
+      --
+      -- thus we override the layout rect by passing it to Container.layout()
+      local grid_rect = Rect(0, 0, new_width, new_height)
+      super_layout(self, grid_rect)
    end
    local function update_vertex_buffer_fg()
       local ox = 0
       local oy = self.font.ascender
-      local vertex_size = ffi.sizeof("struct zz_ui_gl_CharGridVertexFG")
+      local vertex_size = ffi.sizeof("struct zz_ui_GridVertexFG")
       local vertex_buffer = vertex_buffer_fg
       local vbi = 0 -- vertex buffer index
       local function add(grid_cell)
@@ -208,7 +214,7 @@ function UI.CharGrid(ui, opts)
    local function update_vertex_buffer_bg()
       local ox = 0
       local oy = 0
-      local vertex_size = ffi.sizeof("struct zz_ui_gl_CharGridVertexBG")
+      local vertex_size = ffi.sizeof("struct zz_ui_GridVertexBG")
       local vertex_buffer = vertex_buffer_bg
       local vbi = 0 -- vertex buffer index
       local function add(grid_cell)
@@ -267,46 +273,58 @@ function UI.CharGrid(ui, opts)
       vbo_bg:BufferData(ffi.sizeof(vertex_buffer_bg), vertex_buffer_bg, gl.GL_DYNAMIC_DRAW)
    end
    function self:write_char(x, y, cp)
-      local pos = self.width * y + x
-      grid[pos].cp = cp
-      grid[pos].fg = cm:fg()
-      grid[pos].bg = cm:bg()
-      -- preload glyph -> resizes font atlas if necessary
-      self.font:load_glyph(cp)
-      needs_upload = true
+      if x < self.width and y < self.height then
+         local pos = self.width * y + x
+         grid[pos].cp = cp
+         grid[pos].fg = cm:fg()
+         grid[pos].bg = cm:bg()
+         -- preload glyph
+         self.font:load_glyph(cp)
+         needs_upload = true
+      end
    end
-   function self:write_cps(x, y, cps, offset)
+   function self:write_cps(x, y, cps, offset, width)
       local maxlen = self.width - x
-      local len = math.min(#cps-offset, maxlen)
+      offset = offset or 0
+      width = width or maxlen
+      local len = math.min(#cps-offset, maxlen, width)
       for i=1,len do
          self:write_char(x+i-1, y, cps[offset+i])
       end
    end
-   function self:write(x, y, str, offset)
+   function self:write(x, y, str, offset, width)
       local cps = iconv.utf8_codepoints(str)
-      self:write_cps(x, y, cps, offset)
-   end
-   function self:erase_row(y)
-      for x=0,self.width-1 do
-         self:write_char(x, y, 0x20)
-      end
+      self:write_cps(x, y, cps, offset, width)
    end
    function self:erase()
       ffi.fill(grid, ffi.sizeof(grid), 0)
       needs_upload = true
    end
+   function self:erase_rect(rect)
+      local pitch = self.width
+      for y=rect.y,rect.y+rect.h-1 do
+         local dst = grid + pitch * y + rect.x
+         ffi.fill(dst, ffi.sizeof("struct zz_ui_GridCell") * rect.w, 0)
+      end
+      needs_upload = true
+   end
+   function self:erase_row(y)
+      local pitch = self.width * ffi.sizeof("struct zz_ui_GridCell")
+      local dst = grid + self.width * y
+      ffi.fill(dst, pitch, 0)
+   end
    function self:scroll_up()
       local dst = grid
       local src = grid + self.width
-      local pitch = self.width * ffi.sizeof("struct zz_ui_gl_CharGridCell")
+      local pitch = self.width * ffi.sizeof("struct zz_ui_GridCell")
       ffi.copy(dst, src, (self.height-1) * pitch)
       self:erase_row(self.height-1)
    end
    function self:upload()
       if needs_upload then
          update_vertex_buffer_fg()
-         upload_vertex_buffer_fg()
          update_vertex_buffer_bg()
+         upload_vertex_buffer_fg()
          upload_vertex_buffer_bg()
          needs_upload = false
       end
@@ -413,10 +431,12 @@ function UI.CharGrid(ui, opts)
       0,1,0,
       0,0,1,
    }
+   local super_draw = self.draw
    function self:draw()
+      super_draw(self)
       self:upload()
-      local sx = 2 / ui:width()
-      local sy = 2 / ui:height()
+      local sx = 2 / ui.rect.w
+      local sy = 2 / ui.rect.h
       vscale[0*3+0] = sx
       vscale[1*3+1] = -sy -- flip around X to get GL coordinates
       vtranslate[2*3+0] = self.rect.x * sx - 1.0
@@ -477,7 +497,8 @@ function UI.CharGrid(ui, opts)
          cm = nil
       end
    end
-   return self
+   -- make UI's factory methods available on Grid as well
+   return util.chain(self, ui)
 end
 
-return UI
+return Grid

@@ -104,6 +104,24 @@ assert.equals(c, { a=1, b=3, c=8 })
 assert.equals(c:f(), 10)
 assert.equals(c:g(), "hello")
 
+-- chain
+
+local A = util.Class()
+local a = A { x = 5, y = 6 }
+a = util.chain(a, function(self, name)
+   return name == "z" and 8
+end)
+assert.equals(a.x, 5)
+assert.equals(a.y, 6)
+assert.equals(a.z, 8)
+assert.equals(a.w, nil)
+
+a = util.chain(a, { y = 2, w = 7, z = 4 })
+assert.equals(a.x, 5)
+assert.equals(a.y, 6) -- y is a direct member of a so we get a.y
+assert.equals(a.z, 4) -- z was in an ancestor so it's overridden
+assert.equals(a.w, 7)
+
 -- EventEmitter
 
 local obj = util.EventEmitter {

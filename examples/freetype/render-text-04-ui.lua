@@ -36,7 +36,7 @@ local function main()
    local blitter = ui:TextureBlitter()
    local function draw_texture_atlas()
       local t = font.atlas.texture
-      local dst_rect = Rect(ui:width()-t.width, 0, t.width, t.height)
+      local dst_rect = Rect(ui.rect.w - t.width, 0, t.width, t.height)
       blitter:blit(font.atlas.texture, dst_rect)
    end
    function loop:draw()

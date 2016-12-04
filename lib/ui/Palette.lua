@@ -2,8 +2,6 @@ local ffi = require('ffi')
 local sdl = require('sdl2')
 local gl = require('gl')
 
-local UI = {}
-
 local Palette_mt = {}
 
 function Palette_mt:__index(i)
@@ -14,7 +12,7 @@ function Palette_mt:__newindex(i, color)
    self.palette:set_color(i, color)
 end
 
-function UI.Palette(ui, ncolors)
+local function Palette(ui, ncolors)
    local self = {
       ncolors = ncolors,
       palette = sdl.Palette(ncolors),
@@ -53,4 +51,4 @@ function UI.Palette(ui, ncolors)
    return setmetatable(self, Palette_mt)
 end
 
-return UI
+return Palette
