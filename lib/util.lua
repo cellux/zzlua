@@ -43,6 +43,14 @@ function M.check_errno(funcname, rv)
    end
 end
 
+function M.Counter()
+   local count = 0
+   return function()
+      count = count + 1
+      return count
+   end
+end
+
 function M.Accumulator()
    local self = {
       last = nil,
