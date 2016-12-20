@@ -1,3 +1,4 @@
+local ffi = require('ffi')
 local sched = require('sched')
 local socket = require('socket')
 local nn = require('nanomsg')
@@ -33,6 +34,9 @@ function M.broadcast(evtype, evdata, dest_addr)
    M.wait_until_ready()
    evdata = evdata or 0
    dest_addr = dest_addr or broadcast_addr
+   if type(dest_addr=='string') then
+      dest_addr = socket.sockaddr(ffi.C.AF_INET, dest_addr, broadcast_port)
+   end
    local msg = msgpack.pack_array({evtype, evdata})
    broadcast_socket:sendto(msg, dest_addr)
 end

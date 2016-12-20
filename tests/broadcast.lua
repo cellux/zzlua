@@ -29,8 +29,6 @@ local sched = require('sched')
 -- broadcast subscriber (and potentially a broadcast listener) to be
 -- set up in the current process.
 
-sched()
-
 local pid, sp = sys.fork(function(sc)
    sched(function()
       sched.wait("broadcast.initialized")
@@ -69,9 +67,9 @@ end)
 
 sched(function()
    assert.equals(sp:readline(), "ready")
-   broadcast('broadcast-test', 'hello')
-   broadcast('broadcast-test', 'world')
-   broadcast('broadcast-quit')
+   broadcast('broadcast-test', 'hello', '127.0.0.1')
+   broadcast('broadcast-test', 'world', '127.0.0.1')
+   broadcast('broadcast-quit', nil, '127.0.0.1')
 end)
 sched()
 
