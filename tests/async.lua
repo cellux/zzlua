@@ -28,7 +28,7 @@ for i=1,10 do
    end
    -- we scale down delay a bit so that the test doesn't take too long
    -- (which also makes the test fragile if the system has high load)
-   sched(make_async_echo_requester(delay*0.02, payload))
+   sched(make_async_echo_requester(delay*0.05, payload))
    expected_replies[delay] = payload
 end
 
