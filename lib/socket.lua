@@ -325,7 +325,7 @@ function Socket_mt:getpeername()
 end
 
 function Socket_mt:accept()
-   if coroutine.running() then
+   if sched.running() then
       sched.poll(self.fd, "r")
    end
    local client_fd = util.check_errno("accept", ffi.C.accept(self.fd, nil, nil))
@@ -336,7 +336,7 @@ function Socket_mt:connect(sockaddr)
    local rv = ffi.C.connect(self.fd, ffi.cast("struct sockaddr *", sockaddr.addr), sockaddr.addr_size)
    if rv == -1 then
       local errnum = errno.errno()
-      if errnum == ffi.C.EINPROGRESS and coroutine.running() then
+      if errnum == ffi.C.EINPROGRESS and sched.running() then
          sched.poll(self.fd, "w")
          local optval = ffi.new("int[1]")
          local optlen = ffi.new("socklen_t[1]", ffi.sizeof("int"))
@@ -391,7 +391,7 @@ function Socket_mt:read(size)
             blocksize = remaining
          end
       end
-      if coroutine.running() then
+      if sched.running() then
          sched.poll(self.fd, "r")
       end
       local nbytes = util.check_errno("read", ffi.C.read(self.fd, buf, blocksize))
@@ -419,7 +419,7 @@ function Socket_mt:readline()
             return line
          end
       end
-      if coroutine.running() then
+      if sched.running() then
          sched.poll(self.fd, "r")
       end
       local nbytes = util.check_errno("read", ffi.C.read(self.fd, buf, blocksize))
@@ -434,7 +434,7 @@ function Socket_mt:readline()
 end
 
 function Socket_mt:write(data)
-   if coroutine.running() then
+   if sched.running() then
       sched.poll(self.fd, "w")
    end
    local nbytes = util.check_errno("write", ffi.C.write(self.fd, data, #data))
@@ -442,7 +442,7 @@ function Socket_mt:write(data)
 end
 
 function Socket_mt:sendto(data, addr)
-   if coroutine.running() then
+   if sched.running() then
       sched.poll(self.fd, "w")
    end
    local rv = util.check_errno("sendto", ffi.C.sendto(self.fd, data, #data, 0, ffi.cast("const struct sockaddr *", addr.addr), addr.addr_size))
@@ -459,7 +459,7 @@ function Socket_mt:recvfrom(buf)
    end
    local peer_addr = sockaddr(self.domain)
    local address_len = ffi.new("socklen_t[1]", ffi.sizeof(peer_addr.addr))
-   if coroutine.running() then
+   if sched.running() then
       sched.poll(self.fd, "r")
    end
    local nbytes = util.check_errno("recvfrom", ffi.C.recvfrom(self.fd, buf, bufsize, 0, ffi.cast("struct sockaddr *", peer_addr.addr), address_len))
@@ -513,7 +513,7 @@ local M = {}
 M.sockaddr = sockaddr
 
 function M.socket(domain, type, protocol)
-   if coroutine.running() then
+   if sched.running() then
       type = bit.bor(type, ffi.C.SOCK_NONBLOCK)
    end
    local fd = util.check_errno("socket", ffi.C.socket(domain, type, protocol or 0))
@@ -521,7 +521,7 @@ function M.socket(domain, type, protocol)
 end
 
 function M.socketpair(domain, type, protocol)
-   if coroutine.running() then
+   if sched.running() then
       type = bit.bor(type, ffi.C.SOCK_NONBLOCK)
    end
    local fds = ffi.new("int[2]")

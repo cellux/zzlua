@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local sched = require('sched')
 local async = require('async')
 local env = require('env')
 local sys = require('sys')
@@ -57,7 +58,7 @@ local File_mt = {}
 
 local function lseek(fd, offset, whence)
    local rv
-   if coroutine.running() then
+   if sched.running() then
       rv = async.request(ASYNC_FILE, ffi.C.ZZ_ASYNC_FILE_LSEEK, fd, offset, whence)
    else
       rv = ffi.C.lseek(fd, offset, whence)
@@ -83,7 +84,7 @@ function File_mt:read(rsize)
    end
    local buf = ffi.new("uint8_t[?]", rsize)
    local bytes_read
-   if coroutine.running() then
+   if sched.running() then
       bytes_read = async.request(ASYNC_FILE,
                                  ffi.C.ZZ_ASYNC_FILE_READ,
                                  self.fd,
@@ -96,7 +97,7 @@ function File_mt:read(rsize)
 end
 
 function File_mt:write(data)
-   if coroutine.running() then
+   if sched.running() then
       return async.request(ASYNC_FILE,
                            ffi.C.ZZ_ASYNC_FILE_WRITE,
                            self.fd,
@@ -120,7 +121,7 @@ end
 function File_mt:close()
    if self.fd >= 0 then
       local rv
-      if coroutine.running() then
+      if sched.running() then
          rv = async.request(ASYNC_FILE, ffi.C.ZZ_ASYNC_FILE_CLOSE, self.fd)
       else
          rv = ffi.C.close(self.fd)

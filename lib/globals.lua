@@ -1,4 +1,5 @@
 local ffi = require('ffi')
+local sched = require('sched')
 
 -- commonly used C types and functions
 
@@ -33,7 +34,7 @@ end
 
 function _G.ef(fmt, ...)
    local msg = string.format(fmt, ...)
-   if coroutine.running() then
+   if sched.running() then
       -- append stack trace of the current thread
       msg = sf("%s%s", msg, debug.traceback("", 2))
    end

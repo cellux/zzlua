@@ -1,5 +1,6 @@
 local ffi = require('ffi')
 local async = require('async')
+local sched = require('sched')
 local time = require('time') -- for struct timespec
 local env = require('env')
 local sys = require('sys')
@@ -84,7 +85,7 @@ local ASYNC_FS  = async.register_worker(ffi.C.zz_async_fs_handlers)
 local Stat_mt = {}
 
 function Stat_mt:stat(path)
-   if coroutine.running() then
+   if sched.running() then
       return async.request(ASYNC_FS,
                            ffi.C.ZZ_ASYNC_FS_STAT,
                            ffi.cast("size_t", ffi.cast("char*", path)),
@@ -95,7 +96,7 @@ function Stat_mt:stat(path)
 end
 
 function Stat_mt:lstat(path)
-   if coroutine.running() then
+   if sched.running() then
       return async.request(ASYNC_FS,
                            ffi.C.ZZ_ASYNC_FS_LSTAT,
                            ffi.cast("size_t", ffi.cast("char*", path)),

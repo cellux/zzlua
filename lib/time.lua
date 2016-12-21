@@ -76,10 +76,10 @@ end
 
 function M.sleep(seconds)
    -- sleep for the given number of seconds
-   if coroutine.running() then
-      -- required here to avoid circular dependency
-      -- between sched and time
-      local sched = require('sched')
+   local sched = require('sched')
+   -- required here to avoid circular dependency
+   -- between sched and time
+   if sched.running() then
       sched.sleep(seconds)
    else
       M.nanosleep(seconds)

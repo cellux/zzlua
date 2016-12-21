@@ -7,6 +7,12 @@ local inspect = require('inspect')
 
 local M = {}
 
+local scheduler_running = false
+
+function M.running()
+   return scheduler_running
+end
+
 -- must be set to a platform-specific implementation at startup
 M.poller_factory = nil
 
@@ -365,6 +371,7 @@ local function Scheduler()
          -- enter the event loop, continue scheduling until there is
          -- work to do. when the event loop exits, cleanup and destroy
          -- this Scheduler instance.
+         scheduler_running = true
          module_registry:invoke('init')
          self.loop()
          module_registry:invoke('done')
@@ -372,6 +379,7 @@ local function Scheduler()
          poller:close()
          nn.close(event_sub)
          scheduler_singleton = nil
+         scheduler_running = false
          -- after this function returns, self (the current scheduler
          -- instance) will be garbage-collected
       end

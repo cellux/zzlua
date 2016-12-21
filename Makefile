@@ -23,6 +23,7 @@ $(LUAJIT_DIR)/.extracted: deps/$(LUAJIT_TGZ)
 	touch $@
 
 $(LUAJIT_BIN) $(LUAJIT_LIB): $(LUAJIT_DIR)/.extracted
+	sed -i -e 's/^#\(XCFLAGS+= -DLUAJIT_ENABLE_LUA52COMPAT\).*/\1/' $(LUAJIT_DIR)/src/Makefile
 	$(MAKE) -C $(LUAJIT_DIR)
 
 # nanomsg
