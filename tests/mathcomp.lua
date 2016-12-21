@@ -235,3 +235,22 @@ local value = cc:compile(v1*m2):calculate():outputs()
 assert.equals(value[0], -37)
 assert.equals(value[1], 18)
 assert.equals(value[2], 31)
+
+-- transpose
+local m1 = cc:mat(3,3,{1,0,7,-5,-2,2,3,6,-4})
+local value = cc:compile(m1:transpose()):calculate():outputs()
+assert.equals(value[0], 1)
+assert.equals(value[1], -5)
+assert.equals(value[2], 3)
+assert.equals(value[3], 0)
+assert.equals(value[4], -2)
+assert.equals(value[5], 6)
+assert.equals(value[6], 7)
+assert.equals(value[7], 2)
+assert.equals(value[8], -4)
+
+local m2 = cc:mat(3,3,{-8,7,2,6,0,4,1,-3,5})
+local value1,value2 = cc:compile((m1*m2):transpose(), m2:transpose()*m1:transpose()):calculate():outputs()
+for i=0,8 do
+   assert.equals(value1[i], value2[i])
+end
