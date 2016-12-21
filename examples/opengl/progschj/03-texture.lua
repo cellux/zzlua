@@ -5,7 +5,7 @@ local sched = require('sched')
 
 local function main()
    local window = ui.Window {
-      title = "shader-vbo1",
+      title = "texture",
       gl_profile = 'core',
       gl_version = '3.3',
       quit_on_escape = true,
