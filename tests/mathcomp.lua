@@ -275,3 +275,14 @@ assert.equals(value[3], -1)
 local m = cc:mat(3,3,{10,-2,3,0,-4,0,-3,1,2})
 local value = cc:compile(m:det()):calculate():outputs()
 assert.equals(value, -116)
+
+local m1 = cc:mat(3,3,{1,0,7,-5,-2,2,3,6,-4})
+local m2 = cc:mat(3,3,{-8,7,2,6,0,4,1,-3,5})
+
+-- determinant of a matrix product = product of the determinants
+local value1,value2 = cc:compile((m1*m2):det(),m1:det()*m2:det()):calculate():outputs()
+assert.equals(value1, value2)
+
+-- determinant of the transpose of a matrix = original determinant
+local value1,value2 = cc:compile(m1:transpose():det(),m1:det()):calculate():outputs()
+assert.equals(value1, value2)

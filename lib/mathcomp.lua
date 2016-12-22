@@ -116,12 +116,30 @@ function M.CompilerContext(opts)
       return values
    end
 
+   local ctx_mt = {}
+
+   function ctx_mt.__add(n1, n2)
+      return ctx:binop("+", n1, n2)
+   end
+
+   function ctx_mt.__sub(n1, n2)
+      return ctx:binop("-", n1, n2)
+   end
+
+   function ctx_mt.__mul(n1, n2)
+      return ctx:binop("*", n1, n2)
+   end
+
+   function ctx_mt.__div(n1, n2)
+      return ctx:binop("/", n1, n2)
+   end
+
    function ctx:num()
       local self = ctx:node("num")
       function self:emit_decl_p(codegen)
          codegen(sf("%s %s;", numtype, self:name()))
       end
-      return self
+      return setmetatable(self, ctx_mt)
    end
 
    function ctx:fn(func_name, ...)
