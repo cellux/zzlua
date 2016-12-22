@@ -448,8 +448,9 @@ function M.CompilerContext(opts)
       end
    end
 
-   function vec_mt.__div(lhs, rhs)
-      assert(is_node(lhs) and lhs.type=="vec")
+   function mat_mt.__div(lhs, rhs)
+      assert(is_mat(lhs))
+      assert(is_num(rhs))
       return lhs * ctx:binop("/", 1, rhs)
    end
 
