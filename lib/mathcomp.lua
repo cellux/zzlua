@@ -614,6 +614,28 @@ function M.CompilerContext(opts)
       return self
    end
 
+   function ctx:mat_scale(factor, axis)
+      -- axis must be a unit vector
+      assert(is_num(factor))
+      assert(is_vec(axis))
+      local self = ctx:mat(axis.size):depends{factor, axis}
+      function self:emit_code(codegen)
+         codegen "do"
+         codegen(sf("local k1 = (%s)-1", source_of(factor)))
+         for x=1,self.cols do
+            for y=1,self.rows do
+               codegen(sf("%s = %s",
+                          self:ref(x,y),
+                          sf("%d + k1*%s*%s",
+                             x==y and 1 or 0,
+                             axis:ref(x), axis:ref(y))))
+            end
+         end
+         codegen "end"
+      end
+      return self
+   end
+
    function ctx:mat4_perspective(fovy, aspect, znear, zfar)
       local elements = {}
       for x=1,4 do
