@@ -178,6 +178,10 @@ local value = cc:compile(cc:distance(v1,v2)):calculate():outputs()
 assert.equals(value, math.sqrt(27))
 
 -- angle
+local unit = cc:compile(cc:angle(cc:vec(3,{2,1,3}), cc:vec(3,{6,3,9})))
+local value = unit:calculate():outputs()
+assert.equals(value, 0)
+
 local unit = cc:compile(cc:angle(cc:vec(2,{0,10}), cc:vec(2,{7,0})))
 local value = unit:calculate():outputs()
 assert.equals(value, math.pi/2)
@@ -254,3 +258,20 @@ local value1,value2 = cc:compile((m1*m2):transpose(), m2:transpose()*m1:transpos
 for i=0,8 do
    assert.equals(value1[i], value2[i])
 end
+
+-- rotate around arbitrary axis (unit vector)
+local value = cc:compile(cc:vec(3,{8,9,-4})*cc:mat3_rotate(22*(math.pi/180), cc:vec(3,{1,-5,3}):normalize())):calculate():outputs()
+-- TODO: verify the result
+
+-- minor matrix
+local m = cc:mat(3,3,{-4,0,1,-3,2,4,3,-2,-1})
+local value = cc:compile(m:minor(2,1)):calculate():outputs()
+assert.equals(value[0], 0)
+assert.equals(value[1], 1)
+assert.equals(value[2], -2)
+assert.equals(value[3], -1)
+
+-- determinant
+local m = cc:mat(3,3,{10,-2,3,0,-4,0,-3,1,2})
+local value = cc:compile(m:det()):calculate():outputs()
+assert.equals(value, -116)

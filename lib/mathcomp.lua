@@ -449,6 +449,60 @@ function M.CompilerContext(opts)
       return self
    end
 
+   function mat_mt.minor(m, x0, y0)
+      assert(m.cols >= 2)
+      assert(m.rows >= 2)
+      assert(is_num(x0))
+      assert(is_num(y0))
+      local self = ctx:mat(m.rows-1, m.cols-1):depends{m}
+      function self:emit_code(codegen)
+         for x=1,self.cols do
+            local mx = (x >= x0) and (x+1) or x
+            for y=1,self.rows do
+               local my = (y >= y0) and (y+1) or y
+               codegen(sf("%s=%s", self:ref(x, y), m:ref(mx, my)))
+            end
+         end
+      end
+      return self
+   end
+
+   function mat_mt.det(m)
+      assert(m.cols==m.rows)
+      local self
+      if m.rows == 2 then
+         self = ctx:num():depends{m}
+         function self:emit_code(codegen)
+            codegen(sf("%s = %s * %s - %s * %s",
+                       self:var(),
+                       m:ref(1,1), m:ref(2,2),
+                       m:ref(2,1), m:ref(1,2)))
+         end
+      elseif m.rows > 2 then
+         local cofactors = {}
+         local sign=1
+         for x=1,m.cols do
+            table.insert(cofactors, ctx:binop("*", m:minor(x, 1):det(), sign))
+            sign = -sign
+         end
+         self = ctx:num():depends{m, unpack(cofactors)}
+         function self:emit_code(codegen)
+            local terms = {}
+            for x=1,m.cols do
+               table.insert(terms, sf("%s * %s",
+                                      m:ref(x,1),
+                                      cofactors[x]:var()))
+            end
+            codegen(sf("%s = %s",
+                       self:var(),
+                       table.concat(terms,' + ')))
+         end
+      else
+         ef("invalid matrix size: %s, must be >= 2 to calculate determinant", m.rows)
+      end
+      return self
+   end
+
    mat_mt.__index = mat_mt
 
    function ctx:mat(cols, rows, init)
