@@ -116,12 +116,17 @@ function M.CompilerContext(opts)
       return values
    end
 
-   function ctx:fn(func_name, ...)
-      local params = {...}
-      local self = ctx:node("num"):depends(params)
+   function ctx:num()
+      local self = ctx:node("num")
       function self:emit_decl_p(codegen)
          codegen(sf("%s %s;", numtype, self:name()))
       end
+      return self
+   end
+
+   function ctx:fn(func_name, ...)
+      local params = {...}
+      local self = ctx:num():depends(params)
       function self:emit_code(codegen)
          codegen(sf("%s = %s(%s)",
                     self:var(),
@@ -132,10 +137,7 @@ function M.CompilerContext(opts)
    end
 
    function ctx:binop(op, arg1, arg2)
-      local self = ctx:node("num"):depends{arg1, arg2}
-      function self:emit_decl_p(codegen)
-         codegen(sf("%s %s;", numtype, self:name()))
-      end
+      local self = ctx:num():depends{arg1, arg2}
       function self:emit_code(codegen)
          codegen(sf("%s = (%s %s %s)",
                     self:var(),
@@ -235,10 +237,7 @@ function M.CompilerContext(opts)
    end
 
    function vec_mt.__len(v)
-      local self = ctx:node("num"):depends{v}
-      function self:emit_decl_p(codegen)
-         codegen(sf("%s %s;", numtype, self:name()))
-      end
+      local self = ctx:num():depends{v}
       function self:emit_code(codegen)
          local terms = {}
          for i=1,v.size do
@@ -307,10 +306,7 @@ function M.CompilerContext(opts)
       assert(is_vec(lhs))
       assert(is_vec(rhs))
       assert(lhs.size==rhs.size)
-      local self = ctx:node("num"):depends{lhs, rhs}
-      function self:emit_decl_p(codegen)
-         codegen(sf("%s %s;", numtype, self:name()))
-      end
+      local self = ctx:num():depends{lhs, rhs}
       function self:emit_code(codegen)
          local terms = {}
          for i=1,lhs.size do
