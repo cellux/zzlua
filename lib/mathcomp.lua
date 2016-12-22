@@ -156,13 +156,15 @@ function M.CompilerContext(opts)
       end
    end
 
+   function vec_mt:ref(i)
+      return sf("%s[%d]", self:var(), self:index(i))
+   end
+
    function vec_mt.__unm(v)
       local self = ctx:vec(v.size):depends{v}
       function self:emit_code(codegen)
          for i=1,self.size do
-            codegen(sf("%s[%d] = -%s[%d]",
-                       self:var(), self:index(i),
-                       v:var(), v:index(i)))
+            codegen(sf("%s = -%s", self:ref(i), v:ref(i)))
          end
       end
       return self
@@ -175,10 +177,10 @@ function M.CompilerContext(opts)
       local self = ctx:vec(lhs.size):depends{lhs, rhs}
       function self:emit_code(codegen)
          for i=1,self.size do
-            codegen(sf("%s[%d] = %s[%d] + %s[%d]",
-                       self:var(), self:index(i),
-                       lhs:var(), lhs:index(i),
-                       rhs:var(), rhs:index(i)))
+            codegen(sf("%s = %s + %s",
+                       self:ref(i),
+                       lhs:ref(i),
+                       rhs:ref(i)))
          end
       end
       return self
@@ -199,9 +201,7 @@ function M.CompilerContext(opts)
             codegen("do")
             codegen(sf("local m = %s", source_of(rhs)))
             for i=1,self.size do
-               codegen(sf("%s[%d] = %s[%d] * m",
-                          self:var(), self:index(i),
-                          lhs:var(), lhs:index(i)))
+               codegen(sf("%s = %s * m", self:ref(i), lhs:ref(i)))
             end
             codegen("end")
          end
@@ -213,12 +213,12 @@ function M.CompilerContext(opts)
             for x=1,self.size do
                local terms = {}
                for i=1,lhs.size do
-                  table.insert(terms, sf("%s[%d]*%s[%d]",
-                                         lhs:var(), lhs:index(i),
-                                         rhs:var(), rhs:index(x,i)))
+                  table.insert(terms, sf("%s*%s",
+                                         lhs:ref(i),
+                                         rhs:ref(x,i)))
                end
-               codegen(sf("%s[%d] = %s",
-                          self:var(), self:index(x),
+               codegen(sf("%s = %s",
+                          self:ref(x),
                           table.concat(terms,'+')))
             end
          end
@@ -242,9 +242,7 @@ function M.CompilerContext(opts)
       function self:emit_code(codegen)
          local terms = {}
          for i=1,v.size do
-            table.insert(terms, sf("%s[%d]*%s[%d]",
-                                   v:var(), v:index(i),
-                                   v:var(), v:index(i)))
+            table.insert(terms, sf("%s*%s", v:ref(i), v:ref(i)))
          end
          codegen(sf("%s = math.sqrt(%s)", self:var(), table.concat(terms,'+')))
       end
@@ -296,9 +294,8 @@ function M.CompilerContext(opts)
       function self:emit_code(codegen)
          if self.is_param then
             for i=1,self.size do
-               codegen(sf("%s[%d] = %s",
-                          self:var(),
-                          self:index(i),
+               codegen(sf("%s = %s",
+                          self:ref(i),
                           source_of(elements[i])))
             end
          end
@@ -317,9 +314,7 @@ function M.CompilerContext(opts)
       function self:emit_code(codegen)
          local terms = {}
          for i=1,lhs.size do
-            table.insert(terms, sf("%s[%d]*%s[%d]",
-                                   lhs:var(), lhs:index(i),
-                                   rhs:var(), rhs:index(i)))
+            table.insert(terms, sf("%s*%s", lhs:ref(i), rhs:ref(i)))
          end
          codegen(sf("%s = %s",
                     self:var(),
@@ -335,24 +330,18 @@ function M.CompilerContext(opts)
       assert(lhs.size==3)
       local self = ctx:vec(lhs.size):depends{lhs, rhs}
       function self:emit_code(codegen)
-         codegen(sf("%s[%d] = %s[%d]*%s[%d]-%s[%d]*%s[%d]",
-                    self:var(), self:index(1),
-                    lhs:var(), lhs:index(2),
-                    rhs:var(), rhs:index(3),
-                    lhs:var(), lhs:index(3),
-                    rhs:var(), rhs:index(2)))
-         codegen(sf("%s[%d] = %s[%d]*%s[%d]-%s[%d]*%s[%d]",
-                    self:var(), self:index(2),
-                    lhs:var(), lhs:index(3),
-                    rhs:var(), rhs:index(1),
-                    lhs:var(), lhs:index(1),
-                    rhs:var(), rhs:index(3)))
-         codegen(sf("%s[%d] = %s[%d]*%s[%d]-%s[%d]*%s[%d]",
-                    self:var(), self:index(3),
-                    lhs:var(), lhs:index(1),
-                    rhs:var(), rhs:index(2),
-                    lhs:var(), lhs:index(2),
-                    rhs:var(), rhs:index(1)))
+         codegen(sf("%s = %s*%s - %s*%s",
+                    self:ref(1),
+                    lhs:ref(2), rhs:ref(3),
+                    lhs:ref(3), rhs:ref(2)))
+         codegen(sf("%s = %s*%s - %s*%s",
+                    self:ref(2),
+                    lhs:ref(3), rhs:ref(1),
+                    lhs:ref(1), rhs:ref(3)))
+         codegen(sf("%s = %s*%s - %s*%s",
+                    self:ref(3),
+                    lhs:ref(1), rhs:ref(2),
+                    lhs:ref(2), rhs:ref(1)))
       end
       return self
    end
@@ -381,6 +370,10 @@ function M.CompilerContext(opts)
       end
    end
 
+   function mat_mt:ref(x, y)
+      return sf("%s[%d]", self:var(), self:index(x, y))
+   end
+
    function mat_mt.__mul(lhs, rhs)
       if is_num(lhs) then
          lhs,rhs = rhs,lhs
@@ -392,9 +385,9 @@ function M.CompilerContext(opts)
             codegen(sf("local m = %s", source_of(rhs)))
             for x=1,self.cols do
                for y=1,self.rows do
-                  codegen(sf("%s[%d] = %s[%d] * m",
-                             self:var(), self:index(x,y),
-                             lhs:var(), lhs:index(x,y)))
+                  codegen(sf("%s = %s * m",
+                             self:ref(x,y),
+                             lhs:ref(x,y)))
                end
             end
             codegen("end")
@@ -408,12 +401,12 @@ function M.CompilerContext(opts)
                for y=1,self.rows do
                   local terms = {}
                   for i=1,lhs.cols do
-                     table.insert(terms, sf("%s[%d]*%s[%d]",
-                                            lhs:var(), lhs:index(i,y),
-                                            rhs:var(), rhs:index(x,i)))
+                     table.insert(terms, sf("%s*%s",
+                                            lhs:ref(i,y),
+                                            rhs:ref(x,i)))
                   end
-                  codegen(sf("%s[%d] = %s",
-                             self:var(), self:index(x,y),
+                  codegen(sf("%s = %s",
+                             self:ref(x,y),
                              table.concat(terms,'+')))
                end
             end
@@ -426,12 +419,12 @@ function M.CompilerContext(opts)
             for y=1,self.size do
                local terms = {}
                for i=1,lhs.cols do
-                  table.insert(terms, sf("%s[%d]*%s[%d]",
-                                         lhs:var(), lhs:index(i,y),
-                                         rhs:var(), rhs:index(i)))
+                  table.insert(terms, sf("%s*%s",
+                                         lhs:ref(i,y),
+                                         rhs:ref(i)))
                end
-               codegen(sf("%s[%d] = %s",
-                          self:var(), self:index(y),
+               codegen(sf("%s = %s",
+                          self:ref(y),
                           table.concat(terms,'+')))
             end
          end
@@ -451,9 +444,9 @@ function M.CompilerContext(opts)
       function self:emit_code(codegen)
          for x=1,self.cols do
             for y=1,self.rows do
-               codegen(sf("%s[%d]=%s[%d]",
-                          self:var(), self:index(x,y),
-                          m:var(), m:index(y,x)))
+               codegen(sf("%s = %s",
+                          self:ref(x,y),
+                          m:ref(y,x)))
             end
          end
       end
