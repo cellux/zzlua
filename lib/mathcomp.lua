@@ -508,6 +508,112 @@ function M.CompilerContext(opts)
       return ctx:mat(size, size, elements)
    end
 
+   function ctx:mat2_rotate(angle)
+      local self = ctx:mat(2,2):depends{angle}
+      function self:emit_code(codegen)
+         codegen "do"
+         codegen(sf("local cos = math.cos(%s)", source_of(angle)))
+         codegen(sf("local sin = math.sin(%s)", source_of(angle)))
+         codegen(sf("%s = cos", self:ref(1,1)))
+         codegen(sf("%s =-sin", self:ref(1,2)))
+         codegen(sf("%s = sin", self:ref(2,1)))
+         codegen(sf("%s = cos", self:ref(2,2)))
+         codegen "end"
+      end
+      return self
+   end
+
+   function ctx:mat3_rotate_x(angle)
+      local self = ctx:mat(3,3):depends{angle}
+      function self:emit_code(codegen)
+         codegen "do"
+         codegen(sf("local cos = math.cos(%s)", source_of(angle)))
+         codegen(sf("local sin = math.sin(%s)", source_of(angle)))
+         codegen(sf("%s = 1",   self:ref(1,1)))
+         codegen(sf("%s = 0",   self:ref(1,2)))
+         codegen(sf("%s = 0",   self:ref(1,3)))
+         codegen(sf("%s = 0",   self:ref(2,1)))
+         codegen(sf("%s = cos", self:ref(2,2)))
+         codegen(sf("%s =-sin", self:ref(2,3)))
+         codegen(sf("%s = 0",   self:ref(3,1)))
+         codegen(sf("%s = sin", self:ref(3,2)))
+         codegen(sf("%s = cos", self:ref(3,3)))
+         codegen "end"
+      end
+      return self
+   end
+
+   function ctx:mat3_rotate_y(angle)
+      local self = ctx:mat(3,3):depends{angle}
+      function self:emit_code(codegen)
+         codegen "do"
+         codegen(sf("local cos = math.cos(%s)", source_of(angle)))
+         codegen(sf("local sin = math.sin(%s)", source_of(angle)))
+         codegen(sf("%s = cos", self:ref(1,1)))
+         codegen(sf("%s = 0",   self:ref(1,2)))
+         codegen(sf("%s = sin", self:ref(1,3)))
+         codegen(sf("%s = 0",   self:ref(2,1)))
+         codegen(sf("%s = 1",   self:ref(2,2)))
+         codegen(sf("%s = 0",   self:ref(2,3)))
+         codegen(sf("%s =-sin", self:ref(3,1)))
+         codegen(sf("%s = 0",   self:ref(3,2)))
+         codegen(sf("%s = cos", self:ref(3,3)))
+         codegen "end"
+      end
+      return self
+   end
+
+   function ctx:mat3_rotate_z(angle)
+      local self = ctx:mat(3,3):depends{angle}
+      function self:emit_code(codegen)
+         codegen "do"
+         codegen(sf("local cos = math.cos(%s)", source_of(angle)))
+         codegen(sf("local sin = math.sin(%s)", source_of(angle)))
+         codegen(sf("%s = cos", self:ref(1,1)))
+         codegen(sf("%s =-sin", self:ref(1,2)))
+         codegen(sf("%s = 0",   self:ref(1,3)))
+         codegen(sf("%s = sin", self:ref(2,1)))
+         codegen(sf("%s = cos", self:ref(2,2)))
+         codegen(sf("%s = 0",   self:ref(2,3)))
+         codegen(sf("%s = 0",   self:ref(3,1)))
+         codegen(sf("%s = 0",   self:ref(3,2)))
+         codegen(sf("%s = 1",   self:ref(3,3)))
+         codegen "end"
+      end
+      return self
+   end
+
+   function ctx:mat3_rotate(angle, axis)
+      -- axis must be a unit vector
+      assert(is_vec(axis))
+      assert(axis.size==3)
+      local self = ctx:mat(3,3):depends{angle,axis}
+      function self:emit_code(codegen)
+         local function gen(x,y,n1,n2,n3,n3mul)
+            codegen(sf("%s = %s",
+                       self:ref(x,y),
+                       sf("%s*(1-cos) + %s*%s",
+                          sf("%s*%s", axis:ref(n1), axis:ref(n2)),
+                          n3 == 0 and "1" or axis:ref(n3),
+                          n3mul)))
+         end
+         codegen "do"
+         codegen(sf("local cos = math.cos(%s)", source_of(angle)))
+         codegen(sf("local sin = math.sin(%s)", source_of(angle)))
+         gen(1,1,1,1,0,'cos')
+         gen(1,2,1,2,3,'-sin')
+         gen(1,3,1,3,2,'sin')
+         gen(2,1,2,1,3,'sin')
+         gen(2,2,2,2,0,'cos')
+         gen(2,3,2,3,1,'-sin')
+         gen(3,1,3,1,2,'-sin')
+         gen(3,2,3,2,1,'sin')
+         gen(3,3,3,3,0,'cos')
+         codegen "end"
+      end
+      return self
+   end
+
    function ctx:mat4_perspective(fovy, aspect, znear, zfar)
       local elements = {}
       for x=1,4 do
