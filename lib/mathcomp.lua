@@ -486,6 +486,11 @@ function M.CompilerContext(opts)
       return self
    end
 
+   function mat_mt.cofactor(m, x, y)
+      local sign = ((x+y) % 2 == 0) and 1 or -1
+      return ctx:binop("*", m:minor(x,y):det(), sign)
+   end
+
    function mat_mt.det(m)
       assert(m.cols==m.rows)
       local self
@@ -499,10 +504,8 @@ function M.CompilerContext(opts)
          end
       elseif m.rows > 2 then
          local cofactors = {}
-         local sign=1
          for x=1,m.cols do
-            table.insert(cofactors, ctx:binop("*", m:minor(x, 1):det(), sign))
-            sign = -sign
+            table.insert(cofactors, m:cofactor(x,1))
          end
          self = ctx:num():depends{m, unpack(cofactors)}
          function self:emit_code(codegen)
