@@ -379,7 +379,7 @@ function M.CompilerContext(opts)
          lhs,rhs = rhs,lhs
       end
       if is_num(rhs) then
-         local self = ctx:mat(lhs.rows, lhs.cols):depends{lhs, rhs}
+         local self = ctx:mat(lhs.cols, lhs.rows):depends{lhs, rhs}
          function self:emit_code(codegen)
             codegen("do")
             codegen(sf("local m = %s", source_of(rhs)))
@@ -395,7 +395,7 @@ function M.CompilerContext(opts)
          return self
       elseif is_mat(rhs) then
          assert(lhs.cols==rhs.rows)
-         local self = ctx:mat(lhs.rows, rhs.cols):depends{lhs, rhs}
+         local self = ctx:mat(rhs.cols, lhs.rows):depends{lhs, rhs}
          function self:emit_code(codegen)
             for x=1,self.cols do
                for y=1,self.rows do
@@ -455,11 +455,11 @@ function M.CompilerContext(opts)
 
    mat_mt.__index = mat_mt
 
-   function ctx:mat(rows, cols, init)
+   function ctx:mat(cols, rows, init)
       local elements = {}
-      assert(type(rows)=="number")
-      cols = cols or rows
       assert(type(cols)=="number")
+      rows = rows or cols
+      assert(type(rows)=="number")
       local size = cols * rows
       if init then
          if type(init)=="number" then
@@ -474,8 +474,8 @@ function M.CompilerContext(opts)
          end
       end
       local self = ctx:node("mat")
-      self.rows = rows
       self.cols = cols
+      self.rows = rows
       self.size = size
       function self:emit_decl_l(codegen)
          codegen(sf("local %s = {%s}",
