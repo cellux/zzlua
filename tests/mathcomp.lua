@@ -2,6 +2,11 @@ local ffi = require('ffi')
 local mathcomp = require('mathcomp')
 local assert = require('assert')
 
+-- Thanks to Fletcher Dunn and Ian Parberry - authors of "3D Math
+-- Primer for Graphics and Game Development" - for writing such a fine
+-- book on this subject. The descriptions in that book proved
+-- invaluable when I was writing the code of this module.
+
 -- arrays within structs
 
 ffi.cdef [[
@@ -286,3 +291,16 @@ assert.equals(value1, value2)
 -- determinant of the transpose of a matrix = original determinant
 local value1,value2 = cc:compile(m1:transpose():det(),m1:det()):calculate():outputs()
 assert.equals(value1, value2)
+
+-- inverse of matrix
+local m = cc:mat(3,3,{-4,0,1,-3,2,4,3,-2,-1})
+local value = cc:compile(m:inv()):calculate():outputs()
+assert.equals(value[0], -1/4)
+assert.equals(value[1], 1/12)
+assert.equals(value[2], 1/12)
+assert.equals(value[3], -3/8)
+assert.equals(value[4], -1/24)
+assert.equals(value[5], -13/24)
+assert.equals(value[6], 0)
+assert.equals(value[7], 1/3)
+assert.equals(value[8], 1/3)

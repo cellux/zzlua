@@ -525,6 +525,36 @@ function M.CompilerContext(opts)
       return self
    end
 
+   function mat_mt.cofactors(m)
+      assert(m.cols==m.rows)
+      local cofactors = {}
+      for x=1,m.cols do
+         for y=1,m.rows do
+            table.insert(cofactors, m:cofactor(x,y))
+         end
+      end
+      local self = ctx:mat(m.cols, m.rows):depends{m, unpack(cofactors)}
+      function self:emit_code(codegen)
+         for x=1,self.cols do
+            for y=1,self.rows do
+               local i = (x - 1) * self.rows + y
+               codegen(sf("%s = %s",
+                          self:ref(x,y),
+                          cofactors[i]:var()))
+            end
+         end
+      end
+      return self
+   end
+
+   function mat_mt.adj(m)
+      return m:cofactors():transpose()
+   end
+
+   function mat_mt.inv(m)
+      return m:adj() / m:det()
+   end
+
    mat_mt.__index = mat_mt
 
    function ctx:mat(cols, rows, init)
