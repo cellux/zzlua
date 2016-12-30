@@ -737,6 +737,20 @@ function M.CompilerContext(opts)
       return self
    end
 
+   function ctx:mat4_translate(v)
+      assert(is_vec(v))
+      assert(v.size==3)
+      local self = ctx:mat_identity(4):depends{v}
+      local super_emit_code = self.emit_code
+      function self:emit_code(codegen)
+         super_emit_code(self, codegen)
+         codegen(sf("%s = %s", self:ref(1,4), v:ref(1)))
+         codegen(sf("%s = %s", self:ref(2,4), v:ref(2)))
+         codegen(sf("%s = %s", self:ref(3,4), v:ref(3)))
+      end
+      return self
+   end
+
    function ctx:mat_scale(factor, axis)
       -- axis must be a unit vector
       assert(is_num(factor))
