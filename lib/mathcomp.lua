@@ -455,7 +455,7 @@ function M.CompilerContext(opts)
    end
 
    function mat_mt.transpose(m)
-      local self = ctx:mat(m.cols, m.rows):depends{m}
+      local self = ctx:mat(m.rows, m.cols):depends{m}
       function self:emit_code(codegen)
          for x=1,self.cols do
             for y=1,self.rows do
