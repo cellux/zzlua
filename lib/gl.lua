@@ -390,6 +390,63 @@ enum {
 
 void glBlendFunc (GLenum sfactor, GLenum dfactor);
 
+/* Depth buffer */
+
+enum {
+  GL_NEVER    = 0x0200,
+  GL_LESS     = 0x0201,
+  GL_EQUAL    = 0x0202,
+  GL_LEQUAL   = 0x0203,
+  GL_GREATER  = 0x0204,
+  GL_NOTEQUAL = 0x0205,
+  GL_GEQUAL   = 0x0206,
+  GL_ALWAYS   = 0x0207
+};
+
+void glDepthFunc (GLenum func);
+
+enum {
+  GL_DEPTH_TEST        = 0x0B71,
+  GL_DEPTH_BITS        = 0x0D56,
+  GL_DEPTH_CLEAR_VALUE = 0x0B73,
+  GL_DEPTH_FUNC        = 0x0B74,
+  GL_DEPTH_RANGE       = 0x0B70,
+  GL_DEPTH_WRITEMASK   = 0x0B72,
+  GL_DEPTH_COMPONENT   = 0x1902
+};
+
+/* Polygons */
+
+enum {
+  GL_POINT = 0x1B00,
+  GL_LINE  = 0x1B01,
+  GL_FILL  = 0x1B02
+};
+
+enum {
+  GL_CW  = 0x0900,
+  GL_CCW = 0x0901
+};
+
+void glFrontFace (GLenum dir);
+
+enum {
+  GL_FRONT = 0x0404,
+  GL_BACK  = 0x0405
+};
+
+enum {
+  GL_POLYGON_MODE    = 0x0B40,
+  GL_POLYGON_SMOOTH  = 0x0B41,
+  GL_POLYGON_STIPPLE = 0x0B42,
+  GL_EDGE_FLAG       = 0x0B43,
+  GL_CULL_FACE       = 0x0B44,
+  GL_CULL_FACE_MODE  = 0x0B45,
+  GL_FRONT_FACE      = 0x0B46
+};
+
+void glCullFace (GLenum mode);
+
 ]]
 
 local function gl_loaded()
