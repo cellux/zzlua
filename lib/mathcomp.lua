@@ -780,11 +780,13 @@ function M.CompilerContext(opts)
             elements[(x-1)*4+y] = 0
          end
       end
-      local tan_half_fovy = math.tan(fovy/2)
-      elements[0*4+1] = 1 / (aspect * tan_half_fovy)
-      elements[1*4+2] = 1 / tan_half_fovy
+      local zoom_y = 1 / math.tan(fovy/2)
+      local zoom_x = zoom_y / aspect
+      elements[0*4+1] = zoom_x
+      elements[1*4+2] = zoom_y
       elements[2*4+3] = (zfar + znear) / (zfar - znear)
-      elements[3*4+3] = -(2 * zfar * znear) / (zfar - znear)
+      elements[2*4+4] = (2 * znear * zfar) / (znear - zfar)
+      elements[3*4+3] = 1
       return ctx:mat(4, 4, elements)
    end
 
