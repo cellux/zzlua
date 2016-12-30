@@ -454,6 +454,23 @@ function M.CompilerContext(opts)
       return lhs * ctx:binop("/", 1, rhs)
    end
 
+   function mat_mt.extend(m, size)
+      assert(type(size)=="number")
+      assert(size >= m.cols)
+      assert(size >= m.rows)
+      local self = ctx:mat_identity(size):depends{m}
+      local super_emit_code = self.emit_code
+      function self:emit_code(codegen)
+         super_emit_code(self, codegen)
+         for x=1,m.cols do
+            for y=1,m.rows do
+               codegen(sf("%s = %s", self:ref(x,y), m:ref(x,y)))
+            end
+         end
+      end
+      return self
+   end
+
    function mat_mt.transpose(m)
       local self = ctx:mat(m.rows, m.cols):depends{m}
       function self:emit_code(codegen)
