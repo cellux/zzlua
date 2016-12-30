@@ -294,6 +294,7 @@ assert.equals(value1, value2)
 
 -- inverse of matrix
 local m = cc:mat(3,3,{-4,0,1,-3,2,4,3,-2,-1})
+
 local value = cc:compile(m:inv()):calculate():outputs()
 assert.equals(value[0], -1/4)
 assert.equals(value[1], 1/12)
@@ -304,3 +305,23 @@ assert.equals(value[5], -13/24)
 assert.equals(value[6], 0)
 assert.equals(value[7], 1/3)
 assert.equals(value[8], 1/3)
+
+-- the inverse of the inverse is the original matrix
+--
+-- to account for the inaccuracies resulting from discrete floating
+-- point calculations, we do not check for exact equality here
+local function equals_enough(x,y)
+   -- with 1e-16 it fails, I wonder why
+   return math.abs(x-y) < 1e-15
+end
+
+local value = cc:compile(m:inv():inv()):calculate():outputs()
+assert(equals_enough(value[0], -4))
+assert(equals_enough(value[1], 0))
+assert(equals_enough(value[2], 1))
+assert(equals_enough(value[3], -3))
+assert(equals_enough(value[4], 2))
+assert(equals_enough(value[5], 4))
+assert(equals_enough(value[6], 3))
+assert(equals_enough(value[7], -2))
+assert(equals_enough(value[8], -1))
