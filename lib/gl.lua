@@ -670,6 +670,14 @@ function M.UIntArray(elements)
    return M.Array("GLuint[?]", elements)
 end
 
+function M.UShortArray(elements)
+   return M.Array("GLushort[?]", elements)
+end
+
+function M.UByteArray(elements)
+   return M.Array("GLubyte[?]", elements)
+end
+
 function M.BufferData(target, size, data, usage)
    ffi.C.glBufferData(target, size, data, usage)
 end
