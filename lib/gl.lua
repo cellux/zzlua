@@ -977,6 +977,12 @@ function ResourceManager_mt:Renderbuffer(...)
    return rb
 end
 
+function ResourceManager_mt:Framebuffer(...)
+   local fb = M.Framebuffer(...)
+   table.insert(self.framebuffers, fb)
+   return fb
+end
+
 function ResourceManager_mt:delete()
    for _,texture in ipairs(self.textures) do texture:delete() end
    self.textures = {}
@@ -989,6 +995,8 @@ function ResourceManager_mt:delete()
    self.shaders = {}
    for _,program in ipairs(self.programs) do program:delete() end
    self.programs = {}
+   for _,fb in ipairs(self.framebuffers) do fb:delete() end
+   self.framebuffers = {}
    for _,rb in ipairs(self.renderbuffers) do rb:delete() end
    self.renderbuffers = {}
 end
@@ -1004,6 +1012,7 @@ function M.ResourceManager()
       vbos = {},
       textures = {},
       renderbuffers = {},
+      framebuffers = {},
    }
    return setmetatable(self, ResourceManager_mt)
 end
