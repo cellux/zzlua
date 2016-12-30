@@ -841,6 +841,35 @@ M.UniformMatrix2fv = ffi.C.glUniformMatrix2fv
 M.UniformMatrix3fv = ffi.C.glUniformMatrix3fv
 M.UniformMatrix4fv = ffi.C.glUniformMatrix4fv
 
+-- RenderBuffer
+
+M.Renderbuffer = util.Class()
+
+function M.Renderbuffer:create()
+   local renderbuffers = ffi.new("GLuint[1]")
+   ffi.C.glGenRenderbuffers(1, renderbuffers)
+   local rb = { id = renderbuffers[0] }
+   return rb
+end
+
+function M.Renderbuffer:BindRenderbuffer(target)
+   ffi.C.glBindRenderbuffer(target or M.GL_RENDERBUFFER, self.id)
+end
+
+function M.Renderbuffer:delete()
+   if self.id then
+      local renderbuffers = ffi.new("GLuint[1]", self.id)
+      ffi.C.glDeleteRenderbuffers(1, renderbuffers)
+      self.id = nil
+   end
+end
+
+function M.BindRenderbuffer(target, rb)
+   ffi.C.glBindRenderbuffer(target or M.GL_RENDERBUFFER, rb and rb.id or 0)
+end
+
+M.RenderbufferStorage = ffi.C.glRenderbufferStorage
+
 -- FrameBuffer
 
 M.Framebuffer = util.Class()
@@ -866,6 +895,10 @@ end
 
 function M.BindFramebuffer(target, fb)
    ffi.C.glBindFramebuffer(target or M.GL_FRAMEBUFFER, fb and fb.id or 0)
+end
+
+function M.FramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer)
+   ffi.C.glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer.id)
 end
 
 function M.FramebufferTexture2D(target, attachment, textarget, texture, level)
@@ -938,6 +971,12 @@ function ResourceManager_mt:Texture(...)
    return texture
 end
 
+function ResourceManager_mt:Renderbuffer(...)
+   local rb = M.Renderbuffer(...)
+   table.insert(self.renderbuffers, rb)
+   return rb
+end
+
 function ResourceManager_mt:delete()
    for _,texture in ipairs(self.textures) do texture:delete() end
    self.textures = {}
@@ -950,6 +989,8 @@ function ResourceManager_mt:delete()
    self.shaders = {}
    for _,program in ipairs(self.programs) do program:delete() end
    self.programs = {}
+   for _,rb in ipairs(self.renderbuffers) do rb:delete() end
+   self.renderbuffers = {}
 end
 
 ResourceManager_mt.__index = ResourceManager_mt
@@ -962,6 +1003,7 @@ function M.ResourceManager()
       vaos = {},
       vbos = {},
       textures = {},
+      renderbuffers = {},
    }
    return setmetatable(self, ResourceManager_mt)
 end
