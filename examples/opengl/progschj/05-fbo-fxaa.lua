@@ -483,7 +483,8 @@ local function main()
                                                 aspect_ratio,
                                                 znear,
                                                 zfar)
-      return ctx:compile(m_view * m_projection)
+      local m_view_projection = (m_view * m_projection):param("view_projection_matrix")
+      return ctx:compile(m_view_projection)
    end
 
    local engine = MathEngine(window)
@@ -516,8 +517,7 @@ local function main()
    function loop:draw()
       engine.t = time.time(ffi.C.CLOCK_MONOTONIC)
       engine:calculate()
-      local view_projection_matrix = engine:outputs()
-      cube:draw(view_projection_matrix)
+      cube:draw(engine.view_projection_matrix)
       -- apply post processing only when fxaa is on
       if fxaa_enabled then
          -- bind source texture to texture unit 0
