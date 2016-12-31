@@ -309,7 +309,7 @@ function M.CompilerContext(opts)
          codegen(sf("%s %s[%d];", numtype, self:name(), self.size))
       end
       function self:emit_code(codegen)
-         if self.is_param then
+         if self.is_param and #elements > 0 then
             for i=1,self.size do
                codegen(sf("%s = %s",
                           self:ref(i),
