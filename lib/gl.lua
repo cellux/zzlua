@@ -62,9 +62,13 @@ enum {
   GL_ALPHA                  = 0x1906,
   GL_RGB                    = 0x1907,
   GL_RGBA                   = 0x1908,
-  GL_RGBA8                  = 0x8058,
   GL_LUMINANCE              = 0x1909,
-  GL_LUMINANCE_ALPHA        = 0x190A
+  GL_LUMINANCE_ALPHA        = 0x190A,
+  GL_RGBA8                  = 0x8058,
+  GL_RGBA32F                = 0x8814,
+  GL_RGB32F                 = 0x8815,
+  GL_RGBA16F                = 0x881A,
+  GL_RGB16F                 = 0x881B
 };
 
 enum {
@@ -170,6 +174,8 @@ void glBindAttribLocation (GLuint program, GLuint index, const GLchar *name);
 void glBindFragDataLocation (GLuint program, GLuint color, const GLchar *name);
 GLint glGetAttribLocation (GLuint program, const GLchar *name);
 GLint glGetUniformLocation (GLuint program, const GLchar *name);
+GLuint glGetUniformBlockIndex (GLuint program, const GLchar *uniformBlockName);
+void glUniformBlockBinding (GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding);
 void glLinkProgram (GLuint program);
 void glUseProgram (GLuint program);
 void glGetProgramiv (GLuint program, GLenum pname, GLint *params);
@@ -215,6 +221,7 @@ void glDeleteVertexArrays (GLsizei n, const GLuint *arrays);
 
 void glGenBuffers (GLsizei n, GLuint *buffers);
 void glBindBuffer (GLenum target, GLuint buffer);
+void glBindBufferRange (GLenum target, GLuint index, GLuint buffer, GLintptr offset, GLsizeiptr size);
 void glBufferData (GLenum target, GLsizeiptr size, const void *data, GLenum usage);
 void glBufferSubData (GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
 void glDeleteBuffers (GLsizei n, const GLuint *buffers);
@@ -453,6 +460,17 @@ enum {
 
 void glCullFace (GLenum mode);
 
+/* instancing */
+
+void glVertexAttribDivisor (GLuint index, GLuint divisor);
+
+void glDrawArraysInstanced (GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
+void glDrawElementsInstanced (GLenum mode, GLsizei count, GLenum type, const void *indices, GLsizei instancecount);
+
+/* texture buffers */
+
+void glTexBuffer (GLenum target, GLenum internalformat, GLuint buffer);
+
 ]]
 
 local function gl_loaded()
@@ -595,6 +613,14 @@ function Program_mt:GetUniformLocation(name)
    return util.check_bad("glGetUniformLocation", -1, ffi.C.glGetUniformLocation(self.id, name))
 end
 
+function Program_mt:GetUniformBlockIndex(name)
+   return util.check_bad("glGetUniformBlockIndex", -1, ffi.C.glGetUniformBlockIndex(self.id, name))
+end
+
+function Program_mt:UniformBlockBinding(index, binding)
+   ffi.C.glUniformBlockBinding(self.id, index, binding)
+end
+
 function Program_mt:LinkProgram()
    ffi.C.glLinkProgram(self.id)
    local status = ffi.new("GLint[1]")
@@ -713,6 +739,10 @@ function M.BindBuffer(target, buffer)
    ffi.C.glBindBuffer(target, buffer.id)
 end
 
+function M.BindBufferRange(target, index, buffer, offset, size)
+   ffi.C.glBindBufferRange(target, index, buffer.id, offset, size)
+end
+
 M.Buffer = M.VBO
 
 function M.Array(arrtype, elements)
@@ -743,6 +773,10 @@ end
 
 function M.BufferData(target, size, data, usage)
    ffi.C.glBufferData(target, size, data, usage)
+end
+
+function M.BufferSubData(target, offset, size, data)
+   ffi.C.glBufferSubData(target, offset, size, data)
 end
 
 function M.EnableVertexAttribArray(index)
@@ -919,8 +953,22 @@ function M.DrawArrays(mode, first, count)
    ffi.C.glDrawArrays(mode, first, count)
 end
 
+function M.DrawArraysInstanced(mode, first, count, instancecount)
+   ffi.C.glDrawArraysInstanced(mode, first, count, instancecount)
+end
+
 function M.DrawElements(mode, count, type, indices)
    ffi.C.glDrawElements(mode, count, type, ffi.cast("const GLvoid *", indices))
+end
+
+function M.DrawElementsInstanced(mode, count, type, indices, instancecount)
+   ffi.C.glDrawElementsInstanced(mode, count, type, ffi.cast("const GLvoid *", indices), instancecount)
+end
+
+M.VertexAttribDivisor = ffi.C.glVertexAttribDivisor
+
+function M.TexBuffer(target, internalformat, buffer)
+   ffi.C.glTexBuffer(target, internalformat, buffer and buffer.id or 0)
 end
 
 M.Viewport = ffi.C.glViewport
