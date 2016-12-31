@@ -9,17 +9,51 @@ local mathcomp = require('mathcomp')
 
 local FS = ffi.sizeof("GLfloat")
 
+local function Framebuffer(rm, window)
+   local width, height = window.rect.w, window.rect.h
+
+   local texture = rm:Texture()
+   gl.BindTexture(gl.GL_TEXTURE_2D, texture)
+   gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+   gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+   gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
+   gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
+   gl.TexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA8, width, height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, nil)
+
+   local rbf = rm:Renderbuffer()
+   gl.BindRenderbuffer(gl.GL_RENDERBUFFER, rbf)
+   gl.RenderbufferStorage(gl.GL_RENDERBUFFER, gl.GL_DEPTH_COMPONENT24, width, height)
+
+   local fbo = rm:Framebuffer()
+   gl.BindFramebuffer(gl.GL_FRAMEBUFFER, fbo)
+   gl.FramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, texture, 0)
+   gl.FramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, rbf)
+
+   local self = {}
+
+   function self:bindFramebuffer()
+      fbo:BindFramebuffer()
+   end
+
+   function self:bindTexture(texture_unit)
+      gl.ActiveTexture(gl.GL_TEXTURE0 + texture_unit)
+      gl.BindTexture(gl.GL_TEXTURE_2D, texture)
+   end
+
+   return self
+end
+
 local function Cube(rm)
    local vertex_shader = rm:Shader(gl.GL_VERTEX_SHADER)
    vertex_shader:ShaderSource [[
         #version 330
-        uniform mat4 ViewProjection; // the projection matrix uniform
+        uniform mat4 transform;
         layout(location = 0) in vec4 vposition;
         layout(location = 1) in vec4 vcolor;
         out vec4 fcolor;
         void main() {
            fcolor = vcolor;
-           gl_Position = vposition * ViewProjection;
+           gl_Position = vposition * transform;
         }
    ]]
    vertex_shader:CompileShader()
@@ -42,7 +76,7 @@ local function Cube(rm)
    shader_program:AttachShader(fragment_shader)
    shader_program:LinkProgram()
 
-   local view_projection_location = shader_program:GetUniformLocation("ViewProjection")
+   local transform_location = shader_program:GetUniformLocation("transform")
 
    local vao = rm:VAO()
    gl.BindVertexArray(vao)
@@ -120,15 +154,20 @@ local function Cube(rm)
                  gl.GL_STATIC_DRAW)
    gl.BindVertexArray(nil)
 
-   return {
-      shader_program = shader_program,
-      view_projection_location = view_projection_location,
-      vao = vao,
-   }
+   local self = {}
+
+   function self:draw(transform)
+      gl.Enable(gl.GL_DEPTH_TEST)
+      gl.UseProgram(shader_program)
+      gl.UniformMatrix4fv(transform_location, 1, gl.GL_FALSE, transform)
+      gl.BindVertexArray(vao)
+      gl.DrawElements(gl.GL_TRIANGLES, 6*6, gl.GL_UNSIGNED_BYTE, 0)
+   end
+
+   return self
 end
 
-local function PostEffect(rm, window)
-   local width, height = window.rect.w, window.rect.h
+local function FXAA(rm)
    local vertex_shader = rm:Shader(gl.GL_VERTEX_SHADER)
    vertex_shader:ShaderSource [[
       #version 330
@@ -361,7 +400,7 @@ local function PostEffect(rm, window)
    shader_program:AttachShader(fragment_shader)
    shader_program:LinkProgram()
 
-   local post_effect_texture_location = shader_program:GetUniformLocation("intexture")
+   local intexture_location = shader_program:GetUniformLocation("intexture")
    local vao = rm:VAO()
    gl.BindVertexArray(vao)
    local vbo = rm:VBO()
@@ -392,30 +431,22 @@ local function PostEffect(rm, window)
                  gl.GL_STATIC_DRAW)
    gl.BindVertexArray(nil)
 
-   local texture = rm:Texture()
-   gl.BindTexture(gl.GL_TEXTURE_2D, texture)
-   gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-   gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
-   gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_S, gl.GL_CLAMP_TO_EDGE)
-   gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_CLAMP_TO_EDGE)
-   gl.TexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGBA8, width, height, 0, gl.GL_RGBA, gl.GL_UNSIGNED_BYTE, nil)
+   local self = {}
 
-   local rbf = rm:Renderbuffer()
-   gl.BindRenderbuffer(gl.GL_RENDERBUFFER, rbf)
-   gl.RenderbufferStorage(gl.GL_RENDERBUFFER, gl.GL_DEPTH_COMPONENT24, width, height)
+   function self:draw(texture_unit)
+      -- we are not 3d rendering so no depth test
+      gl.Disable(gl.GL_DEPTH_TEST)
+      -- use the shader program
+      gl.UseProgram(shader_program)
+      -- set uniforms
+      gl.Uniform1i(intexture_location, texture_unit)
+      -- bind the vao
+      gl.BindVertexArray(vao);
+      -- draw
+      gl.DrawElements(gl.GL_TRIANGLES, 6, gl.GL_UNSIGNED_BYTE, 0)
+   end
 
-   local fbo = rm:Framebuffer()
-   gl.BindFramebuffer(gl.GL_FRAMEBUFFER, fbo)
-   gl.FramebufferTexture2D(gl.GL_FRAMEBUFFER, gl.GL_COLOR_ATTACHMENT0, gl.GL_TEXTURE_2D, texture, 0)
-   gl.FramebufferRenderbuffer(gl.GL_FRAMEBUFFER, gl.GL_DEPTH_ATTACHMENT, gl.GL_RENDERBUFFER, rbf)
-
-   return {
-      fbo = fbo,
-      shader_program = shader_program,
-      texture = texture,
-      texture_location = post_effect_texture_location,
-      vao = vao,
-   }
+   return self
 end
 
 -- main
@@ -431,10 +462,12 @@ local function main()
    window:show()
 
    local rm = gl.ResourceManager()
-   local cube = Cube(rm)
-   local post_effect = PostEffect(rm, window)
 
-   local function MathEngine()
+   local framebuffer = Framebuffer(rm, window)
+   local cube = Cube(rm)
+   local fxaa = FXAA(rm)
+
+   local function MathEngine(window)
       local ctx = mathcomp()
       local half_pi = math.pi / 2
       local t = ctx:num():param("t")
@@ -450,25 +483,33 @@ local function main()
                                                 aspect_ratio,
                                                 znear,
                                                 zfar)
-      --local m_projection = ctx:mat4_perspective(0.99)
       return ctx:compile(m_view * m_projection)
    end
-   local engine = MathEngine()
 
-   local fxaa = true
+   local engine = MathEngine(window)
+
+   local fxaa_enabled = true
    sched.on('sdl.keydown', function(evdata)
       if evdata.key.keysym.sym == sdl.SDLK_SPACE then
-         fxaa = not fxaa
+         fxaa_enabled = not fxaa_enabled
       end
    end)
 
    local loop = window:RenderLoop {
-      frame_time = 0,
       measure = true,
    }
 
+   function loop:prepare()
+      if fxaa_enabled then
+         -- render cube into a texture
+         framebuffer:bindFramebuffer()
+      else
+         -- render cube directly to screen, without any post-processing
+         gl.BindFramebuffer(gl.GL_FRAMEBUFFER, nil)
+      end
+   end
+
    function loop:clear()
-      gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, fxaa and post_effect.fbo.id or 0)
       gl.Clear(bit.bor(gl.GL_COLOR_BUFFER_BIT, gl.GL_DEPTH_BUFFER_BIT))
    end
 
@@ -476,34 +517,15 @@ local function main()
       engine.t = time.time(ffi.C.CLOCK_MONOTONIC)
       engine:calculate()
       local view_projection_matrix = engine:outputs()
-      gl.Enable(gl.GL_DEPTH_TEST)
-      gl.UseProgram(cube.shader_program)
-      gl.UniformMatrix4fv(cube.view_projection_location, 1, gl.GL_FALSE, view_projection_matrix)
-      gl.BindVertexArray(cube.vao)
-      gl.DrawElements(gl.GL_TRIANGLES, 6*6, gl.GL_UNSIGNED_BYTE, 0)
+      cube:draw(view_projection_matrix)
       -- apply post processing only when fxaa is on
-      if fxaa then
-         -- bind the "screen framebuffer"
-         gl.glBindFramebuffer(gl.GL_FRAMEBUFFER, 0)
-
-         -- we are not 3d rendering so no depth test
-         gl.Disable(gl.GL_DEPTH_TEST)
-
-         -- use the shader program
-         gl.UseProgram(post_effect.shader_program)
-
-         -- bind texture to texture unit 0
-         gl.ActiveTexture(gl.GL_TEXTURE0)
-         gl.BindTexture(gl.GL_TEXTURE_2D, post_effect.texture)
-
-         -- set uniforms
-         gl.Uniform1i(post_effect.texture_location, 0)
-
-         -- bind the vao
-         gl.BindVertexArray(post_effect.vao);
-
-         -- draw
-         gl.DrawElements(gl.GL_TRIANGLES, 6, gl.GL_UNSIGNED_BYTE, 0)
+      if fxaa_enabled then
+         -- bind source texture to texture unit 0
+         framebuffer:bindTexture(0)
+         -- render to screen
+         gl.BindFramebuffer(gl.GL_FRAMEBUFFER, nil)
+         -- apply effect
+         fxaa:draw(0)
       end
    end
 
