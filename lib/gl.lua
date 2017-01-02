@@ -981,6 +981,12 @@ function M.Finish()
    ffi.C.glFinish()
 end
 
+M.BlendEquation = ffi.C.glBlendEquation
+M.BlendFunc = ffi.C.glBlendFunc
+M.DepthFunc = ffi.C.glDepthFunc
+M.FrontFace = ffi.C.glFrontFace
+M.CullFace = ffi.C.glCullFace
+
 -- ResourceManager
 
 local ResourceManager_mt = {}
