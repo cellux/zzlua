@@ -154,6 +154,38 @@ function M.CompilerContext(opts)
       return self
    end
 
+   local function def_math_fn(name)
+      ctx[name] = function(ctx, ...)
+         return ctx:fn("math." .. name, ...)
+      end
+   end
+
+   def_math_fn("abs")
+   def_math_fn("acos")
+   def_math_fn("asin")
+   def_math_fn("atan")
+   def_math_fn("atan2")
+   def_math_fn("ceil")
+   def_math_fn("cos")
+   def_math_fn("cosh")
+   def_math_fn("exp")
+   def_math_fn("floor")
+   def_math_fn("fmod")
+   def_math_fn("frexp")
+   def_math_fn("ldexp")
+   def_math_fn("log")
+   def_math_fn("log10")
+   def_math_fn("max")
+   def_math_fn("min")
+   def_math_fn("pow")
+   def_math_fn("rad")
+   def_math_fn("random")
+   def_math_fn("sin")
+   def_math_fn("sinh")
+   def_math_fn("sqrt")
+   def_math_fn("tan")
+   def_math_fn("tanh")
+
    function ctx:binop(op, arg1, arg2)
       local self = ctx:num():depends{arg1, arg2}
       function self:emit_code(codegen)
@@ -162,6 +194,22 @@ function M.CompilerContext(opts)
                     source_of(arg1), op, source_of(arg2)))
       end
       return self
+   end
+
+   function ctx:add(arg1, arg2)
+      return ctx:binop("+", arg1, arg2)
+   end
+
+   function ctx:sub(arg1, arg2)
+      return ctx:binop("-", arg1, arg2)
+   end
+
+   function ctx:mul(arg1, arg2)
+      return ctx:binop("*", arg1, arg2)
+   end
+
+   function ctx:div(arg1, arg2)
+      return ctx:binop("/", arg1, arg2)
    end
 
    -- vector
@@ -251,7 +299,7 @@ function M.CompilerContext(opts)
    function vec_mt.__div(lhs, rhs)
       assert(is_vec(lhs))
       assert(is_num(rhs))
-      return lhs * ctx:binop("/", 1, rhs)
+      return lhs * ctx:div(1, rhs)
    end
 
    function vec_mt.__len(v)
@@ -271,14 +319,14 @@ function M.CompilerContext(opts)
    end
 
    function vec_mt.normalize(v)
-      return v * ctx:binop("/", 1, #v)
+      return v * ctx:div(1, #v)
    end
 
    function vec_mt:project(v2)
       local dot = ctx:dot(self, v2)
       local v2_mag = #v2
-      local sq = ctx:binop("*", v2_mag, v2_mag)
-      return v2 * ctx:binop("/", dot, sq)
+      local sq = ctx:mul(v2_mag, v2_mag)
+      return v2 * ctx:div(dot, sq)
    end
 
    vec_mt.__index = vec_mt
@@ -365,10 +413,7 @@ function M.CompilerContext(opts)
    end
 
    function ctx:angle(v1, v2)
-      return ctx:fn("math.acos",
-                    ctx:binop("/",
-                              ctx:dot(v1,v2),
-                              ctx:binop("*", #v1, #v2)))
+      return ctx:acos(ctx:div(ctx:dot(v1,v2), ctx:mul(#v1, #v2)))
    end
 
    -- matrix
@@ -451,7 +496,7 @@ function M.CompilerContext(opts)
    function mat_mt.__div(lhs, rhs)
       assert(is_mat(lhs))
       assert(is_num(rhs))
-      return lhs * ctx:binop("/", 1, rhs)
+      return lhs * ctx:div(1, rhs)
    end
 
    function mat_mt.extend(m, size)
@@ -505,7 +550,7 @@ function M.CompilerContext(opts)
 
    function mat_mt.cofactor(m, x, y)
       local sign = ((x+y) % 2 == 0) and 1 or -1
-      return ctx:binop("*", m:minor(x,y):det(), sign)
+      return ctx:mul(m:minor(x,y):det(), sign)
    end
 
    function mat_mt.det(m)
