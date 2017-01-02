@@ -782,6 +782,10 @@ function M.CompilerContext(opts)
       return self
    end
 
+   function ctx:mat4_rotate(...)
+      return ctx:mat3_rotate(...):extend(4)
+   end
+
    function ctx:mat4_translate(v)
       assert(is_vec(v))
       assert(v.size==3)
