@@ -5,7 +5,7 @@ local ffi = require('ffi')
 local bit = require('bit')
 local sched = require('sched')
 local time = require('time')
-local mathcomp = require('mathcomp')
+local mathx = require('mathx')
 
 local FS = ffi.sizeof("GLfloat")
 
@@ -178,7 +178,7 @@ local function main()
    local cube = Cube(rm)
 
    local function MathEngine(window)
-      local ctx = mathcomp()
+      local ctx = mathx.Compiler()
       local half_pi = math.pi / 2
       local t = ctx:num():param("t")
       local m_rotate_1 = ctx:mat3_rotate(half_pi*t*0.3, ctx:vec(3,{1,1,1}):normalize())

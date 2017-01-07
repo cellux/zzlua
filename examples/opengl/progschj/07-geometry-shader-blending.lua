@@ -5,7 +5,7 @@ local ffi = require('ffi')
 local bit = require('bit')
 local sched = require('sched')
 local time = require('time')
-local mathcomp = require('mathcomp')
+local mathx = require('mathx')
 
 local FS = ffi.sizeof("GLfloat")
 
@@ -129,7 +129,7 @@ local function main()
    local particles = Particles(rm)
 
    local function MathEngine(window)
-      local ctx = mathcomp()
+      local ctx = mathx.Compiler()
       local t = ctx:num():param("t")
       local m_rotate_y = ctx:mat4_rotate(math.rad(-22.5)*t, ctx:vec(3,{0,1,0}):normalize())
       local m_rotate_x = ctx:mat4_rotate(math.rad(30)*ctx:sin(0.1*t), ctx:vec(3,{1,0,0}):normalize())

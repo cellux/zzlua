@@ -18,7 +18,7 @@ end
 
 local next_struct_id = util.Counter()
 
-function M.CompilerContext(opts)
+function M.Compiler(opts)
    opts = opts or {}
    local numtype = opts.numtype or 'float'
 
@@ -895,4 +895,4 @@ function M.CompilerContext(opts)
    return ctx
 end
 
-return setmetatable(M, { __call = M.CompilerContext })
+return M

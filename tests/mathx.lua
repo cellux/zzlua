@@ -1,5 +1,5 @@
 local ffi = require('ffi')
-local mathcomp = require('mathcomp')
+local mathx = require('mathx')
 local assert = require('assert')
 
 -- Thanks to Fletcher Dunn and Ian Parberry - authors of "3D Math
@@ -7,15 +7,15 @@ local assert = require('assert')
 -- book on this subject. The descriptions in that book proved
 -- invaluable when I was writing the code of this module.
 
--- arrays within structs
+-- we can access arrays within structs
 
 ffi.cdef [[
-struct zz_test_mathcomp_1 {
+struct zz_test_mathx_1 {
   float output1[3];
 };
 ]]
 
-local s = ffi.new("struct zz_test_mathcomp_1")
+local s = ffi.new("struct zz_test_mathx_1")
 s.output1[0] = 1
 s.output1[1] = -2.5
 s.output1[2] = 3.75
@@ -23,11 +23,10 @@ assert.equals(s.output1[0], 1)
 assert.equals(s.output1[1], -2.5)
 assert.equals(s.output1[2], 3.75)
 
--- proof that fields within inner structs can be aliased, read and
--- written to
+-- fields within inner structs can be aliased, read and written to
 
 ffi.cdef [[
-struct zz_test_mathcomp_2 {
+struct zz_test_mathx_2 {
   int x;
   struct {
     int x;
@@ -35,7 +34,7 @@ struct zz_test_mathcomp_2 {
 };
 ]]
 
-local s = ffi.new("struct zz_test_mathcomp_2")
+local s = ffi.new("struct zz_test_mathx_2")
 s.x = 5
 s.inner.x = 8;
 local inner = s.inner
@@ -43,9 +42,9 @@ assert.equals(inner.x, 8)
 inner.x = 10
 assert.equals(s.inner.x, 10)
 
--- CompilerContext
+-- Compiler
 
-local cc = mathcomp.CompilerContext {
+local cc = mathx.Compiler {
    -- use double as the numeric type of input/ouput parameters
    --
    -- the default is float - this would cause the comparison of test
