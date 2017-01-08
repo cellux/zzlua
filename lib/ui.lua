@@ -348,8 +348,8 @@ function Window.RenderLoop(window, opts)
             ef("GL error: %x", gl_error)
          end
          measure(function() window:present() end, 'present')
-         local delta = now - prev_now or now
-         measure(function() self:update(delta) end, 'update')
+         local dt = now - prev_now
+         measure(function() self:update(dt) end, 'update')
          if frame_time > 0 then
             local next_frame_start = now + frame_time
             measure(function() sched.wait(next_frame_start) end, 'sleep')
