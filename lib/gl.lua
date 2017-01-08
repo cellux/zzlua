@@ -226,6 +226,19 @@ void glBufferData (GLenum target, GLsizeiptr size, const void *data, GLenum usag
 void glBufferSubData (GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
 void glDeleteBuffers (GLsizei n, const GLuint *buffers);
 
+void *glMapBuffer (GLenum target, GLenum access);
+void *glMapBufferRange (GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access);
+GLboolean glUnmapBuffer (GLenum target);
+
+enum {
+  GL_MAP_READ_BIT              = 0x0001,
+  GL_MAP_WRITE_BIT             = 0x0002,
+  GL_MAP_INVALIDATE_RANGE_BIT  = 0x0004,
+  GL_MAP_INVALIDATE_BUFFER_BIT = 0x0008,
+  GL_MAP_FLUSH_EXPLICIT_BIT    = 0x0010,
+  GL_MAP_UNSYNCHRONIZED_BIT    = 0x0020
+};
+
 enum {
   GL_TEXTURE_2D = 0x0DE1,
   GL_TEXTURE_MAG_FILTER = 0x2800,
@@ -778,6 +791,10 @@ end
 function M.BufferSubData(target, offset, size, data)
    ffi.C.glBufferSubData(target, offset, size, data)
 end
+
+M.MapBuffer = ffi.C.glMapBuffer
+M.MapBufferRange = ffi.C.glMapBufferRange
+M.UnmapBuffer = ffi.C.glUnmapBuffer
 
 function M.EnableVertexAttribArray(index)
    ffi.C.glEnableVertexAttribArray(index)
