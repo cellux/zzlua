@@ -44,11 +44,12 @@ assert.equals(s.inner.x, 10)
 
 -- Compiler
 
-local cc = mathx.Compiler {
+local cc = mathx.Compiler { -- cc stands for compiler context
    -- use double as the numeric type of input/ouput parameters
    --
-   -- the default is float - this would cause the comparison of test
-   -- results to fail as Lua calculates with doubles
+   -- the default is float - with that setting the checking of test
+   -- results would fail due to floating point inaccuracies (Lua
+   -- calculates with doubles)
    numtype = 'double'
 }
 
@@ -58,7 +59,7 @@ local v2 = cc:vec(3, {4, 5, 6})
 -- create compilation unit with two output parameters (targets)
 local unit = cc:compile(v1, v2)
 
--- call unit to calculate output(s)
+-- run the generated code
 unit:calculate()
 
 -- retrieve output(s)
@@ -324,3 +325,35 @@ assert(equals_enough(value[5], 4))
 assert(equals_enough(value[6], 3))
 assert(equals_enough(value[7], -2))
 assert(equals_enough(value[8], -1))
+
+-- input parameters
+local factor = 2.5
+local unit = cc:compile(cc:vec(3,{8,1,5})*cc:num():input("factor"))
+local value = unit:calculate(factor):outputs()
+assert.equals(value[0], 8*factor)
+assert.equals(value[1], 1*factor)
+assert.equals(value[2], 5*factor)
+
+local term1 = 2.5
+local term2 = 3.8
+local unit = cc:compile(cc:num():input("term1")-cc:num():input("term2"))
+local value = unit:calculate(term1, term2):outputs()
+assert.equals(value, term1-term2)
+
+-- modify input parameter (passed by reference)
+local factor = 2.5
+local input = cc:vec(3):input("v")
+local unit = cc:compile(cc:assign(input, input*factor))
+local v = ffi.new("float[?]", 3*2, {8,1,5,4,9,3}) -- two vec3's
+unit:calculate(v+0)
+assert.equals(v[0],8*factor)
+assert.equals(v[1],1*factor)
+assert.equals(v[2],5*factor)
+unit:calculate(v+0)
+assert.equals(v[0],8*factor*factor)
+assert.equals(v[1],1*factor*factor)
+assert.equals(v[2],5*factor*factor)
+unit:calculate(v+3)
+assert.equals(v[3],4*factor)
+assert.equals(v[4],9*factor)
+assert.equals(v[5],3*factor)

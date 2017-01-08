@@ -1,6 +1,9 @@
+local ffi = require('ffi')
 local util = require('util')
 
 local M = {}
+
+-- Compiler
 
 local function CodeGen()
    local self = {}
@@ -20,9 +23,10 @@ local next_struct_id = util.Counter()
 
 function M.Compiler(opts)
    opts = opts or {}
-   local numtype = opts.numtype or 'float'
 
-   local ctx = {}
+   local ctx = {
+      numtype = opts.numtype or 'float'
+   }
 
    local node_counter = util.Counter()
 
@@ -30,50 +34,31 @@ function M.Compiler(opts)
       return type(x)=="table" and x.type
    end
 
-   local function is_node_type(x, t)
+   local function is_node_with_type(x, t)
       return is_node(x) and x.type==t
    end
 
    local function is_num(x)
-      return type(x)=="number" or is_node_type(x, "num")
+      return type(x)=="number" or is_node_with_type(x, "num")
    end
 
    local function is_vec(x)
-      return is_node_type(x, "vec")
+      return is_node_with_type(x, "vec")
    end
 
    local function is_mat(x)
-      return is_node_type(x, "mat")
+      return is_node_with_type(x, "mat")
    end
 
    function ctx:node(t)
       local self = {
-         type = t,
          id = node_counter(),
+         type = t,
          deps = {},
-         assigned_name = nil,
-         is_param = false,
       }
-      function self:param(name)
-         if name then
-            self.assigned_name = name
-         end
-         self.is_param = true
-         return self
-      end
-      function self:name()
-         return self.assigned_name or sf('%s_%d', t, self.id)
-      end
-      function self:var()
-         if self.is_param then
-            return sf('_.%s', self:name())
-         else
-            return self:name()
-         end
-      end
       function self:depends(items)
          assert(type(items)=="table")
-         self.deps = {}
+         assert(#self.deps==0)
          for _,x in ipairs(items) do
             if is_node(x) then
                table.insert(self.deps, x)
@@ -89,20 +74,60 @@ function M.Compiler(opts)
          end
          visitor(self)
       end
-      function self:emit_decl_l(codegen)
-         codegen(sf("local %s", self:name()))
-      end
-      function self:emit_decl_p(codegen)
-         -- to be implemented downstream
-      end
       function self:emit_code(codegen)
          -- to be implemented downstream
       end
       return self
    end
 
+   function ctx:value(t)
+      local self = ctx:node(t)
+      self.param_kind = nil -- nil/input/output
+      self.param_name = nil -- nil means auto-generated
+      function self:param(name, kind)
+         if name then
+            self.param_name = name
+         end
+         self.param_kind = kind or "output"
+         return self
+      end
+      function self:input(name)
+         return self:param(name, "input")
+      end
+      function self:output(name)
+         return self:param(name, "output")
+      end
+      function self:name()
+         return self.param_name or sf('%s_%d', t, self.id)
+      end
+      function self:var()
+         if self.param_kind == "output" then
+            return sf('_.%s', self:name())
+         else
+            return self:name()
+         end
+      end
+      function self:emit_decl_l(codegen)
+         codegen(sf("local %s", self:name()))
+      end
+      function self:emit_decl_p(codegen)
+         -- to be implemented downstream
+      end
+      return self
+   end
+
+   local function is_value(x)
+      return is_node(x) and x.name
+   end
+
    local function source_of(x)
-      return sf('%s', is_node(x) and x:var() or x)
+      if is_value(x) then
+         return x:var()
+      elseif type(x)=="number" then
+         return tostring(x)
+      else
+         return "nil"
+      end
    end
 
    local function sources_of(items, sep)
@@ -116,30 +141,30 @@ function M.Compiler(opts)
       return values
    end
 
-   local ctx_mt = {}
+   local num_mt = {}
 
-   function ctx_mt.__add(n1, n2)
+   function num_mt.__add(n1, n2)
       return ctx:binop("+", n1, n2)
    end
 
-   function ctx_mt.__sub(n1, n2)
+   function num_mt.__sub(n1, n2)
       return ctx:binop("-", n1, n2)
    end
 
-   function ctx_mt.__mul(n1, n2)
+   function num_mt.__mul(n1, n2)
       return ctx:binop("*", n1, n2)
    end
 
-   function ctx_mt.__div(n1, n2)
+   function num_mt.__div(n1, n2)
       return ctx:binop("/", n1, n2)
    end
 
    function ctx:num()
-      local self = ctx:node("num")
+      local self = ctx:value("num")
       function self:emit_decl_p(codegen)
-         codegen(sf("%s %s;", numtype, self:name()))
+         codegen(sf("%s %s;", ctx.numtype, self:name()))
       end
-      return setmetatable(self, ctx_mt)
+      return setmetatable(self, num_mt)
    end
 
    function ctx:fn(func_name, ...)
@@ -217,7 +242,9 @@ function M.Compiler(opts)
    local vec_mt = {}
 
    function vec_mt:index(i)
-      if self.is_param then
+      if self.param_kind then
+         -- input and output vectors are cdata
+         -- their indexing is 0-based
          return i-1
       else
          return i
@@ -267,9 +294,9 @@ function M.Compiler(opts)
          local self = ctx:vec(lhs.size):depends{lhs, rhs}
          function self:emit_code(codegen)
             codegen("do")
-            codegen(sf("local m = %s", source_of(rhs)))
+            codegen(sf("local factor = %s", source_of(rhs)))
             for i=1,self.size do
-               codegen(sf("%s = %s * m", self:ref(i), lhs:ref(i)))
+               codegen(sf("%s = %s * factor", self:ref(i), lhs:ref(i)))
             end
             codegen("end")
          end
@@ -319,14 +346,15 @@ function M.Compiler(opts)
    end
 
    function vec_mt.normalize(v)
-      return v * ctx:div(1, #v)
+      return v / #v
    end
 
-   function vec_mt:project(v2)
-      local dot = ctx:dot(self, v2)
-      local v2_mag = #v2
-      local sq = ctx:mul(v2_mag, v2_mag)
-      return v2 * ctx:div(dot, sq)
+   function vec_mt:project(v)
+      -- calculate projection of this vector onto v
+      local dot = ctx:dot(self, v)
+      local v_mag = #v
+      local sq = v_mag * v_mag
+      return v * (dot / sq)
    end
 
    vec_mt.__index = vec_mt
@@ -346,7 +374,7 @@ function M.Compiler(opts)
             ef("invalid vector initializer: %s", init)
          end
       end
-      local self = ctx:node("vec")
+      local self = ctx:value("vec")
       self.size = size
       function self:emit_decl_l(codegen)
          codegen(sf("local %s = {%s}",
@@ -354,10 +382,10 @@ function M.Compiler(opts)
                     sources_of(elements, ',')))
       end
       function self:emit_decl_p(codegen)
-         codegen(sf("%s %s[%d];", numtype, self:name(), self.size))
+         codegen(sf("%s %s[%d];", ctx.numtype, self:name(), self.size))
       end
       function self:emit_code(codegen)
-         if self.is_param and #elements > 0 then
+         if self.param_kind == "output" and #elements > 0 then
             for i=1,self.size do
                codegen(sf("%s = %s",
                           self:ref(i),
@@ -413,7 +441,7 @@ function M.Compiler(opts)
    end
 
    function ctx:angle(v1, v2)
-      return ctx:acos(ctx:div(ctx:dot(v1,v2), ctx:mul(#v1, #v2)))
+      return ctx:acos(ctx:dot(v1,v2) / (#v1*#v2))
    end
 
    -- matrix
@@ -421,8 +449,11 @@ function M.Compiler(opts)
    local mat_mt = {}
 
    function mat_mt:index(x, y)
+      -- matrix elements are stored in column-major order
       local i = (x - 1) * self.rows + y
-      if self.is_param then
+      if self.param_kind then
+         -- input and output matrices are cdata
+         -- their indexing is 0-based
          return i-1
       else
          return i
@@ -441,10 +472,10 @@ function M.Compiler(opts)
          local self = ctx:mat(lhs.cols, lhs.rows):depends{lhs, rhs}
          function self:emit_code(codegen)
             codegen("do")
-            codegen(sf("local m = %s", source_of(rhs)))
+            codegen(sf("local factor = %s", source_of(rhs)))
             for x=1,self.cols do
                for y=1,self.rows do
-                  codegen(sf("%s = %s * m",
+                  codegen(sf("%s = %s * factor",
                              self:ref(x,y),
                              lhs:ref(x,y)))
                end
@@ -550,7 +581,7 @@ function M.Compiler(opts)
 
    function mat_mt.cofactor(m, x, y)
       local sign = ((x+y) % 2 == 0) and 1 or -1
-      return ctx:mul(m:minor(x,y):det(), sign)
+      return m:minor(x,y):det() * sign
    end
 
    function mat_mt.det(m)
@@ -637,20 +668,19 @@ function M.Compiler(opts)
             ef("invalid matrix initializer: %s", init)
          end
       end
-      local self = ctx:node("mat")
+      local self = ctx:value("mat")
       self.cols = cols
       self.rows = rows
-      self.size = size
       function self:emit_decl_l(codegen)
          codegen(sf("local %s = {%s}",
                     self:name(),
                     sources_of(elements, ',')))
       end
       function self:emit_decl_p(codegen)
-         codegen(sf("%s %s[%d];", numtype, self:name(), size))
+         codegen(sf("%s %s[%d];", ctx.numtype, self:name(), size))
       end
       function self:emit_code(codegen)
-         if self.is_param then
+         if self.param_kind == "output" then
             for x=1,cols do
                for y=1,rows do
                   local i = (x-1)*rows + y
@@ -839,28 +869,80 @@ function M.Compiler(opts)
       return ctx:mat(4, 4, elements)
    end
 
+   function ctx:assign(lhs, rhs)
+      local self = ctx:node("assign"):depends{rhs}
+      function self:var()
+         -- we don't use the result of an assignment as a variable
+         return "nil"
+      end
+      function self:emit_code(codegen)
+         if is_vec(lhs) then
+            assert(is_vec(rhs))
+            assert(lhs.size==rhs.size)
+            for i=1,lhs.size do
+               codegen(sf("%s = %s", lhs:ref(i), rhs:ref(i)))
+            end
+         elseif is_num(lhs) then
+            assert(is_num(rhs))
+            codegen(sf("%s = %s", lhs:var(), source_of(rhs)))
+         else
+            ef("cannot assign to node of type %s", lhs.type)
+         end
+      end
+      return self
+   end
+
+   local function once_per_node(fn)
+      local nodes_seen = {}
+      return function(node)
+         if not nodes_seen[node] then
+            fn(node)
+            nodes_seen[node] = true
+         end
+      end
+   end
+
    function ctx:compile(...)
       local roots = {...}
-      -- mark all roots as (output) parameters
+
+      -- mark all root values as output parameters
       for _,node in ipairs(roots) do
-         node:invoke(function(n) n:param() end, false)
+         if is_value(node) then
+            node:output()
+         end
       end
+
+      -- collect nodes which have an input parameter
+      local input_nodes = {}
+      local add_input_node = once_per_node(function(node)
+         if node.param_kind == "input" then
+            table.insert(input_nodes, node)
+         end
+      end)
+      for _,node in ipairs(roots) do
+         node:invoke(add_input_node, true)
+      end
+      -- input parameters are passed in node construction order
+      table.sort(input_nodes, function(a,b) return a.id < b.id end)
+      local input_names = {}
+      for _,node in ipairs(input_nodes) do
+         table.insert(input_names, node:name())
+      end
+
       local codegen = CodeGen()
       codegen "local ffi = require('ffi')"
       codegen "local mt = {}"
-      local codegen_p = CodeGen() -- params
-      local codegen_l = CodeGen() -- locals
-      local emit_decl_invoked = {}
-      local function emit_decl(node)
-         if not emit_decl_invoked[node] then
-            if node.is_param then
-               node:emit_decl_p(codegen_p)
-            else
+      local codegen_p = CodeGen() -- output parameters
+      local codegen_l = CodeGen() -- local variables
+      local emit_decl = once_per_node(function(node)
+         if is_value(node) then
+            if not node.param_kind then
                node:emit_decl_l(codegen_l)
+            elseif node.param_kind == "output" then
+               node:emit_decl_p(codegen_p)
             end
-            emit_decl_invoked[node] = true
          end
-      end
+      end)
       for _,node in ipairs(roots) do
          node:invoke(emit_decl, true)
       end
@@ -868,15 +950,16 @@ function M.Compiler(opts)
       codegen(sf("ffi.cdef [[ struct %s {", struct_name))
       codegen(codegen_p:code())
       codegen "}; ]]"
-      codegen "function mt.calculate(_)"
-      codegen(codegen_l:code())
-      local emit_code_invoked = {}
-      local function emit_code(node)
-         if not emit_code_invoked[node] then
-            node:emit_code(codegen)
-            emit_code_invoked[node] = true
-         end
+      if #input_names == 0 then
+         codegen("function mt.calculate(_)")
+      else
+         codegen(sf("function mt.calculate(_,%s)",
+                    table.concat(input_names,',')))
       end
+      codegen(codegen_l:code())
+      local emit_code = once_per_node(function(node)
+         node:emit_code(codegen)
+      end)
       for _,node in ipairs(roots) do
          node:invoke(emit_code, true)
       end
