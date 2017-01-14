@@ -221,6 +221,7 @@ void glDeleteVertexArrays (GLsizei n, const GLuint *arrays);
 
 void glGenBuffers (GLsizei n, GLuint *buffers);
 void glBindBuffer (GLenum target, GLuint buffer);
+void glBindBufferBase (GLenum target, GLuint index, GLuint buffer);
 void glBindBufferRange (GLenum target, GLuint index, GLuint buffer, GLintptr offset, GLsizeiptr size);
 void glBufferData (GLenum target, GLsizeiptr size, const void *data, GLenum usage);
 void glBufferSubData (GLenum target, GLintptr offset, GLsizeiptr size, const void *data);
@@ -484,6 +485,28 @@ void glDrawElementsInstanced (GLenum mode, GLsizei count, GLenum type, const voi
 
 void glTexBuffer (GLenum target, GLenum internalformat, GLuint buffer);
 
+/* transform buffers */
+
+enum {
+  GL_TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH         = 0x8C76,
+  GL_TRANSFORM_FEEDBACK_BUFFER_MODE                = 0x8C7F,
+  GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS    = 0x8C80,
+  GL_TRANSFORM_FEEDBACK_VARYINGS                   = 0x8C83,
+  GL_TRANSFORM_FEEDBACK_BUFFER_START               = 0x8C84,
+  GL_TRANSFORM_FEEDBACK_BUFFER_SIZE                = 0x8C85,
+  GL_PRIMITIVES_GENERATED                          = 0x8C87,
+  GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN         = 0x8C88,
+  GL_RASTERIZER_DISCARD                            = 0x8C89,
+  GL_MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS = 0x8C8A,
+  GL_MAX_TRANSFORM_FEEDBACK_SEPARATE_ATTRIBS       = 0x8C8B,
+  GL_INTERLEAVED_ATTRIBS                           = 0x8C8C,
+  GL_SEPARATE_ATTRIBS                              = 0x8C8D
+};
+
+void glTransformFeedbackVaryings (GLuint program, GLsizei count, const char **varyings, GLenum bufferMode);
+void glBeginTransformFeedback (GLenum primitiveMode);
+void glEndTransformFeedback (void);
+
 ]]
 
 local function gl_loaded()
@@ -634,6 +657,11 @@ function Program_mt:UniformBlockBinding(index, binding)
    ffi.C.glUniformBlockBinding(self.id, index, binding)
 end
 
+function Program_mt:TransformFeedbackVaryings(varyings, bufferMode)
+   local _varyings = ffi.new("const char*[?]", #varyings, varyings)
+   ffi.C.glTransformFeedbackVaryings(self.id, #varyings, _varyings, bufferMode)
+end
+
 function Program_mt:LinkProgram()
    ffi.C.glLinkProgram(self.id)
    local status = ffi.new("GLint[1]")
@@ -750,6 +778,10 @@ end
 
 function M.BindBuffer(target, buffer)
    ffi.C.glBindBuffer(target, buffer.id)
+end
+
+function M.BindBufferBase(target, index, buffer)
+   ffi.C.glBindBufferBase(target, index, buffer.id)
 end
 
 function M.BindBufferRange(target, index, buffer, offset, size)
@@ -888,9 +920,23 @@ M.Uniform3i = ffi.C.glUniform3i
 M.Uniform4f = ffi.C.glUniform4f
 M.Uniform4i = ffi.C.glUniform4i
 
+M.Uniform1fv = ffi.C.glUniform1fv
+M.Uniform1iv = ffi.C.glUniform1iv
+M.Uniform2fv = ffi.C.glUniform2fv
+M.Uniform2iv = ffi.C.glUniform2iv
+M.Uniform3fv = ffi.C.glUniform3fv
+M.Uniform3iv = ffi.C.glUniform3iv
+M.Uniform4fv = ffi.C.glUniform4fv
+M.Uniform4iv = ffi.C.glUniform4iv
+
 M.UniformMatrix2fv = ffi.C.glUniformMatrix2fv
 M.UniformMatrix3fv = ffi.C.glUniformMatrix3fv
 M.UniformMatrix4fv = ffi.C.glUniformMatrix4fv
+
+-- transform feedback
+
+M.BeginTransformFeedback = ffi.C.glBeginTransformFeedback
+M.EndTransformFeedback = ffi.C.glEndTransformFeedback
 
 -- RenderBuffer
 

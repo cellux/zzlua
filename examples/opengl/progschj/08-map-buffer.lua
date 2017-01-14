@@ -209,7 +209,7 @@ end
 
 local function main()
    local window = ui.Window {
-      title = "geometry shader - blending",
+      title = "map buffer",
       gl_profile = 'core',
       gl_version = '3.3',
       quit_on_escape = true,
