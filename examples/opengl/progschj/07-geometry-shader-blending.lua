@@ -130,16 +130,16 @@ local function main()
 
    local function MathEngine(window)
       local ctx = mathx.Compiler()
-      local t = ctx:num():param("t")
+      local t = ctx:num():input("t")
       local m_rotate_y = ctx:mat4_rotate(math.rad(-22.5)*t, ctx:vec(3,{0,1,0}):normalize())
       local m_rotate_x = ctx:mat4_rotate(math.rad(30)*ctx:sin(0.1*t), ctx:vec(3,{1,0,0}):normalize())
       local m_translate = ctx:mat4_translate(ctx:vec(3,{0,0,50}))
-      local m_view = (m_rotate_y * m_rotate_x * m_translate):param("view_matrix")
+      local m_view = (m_rotate_y * m_rotate_x * m_translate)
       local fovy = math.pi / 2
       local aspect_ratio = window.rect.w / window.rect.h
       local znear = 0.1
       local zfar = 100
-      local m_proj = ctx:mat4_perspective(fovy, aspect_ratio, znear, zfar):param("proj_matrix")
+      local m_proj = ctx:mat4_perspective(fovy, aspect_ratio, znear, zfar)
       return ctx:compile(m_view, m_proj)
    end
 
@@ -154,9 +154,9 @@ local function main()
    end
 
    function loop:draw()
-      engine.t = time.time(ffi.C.CLOCK_MONOTONIC)
-      engine:calculate()
-      particles:draw(engine.view_matrix, engine.proj_matrix)
+      local t = time.time(ffi.C.CLOCK_MONOTONIC)
+      local view_matrix, proj_matrix = engine(t)
+      particles:draw(view_matrix, proj_matrix)
    end
 
    sched(loop)

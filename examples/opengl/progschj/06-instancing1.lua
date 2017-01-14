@@ -180,7 +180,7 @@ local function main()
    local function MathEngine(window)
       local ctx = mathx.Compiler()
       local half_pi = math.pi / 2
-      local t = ctx:num():param("t")
+      local t = ctx:num():input("t")
       local m_rotate_1 = ctx:mat3_rotate(half_pi*t*0.3, ctx:vec(3,{1,1,1}):normalize())
       local m_rotate_2 = ctx:mat3_rotate(half_pi*t*0.8, ctx:vec(3,{1,-1,1}):normalize())
       local m_translate = ctx:mat4_translate(ctx:vec(3,{0,0,5}))
@@ -193,8 +193,7 @@ local function main()
                                                 aspect_ratio,
                                                 znear,
                                                 zfar)
-      local m_view_projection = (m_view * m_projection):param("view_projection_matrix")
-      return ctx:compile(m_view_projection)
+      return ctx:compile(m_view * m_projection)
    end
 
    local engine = MathEngine(window)
@@ -208,9 +207,9 @@ local function main()
    end
 
    function loop:draw()
-      engine.t = time.time(ffi.C.CLOCK_MONOTONIC)
-      engine:calculate()
-      cube:draw(engine.view_projection_matrix)
+      local t = time.time(ffi.C.CLOCK_MONOTONIC)
+      local view_projection_matrix = engine(t)
+      cube:draw(view_projection_matrix)
    end
 
    sched(loop)

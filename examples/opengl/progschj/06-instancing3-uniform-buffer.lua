@@ -49,12 +49,12 @@ local function Cube(rm)
 
    local function Translator()
       local ctx = mathx.Compiler()
-      local offset = ctx:vec(3):param("offset")
-      local m_translate = ctx:mat4_translate(offset):param("translate_matrix")
+      local offset = ctx:vec(3):input("offset")
+      local m_translate = ctx:mat4_translate(offset)
       return ctx:compile(m_translate)
    end
 
-   local translator = Translator()
+   local translate = Translator()
 
    local matrix_size = 4*4*FS
 
@@ -68,17 +68,18 @@ local function Cube(rm)
                  gl.GL_STREAM_DRAW)
 
    local tx,ty,tz = 2,2,2
+   local offset = ffi.new("float[3]")
    for i=1,instance_count do
-      translator.offset[0] = tx
-      translator.offset[1] = ty
-      translator.offset[2] = tz
-      translator:calculate()
+      offset[0] = tx
+      offset[1] = ty
+      offset[2] = tz
+      local translate_matrix = translate(offset)
       -- the transform matrix is at offset 0
       -- the instance model matrices begin at offset 4*4*FS
       gl.BufferSubData(gl.GL_UNIFORM_BUFFER,
                        i*matrix_size,
                        matrix_size,
-                       translator.translate_matrix)
+                       translate_matrix)
       if (i-1) % 4 == 0 then
          tx = -tx
       end
@@ -201,7 +202,7 @@ local function main()
    local function MathEngine(window)
       local ctx = mathx.Compiler()
       local half_pi = math.pi / 2
-      local t = ctx:num():param("t")
+      local t = ctx:num():input("t")
       local m_rotate_1 = ctx:mat3_rotate(half_pi*t*0.3, ctx:vec(3,{1,1,1}):normalize())
       local m_rotate_2 = ctx:mat3_rotate(half_pi*t*0.8, ctx:vec(3,{1,-1,1}):normalize())
       local m_translate = ctx:mat4_translate(ctx:vec(3,{0,0,5}))
@@ -214,8 +215,7 @@ local function main()
                                                 aspect_ratio,
                                                 znear,
                                                 zfar)
-      local m_view_projection = (m_view * m_projection):param("view_projection_matrix")
-      return ctx:compile(m_view_projection)
+      return ctx:compile(m_view * m_projection)
    end
 
    local engine = MathEngine(window)
@@ -229,9 +229,9 @@ local function main()
    end
 
    function loop:draw()
-      engine.t = time.time(ffi.C.CLOCK_MONOTONIC)
-      engine:calculate()
-      cube:draw(engine.view_projection_matrix)
+      local t = time.time(ffi.C.CLOCK_MONOTONIC)
+      local view_projection_matrix = engine(t)
+      cube:draw(view_projection_matrix)
    end
 
    sched(loop)
