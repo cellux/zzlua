@@ -75,17 +75,25 @@ local function Particles(rm)
 
    local particles = 128 * 1024
    local vertex_data = ffi.new("GLfloat[?]", particles*3)
+   local function mr(term_count)
+      term_count = term_count or 1
+      local sum = 0
+      for i=1,term_count do
+         sum = sum + math.random()
+      end
+      return sum
+   end
    for i=0,particles-1 do
-      local arm = 3 * math.random()
-      local alpha = 1 / (0.1 + math.random()^0.7) - 1 / 1.1
+      local arm = math.floor(3 * mr())
+      local alpha = 1 / (0.1 + mr()^0.7) - 1 / 1.1
       local r = 4.0 * alpha
       alpha = alpha + arm * 2.0 * 3.1416 / 3.0
       vertex_data[3*i+0] = r * math.sin(alpha)
       vertex_data[3*i+1] = 0
       vertex_data[3*i+2] = r * math.cos(alpha)
-      vertex_data[3*i+0] = vertex_data[3*i+0] + (4.0 - 0.2 * alpha) * (2-(math.random()+math.random()+math.random()+math.random()))
-      vertex_data[3*i+1] = vertex_data[3*i+1] + (2.0 - 0.1 * alpha) * (2-(math.random()+math.random()+math.random()+math.random()))
-      vertex_data[3*i+2] = vertex_data[3*i+2] + (4.0 - 0.2 * alpha) * (2-(math.random()+math.random()+math.random()+math.random()))
+      vertex_data[3*i+0] = vertex_data[3*i+0] + (4.0 - 0.2 * alpha) * (2-(mr(4)))
+      vertex_data[3*i+1] = vertex_data[3*i+1] + (2.0 - 0.1 * alpha) * (2-(mr(4)))
+      vertex_data[3*i+2] = vertex_data[3*i+2] + (4.0 - 0.2 * alpha) * (2-(mr(4)))
    end
 
    gl.BufferData(gl.GL_ARRAY_BUFFER,

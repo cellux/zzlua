@@ -68,14 +68,14 @@ local function Particles(rm)
    local proj_location = shader_program:GetUniformLocation("proj")
 
    local g = -9.81 -- gravity force
-   local bounce = 1.5 -- inelastic: 1.0, elastic: 2.0
+   local bounce = 1.2 -- inelastic: 1.0, elastic: 2.0
 
    local function ParticleArray(nparticles)
       local self = {
          location = ffi.new("GLfloat[?]", nparticles*3),
          velocity = ffi.new("GLfloat[?]", nparticles*3),
       }
-      local translate = {math.sin(time.time())*5,25,0}
+      local translate = {0,20,0}
       local scale = {5,5,5}
       function self:reset(index)
          local loc = self.location + (index-1)*3
@@ -134,9 +134,9 @@ local function Particles(rm)
    end
 
    local spheres = {}
-   --table.insert(spheres, Sphere({0,12,1}, 10))
-   table.insert(spheres, Sphere({0,-30,0}, 20))
-   --table.insert(spheres, Sphere({-5,10,0}, 12))
+   table.insert(spheres, Sphere({0,12,1}, 3))
+   table.insert(spheres, Sphere({-3,0,0}, 7))
+   table.insert(spheres, Sphere({5,-10,0}, 12))
 
    local self = {}
 
@@ -185,7 +185,7 @@ local function Particles(rm)
       return cc:compile(
          cc:when(cc:logand(cc:lt(dist, sphere_radius),
                            cc:lt(dp, 0)),
-                 cc:assign(vel, vel - diff * bounce/(dist*dist)*dp)))
+                 cc:assign(vel, vel - (diff * bounce/(dist*dist)*dp))))
    end
    local bouncer = Bouncer()
 
@@ -213,7 +213,7 @@ local function main()
       gl_profile = 'core',
       gl_version = '3.3',
       quit_on_escape = true,
-      fullscreen_desktop = true,
+      --fullscreen_desktop = true,
    }
    window:show()
 

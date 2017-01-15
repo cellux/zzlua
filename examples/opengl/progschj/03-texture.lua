@@ -81,13 +81,14 @@ local function main()
    gl.BindTexture(gl.GL_TEXTURE_2D, texture)
    local width, height = window.rect.w, window.rect.h
    local image = ffi.new("GLubyte[?]", 4*width*height)
+   local int = math.floor
    for y=0,height-1 do
       for x=0,width-1 do
          local index = y*width+x
-         image[4*index+0] = 0xFF*(y/10%2)*(x/10%2) -- R
-         image[4*index+1] = 0xFF*(y/13%2)*(x/13%2) -- G
-         image[4*index+2] = 0xFF*(y/17%2)*(x/17%2) -- B
-         image[4*index+3] = 0xFF                   -- A
+         image[4*index+0] = 0xFF*int(y/10%2)*int(x/10%2) -- R
+         image[4*index+1] = 0xFF*int(y/13%2)*int(x/13%2) -- G
+         image[4*index+2] = 0xFF*int(y/17%2)*int(x/17%2) -- B
+         image[4*index+3] = 0xFF                         -- A
       end
    end
    gl.TexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR);
