@@ -293,24 +293,29 @@ function M.Compiler(opts)
       return self
    end
 
-   function vec_mt.__add(lhs, rhs)
+   function vec_mt.binop(lhs, rhs, op)
       assert(is_vec(lhs))
       assert(is_vec(rhs))
       assert(lhs.size == rhs.size)
       local self = ctx:vec(lhs.size):depends{lhs, rhs}
       function self:emit_code(codegen)
          for i=1,self.size do
-            codegen(sf("%s = %s + %s",
+            codegen(sf("%s = %s %s %s",
                        self:ref(i),
                        lhs:ref(i),
+                       op,
                        rhs:ref(i)))
          end
       end
       return self
    end
 
+   function vec_mt.__add(lhs, rhs)
+      return vec_mt.binop(lhs, rhs, '+')
+   end
+
    function vec_mt.__sub(lhs, rhs)
-      return lhs + -rhs
+      return vec_mt.binop(lhs, rhs, '-')
    end
 
    function vec_mt.__mul(lhs, rhs)
