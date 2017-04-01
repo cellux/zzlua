@@ -46,8 +46,13 @@ local MatchObject_mt = {
       if i < 0 or i >= self.stringcount then
          return nil
       else
-         return self.subject:sub(self.ovector[i*2]+1,
-                                 self.ovector[i*2+1])
+         local lo = self.ovector[i*2]
+         local hi = self.ovector[i*2+1]
+         if lo == -1 and hi == -1 then
+            return nil
+         else
+            return self.subject:sub(lo+1, hi)
+         end
       end
    end,
 }

@@ -29,3 +29,16 @@ assert(m[1]=="o")
 assert(m[2]==nil)
 m = r:match("barfoebar")
 assert(m==nil)
+
+-- match at beginning
+assert(re.match("^abc", "abcdef"))
+assert(re.match("def", "abcdef"))
+assert(not re.match("^def", "abcdef"))
+
+-- empty match groups
+m = re.match("^([a-z]+)?([.:,])?([0-9]+)?$", "abc123")
+assert(m.stringcount==4, sf("m.stringcount=%d", m.stringcount))
+assert(m[0]=="abc123")
+assert(m[1]=="abc")
+assert(m[2]==nil, sf("m[2]=%s", m[2]))
+assert(m[3]=="123")
