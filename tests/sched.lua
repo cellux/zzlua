@@ -152,7 +152,7 @@ local elapsed = time_after_wait-time_before_wait
 local diff = math.abs(wait_amount - elapsed) -- error
 -- sched provides us with the precision of its timer
 assert(diff <= sched.precision,
-       sf("diff > sched timer precision (%s)", sched.precision))
+       sf("diff (%s) > sched timer precision (%s)", diff, sched.precision))
 
 -- a thread sleeping in sched.wait() keeps the event loop alive
 local pid = sys.fork()
