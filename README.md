@@ -88,7 +88,7 @@ In decreasing order of priority:
 
 * Learn as much as possible about the stuff that's under the hood in all of the world's software
 * Create a platform which I can use to write the programs I want to write, and which I can extend/modify when the problems I face cannot be solved in the higher layers
-* Express the self
+* Express myself
 
 ## Philosophy
 
