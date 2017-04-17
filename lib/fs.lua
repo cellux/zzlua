@@ -3,7 +3,6 @@ local async = require('async')
 local sched = require('sched')
 local time = require('time') -- for struct timespec
 local env = require('env')
-local sys = require('sys')
 local util = require('util')
 
 ffi.cdef [[

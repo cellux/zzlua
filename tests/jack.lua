@@ -1,5 +1,5 @@
 local bit = require('bit')
-local sys = require('sys')
+local process = require('process')
 local jack = require('jack')
 local sf = string.format
 local sched = require('sched')
@@ -18,7 +18,7 @@ local function open_jack(client_name)
    if not client then
       if bit.band(status, jack.JackServerFailed) ~= 0 then
          print("Jack server not running, skipping test")
-         sys.exit(0)
+         process.exit(0)
       else
          error("jack.open() failed")
       end
@@ -65,7 +65,7 @@ sched(function()
                end)
       end)
 
-local client_name = sf("zzlua-jack-test-%d", sys.getpid())
+local client_name = sf("zzlua-jack-test-%d", process.getpid())
 open_jack(client_name)
 
 sched()

@@ -76,7 +76,7 @@ CFLAGS := -Wall -iquote ./lib -iquote $(LUAJIT_SRC) -iquote $(NANOMSG_SRC) -iquo
 LDFLAGS := -Wl,-E -lm -ldl -lpthread -lanl -ljack -lfluidsynth
 
 # Lua libraries
-ZZ_LIB_LUA_SRC := $(sort $(shell find lib app/lib -name '*.lua'))
+ZZ_LIB_LUA_SRC := $(sort $(shell find lib apps/zzlua/lib -name '*.lua'))
 ZZ_LIB_LUA_OBJ := $(patsubst %.lua,%.lo,$(ZZ_LIB_LUA_SRC))
 
 # Lua libs are precompiled into object files
@@ -85,7 +85,7 @@ ZZ_LIB_LUA_OBJ := $(patsubst %.lua,%.lo,$(ZZ_LIB_LUA_SRC))
 	LUA_PATH=$(LUAJIT_SRC)/?.lua $(LUAJIT_BIN) -b -t o -n $(shell echo $< | sed -r -e 's#.*lib/(.+)\.lua#\1#' -e 's#/#.#g') -g $< $@
 
 # low-level support for Lua libraries
-ZZ_LIB_C_SRC := $(sort $(shell find lib app/lib -name '*.c'))
+ZZ_LIB_C_SRC := $(sort $(shell find lib apps/zzlua/lib -name '*.c'))
 ZZ_LIB_C_OBJ := $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
 
 # header dependencies
@@ -113,8 +113,8 @@ test: zzlua
 .PHONY: clean
 clean:
 	rm -f zzlua
-	find lib app/lib -name '*.o' -delete
-	find lib app/lib -name '*.lo' -delete
+	find lib apps/zzlua/lib -name '*.o' -delete
+	find lib apps/zzlua/lib -name '*.lo' -delete
 
 .PHONY: distclean
 distclean: clean

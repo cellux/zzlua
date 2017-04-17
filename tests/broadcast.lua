@@ -1,5 +1,5 @@
 local broadcast = require('broadcast')
-local sys = require('sys')
+local process = require('process')
 local assert = require('assert')
 local sched = require('sched')
 
@@ -29,7 +29,7 @@ local sched = require('sched')
 -- broadcast subscriber (and potentially a broadcast listener) to be
 -- set up in the current process.
 
-local pid, sp = sys.fork(function(sc)
+local pid, sp = process.fork(function(sc)
    sched(function()
       sched.wait("broadcast.initialized")
       sc:write("ready\n")
@@ -43,12 +43,12 @@ sched(function()
 end)
 sched()
 sp:close()
-sys.waitpid(pid)
+process.waitpid(pid)
 
 -- broadcasting events from process A
 -- subscribing to them in process B
 
-local pid, sp = sys.fork(function(sc)
+local pid, sp = process.fork(function(sc)
    local messages = {}
    sched(function()
       broadcast.on('broadcast-test', function(evdata)
@@ -74,4 +74,4 @@ end)
 sched()
 
 sp:close()
-sys.waitpid(pid)
+process.waitpid(pid)

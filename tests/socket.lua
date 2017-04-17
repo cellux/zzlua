@@ -1,6 +1,6 @@
 local socket = require('socket')
 local assert = require('assert')
-local sys = require('sys')
+local process = require('process')
 local file = require('file')
 local fs = require('fs')
 local ffi = require('ffi')
@@ -41,7 +41,7 @@ s2:close()
 
 -- IPC using socketpair
 local sp, sc = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM)
-local pid = sys.fork()
+local pid = process.fork()
 if pid == 0 then
    -- child
    sp:close()
@@ -49,7 +49,7 @@ if pid == 0 then
    sc:write("world")
    assert.equals(sc:read(), "quit")
    sc:close()
-   sys.exit()
+   process.exit()
 else
    -- parent
    sc:close()
@@ -59,12 +59,12 @@ else
    sp:close()
    -- closing sp causes an EOF condition on sc in the child
    -- at this point, sc:read() returns and the child exits
-   sys.waitpid(pid)
+   process.waitpid(pid)
 end
 
 -- IPC using socketpair with line-oriented protocol
 local sp, sc = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM)
-local pid = sys.fork()
+local pid = process.fork()
 if pid == 0 then
    -- child
    sp:close()
@@ -74,7 +74,7 @@ if pid == 0 then
    -- check that plain read() still works
    assert.equals(sc:read(10), "extra-data")
    sc:close()
-   sys.exit()
+   process.exit()
 else
    -- parent
    sc:close()
@@ -83,7 +83,7 @@ else
    sp:write("quit\n")
    assert.equals(sp:readline(), "world")
    sp:write("extra-data")
-   sys.waitpid(pid)
+   process.waitpid(pid)
    sp:close()
 end
 
@@ -105,7 +105,7 @@ assert(socket_addr_1 == socket_addr_2)
 local socket_path = file.mktemp("zzlua-test-socket")
 local socket_addr = socket.sockaddr(socket.AF_LOCAL, socket_path)
 
-local pid, sp = sys.fork(function(sc)
+local pid, sp = process.fork(function(sc)
       assert.equals(sc:readline(), "server-ready")
       function send(msg)
          local client = socket(socket.PF_LOCAL, socket.SOCK_STREAM)
@@ -134,7 +134,7 @@ while true do
 end
 server:close()
 sp:close()
-sys.waitpid(pid)
+process.waitpid(pid)
 
 if fs.exists(socket_path) then
    fs.unlink(socket_path)
@@ -145,7 +145,7 @@ end
 local server_host, server_port = "127.0.0.1", 54321
 local server_addr = socket.sockaddr(socket.AF_INET, server_host, server_port)
 
-local pid, sp = sys.fork(function(sc)
+local pid, sp = process.fork(function(sc)
       assert.equals(sc:readline(), "server-ready")
       function send(msg)
          local client = socket(socket.PF_INET, socket.SOCK_STREAM)
@@ -185,7 +185,7 @@ while true do
 end
 server:close()
 sp:close()
-sys.waitpid(pid)
+process.waitpid(pid)
 
 -- sendto
 
@@ -199,7 +199,7 @@ s:close()
 local server_host, server_port = "127.0.0.1", 54321
 local server_addr = socket.sockaddr(socket.AF_INET, server_host, server_port)
 
-local pid, sp = sys.fork(function(sc)
+local pid, sp = process.fork(function(sc)
       assert.equals(sc:readline(), "server-ready")
       function send(msg)
          local client = socket(socket.PF_INET, socket.SOCK_DGRAM)
@@ -231,7 +231,7 @@ while true do
 end
 server:close()
 sp:close()
-sys.waitpid(pid)
+process.waitpid(pid)
 
 -- a TCP server
 

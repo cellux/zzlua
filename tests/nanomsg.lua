@@ -2,7 +2,7 @@ local nn = require('nanomsg')
 local ffi = require('ffi')
 local time = require('time')
 local sched = require('sched')
-local sys = require('sys')
+local process = require('process')
 local assert = require('assert')
 local sf = string.format
 
@@ -176,7 +176,7 @@ end
 
 local children = {}
 for i=1,n_children do
-   local pid,sp = sys.fork(child_proc)
+   local pid,sp = process.fork(child_proc)
    children[pid] = sp
 end
 
@@ -203,5 +203,5 @@ end)
 sched()
 for pid,sp in pairs(children) do
    sp:close()
-   sys.waitpid(pid)
+   process.waitpid(pid)
 end

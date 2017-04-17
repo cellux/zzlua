@@ -2,7 +2,7 @@
 
 local assert = require('assert')
 local fs = require('fs') -- for dup2
-local sys = require('sys')
+local process = require('process')
 local ffi = require('ffi')
 local sched = require('sched')
 
@@ -12,13 +12,13 @@ assert.equals(sf("Hello, %s", "world"), "Hello, world")
 
 -- pf
 
-local pid, sp = sys.fork(function(sc)
+local pid, sp = process.fork(function(sc)
    ffi.C.dup2(sc.fd, 1)
    pf("Hello, %s\n", "world")
 end)
 assert.equals(sp:readline(), "Hello, world")
 sp:close()
-sys.waitpid(pid)
+process.waitpid(pid)
 
 -- ef
 

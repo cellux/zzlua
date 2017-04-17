@@ -2,7 +2,7 @@ local ffi = require('ffi')
 local sched = require('sched')
 local async = require('async')
 local env = require('env')
-local sys = require('sys')
+local process = require('process')
 local util = require('util')
 local fs = require('fs')
 
@@ -150,7 +150,7 @@ function M.read(path, rsize)
 end
 
 function M.mkstemp(filename_prefix, tmpdir)
-   filename_prefix = filename_prefix or sf("%u", sys.getpid())
+   filename_prefix = filename_prefix or sf("%u", process.getpid())
    tmpdir = tmpdir or env.TMPDIR or '/tmp'
    local template = sf("%s/%s-XXXXXX", tmpdir, filename_prefix)
    local buf = ffi.new("char[?]", #template+1)

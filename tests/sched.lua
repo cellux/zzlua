@@ -1,6 +1,6 @@
 local sched = require('sched')
 local time = require('time')
-local sys = require('sys')
+local process = require('process')
 local signal = require('signal')
 local assert = require('assert')
 local sf = string.format
@@ -155,13 +155,13 @@ assert(diff <= sched.precision,
        sf("diff (%s) > sched timer precision (%s)", diff, sched.precision))
 
 -- a thread sleeping in sched.wait() keeps the event loop alive
-local pid = sys.fork()
+local pid = process.fork()
 if pid == 0 then
    sched(function()
             sched.wait('quit')
          end)
    sched()
-   sys.exit()
+   process.exit()
 else
    time.sleep(0.1)
    -- subprocess still exists after 100 ms
@@ -169,7 +169,7 @@ else
    -- let's send it a SIGTERM (which will cause a sched.quit())
    signal.kill(pid, signal.SIGTERM)
    -- wait for it
-   assert(sys.waitpid(pid)==pid)
+   assert(process.waitpid(pid)==pid)
    -- now it should not exist any more
    assert.equals(signal.kill(pid, 0), -1, "result of signal.kill(pid,0) after child got SIGTERM")
 end
