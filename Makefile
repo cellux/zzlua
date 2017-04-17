@@ -92,10 +92,10 @@ ZZ_LIB_C_OBJ := $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
 lib/buffer.o: lib/buffer.h
 lib/msgpack.o: lib/msgpack.h
 
-zzlua.o: $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
+main.o: main.c $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
 
 # zzlua + libs + support
-ZZ_OBJ := zzlua.o $(ZZ_LIB_LUA_OBJ) $(ZZ_LIB_C_OBJ)
+ZZ_OBJ := main.o $(ZZ_LIB_LUA_OBJ) $(ZZ_LIB_C_OBJ)
 
 # static libraries and object files to be searched for missing externs
 ZZ_LIB := $(LUAJIT_LIB) $(CMP_OBJ)
@@ -113,6 +113,7 @@ test: zzlua
 .PHONY: clean
 clean:
 	rm -f zzlua
+	rm -f main.o
 	find lib apps/zzlua/lib -name '*.o' -delete
 	find lib apps/zzlua/lib -name '*.lo' -delete
 
