@@ -1,4 +1,4 @@
-## zzlua
+## appbase
 
 A LuaJIT-based app engine with a bunch of generally useful libraries pre-packaged into the binary.
 
@@ -8,7 +8,7 @@ Currently Linux only.
 
 > Warning: this is alpha-quality software. It has not yet been used in production.
 
-> If you are interested in LuaJIT and/or event-driven architectures, you may find the code interesting to read.
+> If you are interested in LuaJIT and/or event-driven architectures, the code might be interesting to read.
 
 ## Internal dependencies
 
@@ -30,8 +30,8 @@ These are needed only if the corresponding library is `require`d by some Lua cod
 ## Compilation
 
 ```bash
-git clone https://github.com/cellux/zzlua
-cd zzlua
+git clone https://github.com/cellux/appbase
+cd appbase
 make
 make test
 ```
@@ -45,8 +45,8 @@ make test
 * non-blocking timers (time)
 * epoll-based support for non-blocking Unix/TCP/UDP sockets (socket)
 * non-blocking file operations (file)
-* access to various system calls (sys)
-* access to the process environment (env)
+* process management (process)
+* access to environment variables (env)
 
 Basically it's like node.js, implemented in LuaJIT and a little bit of C.
 
@@ -88,7 +88,7 @@ In decreasing order of priority:
 
 * Learn as much as possible about the stuff that's under the hood in all of the world's software
 * Create a platform which I can use to write the programs I want to write, and which I can extend/modify when the problems I face cannot be solved in the higher layers
-* Create a work of art
+* Express the self
 
 ## Philosophy
 
@@ -104,5 +104,5 @@ In decreasing order of priority:
 * [Luvit](https://luvit.io/)
 * [Raspberry Pi](https://www.raspberrypi.org/)
 * [Scheme](http://www.schemers.org/Documents/Standards/R5RS/)
-* the work of [Leonard and Sylvia Ritter](http://www.duangle.com/)
-* the work of [William A. Adams](https://williamaadams.wordpress.com/)
+* [Leonard and Sylvia Ritter](http://www.duangle.com/)
+* [William A. Adams](https://williamaadams.wordpress.com/)
