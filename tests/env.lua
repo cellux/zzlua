@@ -3,7 +3,7 @@ local assert = require('assert')
 local process = require('process')
 local ffi = require('ffi')
 local fs = require('fs') -- for dup2
-local socket = require('socket')
+local net = require('net')
 
 assert.type(env.PATH, "string")
 assert(env.NONEXISTENT==nil)
@@ -11,7 +11,7 @@ env.ZZ_ENV_TEST=5
 assert.type(env.ZZ_ENV_TEST, "string")
 assert.equals(env.ZZ_ENV_TEST, "5")
 
-local sp, sc = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM, 0)
+local sp, sc = net.socketpair(net.PF_LOCAL, net.SOCK_STREAM, 0)
 local pid = process.fork()
 if pid == 0 then
    -- child

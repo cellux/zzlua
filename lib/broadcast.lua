@@ -1,6 +1,5 @@
 local ffi = require('ffi')
 local sched = require('sched')
-local socket = require('socket')
 local nn = require('nanomsg')
 local msgpack = require('msgpack')
 local net = require('net')
@@ -14,9 +13,9 @@ local M = {}
 
 local broadcast_port = tonumber(env.ZZ_BROADCAST_PORT or 3532)
 
-local any_addr = socket.sockaddr(socket.AF_INET, "0.0.0.0", broadcast_port)
-local broadcast_addr = socket.sockaddr(socket.AF_INET, "255.255.255.255", broadcast_port)
-local local_addr = socket.sockaddr(socket.AF_INET, "127.0.0.1", broadcast_port)
+local any_addr = net.sockaddr(net.AF_INET, "0.0.0.0", broadcast_port)
+local broadcast_addr = net.sockaddr(net.AF_INET, "255.255.255.255", broadcast_port)
+local local_addr = net.sockaddr(net.AF_INET, "127.0.0.1", broadcast_port)
 
 local broadcast_socket = nil -- for broadcasting to network peers
 local broadcast_socket_addr = nil -- sockaddr of outgoing socket
@@ -34,7 +33,7 @@ function M.broadcast(evtype, evdata, dest_addr)
    evdata = evdata or 0
    dest_addr = dest_addr or broadcast_addr
    if type(dest_addr=='string') then
-      dest_addr = socket.sockaddr(ffi.C.AF_INET, dest_addr, broadcast_port)
+      dest_addr = net.sockaddr(net.AF_INET, dest_addr, broadcast_port)
    end
    local msg = msgpack.pack_array({evtype, evdata})
    broadcast_socket:sendto(msg, dest_addr)
@@ -47,7 +46,7 @@ function M.wait_until_ready()
 end
 
 local function listener()
-   local s = socket(socket.PF_INET, socket.SOCK_DGRAM)
+   local s = net.socket(net.PF_INET, net.SOCK_DGRAM)
    local rv, err = pcall(s.bind, s, any_addr)
    if rv then
       -- bind successful
@@ -130,7 +129,7 @@ local function BroadcastModule(sched)
    local self = {}
    function self.init()
       initialized = false
-      broadcast_socket = socket(socket.PF_INET, socket.SOCK_DGRAM)
+      broadcast_socket = net.socket(net.PF_INET, net.SOCK_DGRAM)
       broadcast_socket.SO_BROADCAST = true
       broadcast_socket:connect(broadcast_addr)
       broadcast_socket_addr = broadcast_socket:getsockname()

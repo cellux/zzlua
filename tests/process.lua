@@ -2,8 +2,7 @@ local process = require('process')
 local ffi = require('ffi')
 local assert = require('assert')
 local fs = require('fs') -- for dup2
-local socket = require('socket')
-local sf = string.format
+local net = require('net')
 
 -- getpid
 
@@ -12,7 +11,7 @@ assert(type(ppid) == "number")
 
 -- fork, waitpid
 
-local sp, sc = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM, 0)
+local sp, sc = net.socketpair(net.PF_LOCAL, net.SOCK_STREAM, 0)
 local pid = process.fork()
 assert(type(pid)=="number")
 if pid == 0 then
@@ -47,7 +46,7 @@ assert.equals(process.waitpid(pid), pid)
 
 -- system
 
-local sp, sc = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM, 0)
+local sp, sc = net.socketpair(net.PF_LOCAL, net.SOCK_STREAM, 0)
 local pid = process.fork()
 if pid == 0 then
    sp:close()
@@ -65,7 +64,7 @@ end
 
 -- execvp
 
-local sp, sc = socket.socketpair(socket.PF_LOCAL, socket.SOCK_STREAM, 0)
+local sp, sc = net.socketpair(net.PF_LOCAL, net.SOCK_STREAM, 0)
 local pid = process.fork()
 if pid == 0 then
    sp:close()
