@@ -2,7 +2,6 @@
 
 require('globals')
 
-local ffi = require('ffi')
 local process = require('process')
 local sched = require('sched')
 local epoll = require('epoll')
