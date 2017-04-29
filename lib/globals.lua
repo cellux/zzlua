@@ -41,6 +41,9 @@ function _G.ef(fmt, ...)
    error(msg, 2)
 end
 
+-- we define Point, Rect, Size and Color here so that users don't have
+-- to pull in the SDL module if all they need are these structs
+
 ffi.cdef [[
 
 typedef struct SDL_Point {
