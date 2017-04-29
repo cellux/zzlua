@@ -1,4 +1,4 @@
-local file = require('file')
+local fs = require('fs')
 local util = require('util')
 local iconv = require('iconv')
 local sdl = require('sdl2')
@@ -116,7 +116,7 @@ local function TextEdit(grid, opts)
       needs_redraw = true
    end
    function self:load(path)
-      local text = file.read(path)
+      local text = fs.readfile(path)
       self:text(text)
    end
    function self:line_down(steps)

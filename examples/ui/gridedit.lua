@@ -2,7 +2,6 @@
 
 local ui = require('ui')
 local fs = require('fs')
-local file = require('file')
 local sched = require('sched')
 
 local function main()
@@ -26,7 +25,7 @@ local function main()
    end
    local text = ''
    if fs.exists(file_path) then
-      text = file.read(file_path)
+      text = fs.readfile(file_path)
    end
 
    local font_size = 12 -- initial font size in points

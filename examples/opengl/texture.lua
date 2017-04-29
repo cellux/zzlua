@@ -3,7 +3,6 @@
 local sched = require('sched')
 local ui = require('ui')
 local fs = require('fs')
-local file = require('file')
 local sdl = require('sdl2')
 local util = require('util')
 local time = require('time')

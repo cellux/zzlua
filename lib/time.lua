@@ -39,7 +39,6 @@ struct timezone {
 int gettimeofday (struct timeval *TP,
                   struct timezone *TZP);
 
-/* struct timespec is predefined for us by zzlua */
 int nanosleep (const struct timespec *requested_time,
                struct timespec *remaining);
 

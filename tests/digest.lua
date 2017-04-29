@@ -1,6 +1,6 @@
 local digest = require('digest')
 local assert = require('assert')
-local file = require('file')
+local fs = require('fs')
 
 local function fibonacci()
    local queue = {1,1}
@@ -37,7 +37,7 @@ local function test_digest(data, digest_fn, digest_hex)
    assert.equals(hexstr(digest:final()), digest_hex)
 end
 
-local data = file.read('testdata/arborescence.jpg')
+local data = fs.readfile('testdata/arborescence.jpg')
 
 test_digest(data, digest.md4, '97d7daac924ff41af3e37b14373ac179')
 test_digest(data, digest.md5, '58823f6d5e1d154d37d9aa2dbaf27371')

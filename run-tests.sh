@@ -11,9 +11,9 @@ add_test() {
     done
   else
     # otherwise, it should be the name of a test case under
-    # tests or app/tests or the full path to a *.lua file
+    # tests or the full path to a *.lua file
     local testpath=""
-    for f in "tests/$t.lua" "app/tests/$t.lua" "$t"; do
+    for f in "tests/$t.lua" "$t"; do
       if [ -e "$f" ]; then
         testpath="$f"
         break
@@ -33,9 +33,8 @@ if [ -n "$1" ]; then
     add_test "$t"
   done
 else
-  # run everything under tests and app/tests
+  # run everything under tests
   add_test tests
-  add_test app/tests
 fi
 
 for f in $TESTS; do

@@ -1,7 +1,6 @@
 local socket = require('socket')
 local assert = require('assert')
 local process = require('process')
-local file = require('file')
 local fs = require('fs')
 local ffi = require('ffi')
 local sf = string.format
@@ -102,7 +101,7 @@ assert(socket_addr_1 == socket_addr_2)
 
 -- listen, accept, connect (with local sockets)
 
-local socket_path = file.mktemp("zzlua-test-socket")
+local socket_path = fs.mktemp("zzlua-test-socket")
 local socket_addr = socket.sockaddr(socket.AF_LOCAL, socket_path)
 
 local pid, sp = process.fork(function(sc)
