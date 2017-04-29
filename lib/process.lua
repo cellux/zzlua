@@ -35,6 +35,7 @@ int execlp (const char *FILENAME,
 
 /* process completion */
 
+int kill (pid_t pid, int signum);
 pid_t waitpid (pid_t PID, int *STATUSPTR, int OPTIONS);
 
 /* process state */
@@ -87,6 +88,13 @@ function M.execvp(path, argv)
    end
    execvp_argv[#argv] = nil
    util.check_errno("execvp", ffi.C.execvp(path, execvp_argv))
+end
+
+function M.kill(pid, signum)
+   if not pid or pid == 0 then
+      pid = M.getpid()
+   end
+   return ffi.C.kill(pid, signum)
 end
 
 function M.waitpid(pid, options)

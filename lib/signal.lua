@@ -19,8 +19,6 @@ int sigismember (const sigset_t *__set, int __signo);
 
 int pthread_sigmask(int how, const sigset_t *set, sigset_t *oldset);
 
-int kill (pid_t __pid, int __sig);
-
 void *zz_signal_handler_thread(void *arg);
 
 ]]
@@ -83,10 +81,6 @@ function M.unblock(signum)
    return sigmask(SIG_UNBLOCK, signum)
 end
 
-function M.kill(pid, sig)
-   return ffi.C.kill(pid, sig)
-end
-
 local function SignalModule(sched)
    local self = {}
 
@@ -110,7 +104,7 @@ local function SignalModule(sched)
    local function stop_signal_handler_thread()
       assert(signal_handler_thread_id[0] ~= 0)
       -- signal handler thread exits upon receiving SIGALRM
-      ffi.C.kill(process.getpid(), M.SIGALRM)
+      process.kill(0, M.SIGALRM)
       local retval = ffi.new("void*[1]")
       local rv = ffi.C.pthread_join(signal_handler_thread_id[0], retval)
       if rv ~=0 then

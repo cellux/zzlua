@@ -165,13 +165,13 @@ if pid == 0 then
 else
    time.sleep(0.1)
    -- subprocess still exists after 100 ms
-   assert(signal.kill(pid, 0)==0)
+   assert(process.kill(pid, 0)==0)
    -- let's send it a SIGTERM (which will cause a sched.quit())
-   signal.kill(pid, signal.SIGTERM)
+   process.kill(pid, signal.SIGTERM)
    -- wait for it
    assert(process.waitpid(pid)==pid)
    -- now it should not exist any more
-   assert.equals(signal.kill(pid, 0), -1, "result of signal.kill(pid,0) after child got SIGTERM")
+   assert.equals(process.kill(pid, 0), -1, "result of process.kill(pid,0) after child got SIGTERM")
 end
 
 -- callbacks registered with sched.on() do not keep the event loop alive
