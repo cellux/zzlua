@@ -125,4 +125,55 @@ function M.OrderedList(key_fn)
    return setmetatable(self, OrderedList_mt)
 end
 
+local Set_mt = {}
+Set_mt.__index = Set_mt
+
+function M.Set()
+   local self = {
+      _items = {},
+      _size = 0,
+   }
+   return setmetatable(self, Set_mt)
+end
+
+function Set_mt:push(item)
+   if not self._items[item] then
+      self._items[item] = true
+      self._size = self._size + 1
+   end
+end
+
+function Set_mt:remove(item)
+   if self._items[item] then
+      self._items[item] = nil
+      self._size = self._size - 1
+   end
+end
+
+function Set_mt:contains(item)
+   return self._items[item] or false
+end
+
+function Set_mt:size()
+   return self._size
+end
+
+function Set_mt:empty()
+   return self._size == 0
+end
+
+function Set_mt:clear()
+   self._items = {}
+   self._size = 0
+end
+
+function Set_mt:iteritems()
+   local last = nil
+   local function _next()
+      last = next(self._items, last)
+      return last
+   end
+   return _next
+end
+
 return M

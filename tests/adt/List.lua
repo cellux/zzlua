@@ -1,6 +1,5 @@
 local adt = require('adt')
 local assert = require('assert')
-local sf = string.format
 
 local l = adt.List()
 assert(l:empty())
