@@ -21,7 +21,7 @@ M.type = assert_type
 
 local function assert_equals(x, y, name_of_x, level)
    level = level or 2
-   assert_true(type(x) == type(y), sf("x.type (%s) != y.type (%s)", type(x), type(y)), level+1)
+   assert_true(type(x) == type(y), sf("x.type (%s: %s) != y.type (%s: %s)", type(x), x, type(y), y), level+1)
    if type(x)=="table" then
       assert_true(#x==#y, sf("#x=%d != #y=%d", #x, #y), level+1)
       for i=1,#x do
