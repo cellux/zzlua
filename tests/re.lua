@@ -35,6 +35,11 @@ assert(re.match("^abc", "abcdef"))
 assert(re.match("def", "abcdef"))
 assert(not re.match("^def", "abcdef"))
 
+-- match at end
+assert(re.match("def$", "abcdef"))
+assert(re.match("abc", "abcdef"))
+assert(not re.match("abc$", "abcdef"))
+
 -- empty match groups
 m = re.match("^([a-z]+)?([.:,])?([0-9]+)?$", "abc123")
 assert(m.stringcount==4, sf("m.stringcount=%d", m.stringcount))
