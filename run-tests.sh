@@ -39,5 +39,8 @@ fi
 
 for f in $TESTS; do
   echo -n "$f: "
-  ./zzlua "$f" && echo "PASS"
+  output="$(./zzlua "$f" 2>&1)"
+  # non-empty output means it did not pass
+  # it either failed or was skipped for some reason
+  [ -n "$output" ] && echo "$output" || echo "PASS"
 done

@@ -331,9 +331,12 @@ void zz_jack_client_registration_callback(const char*, int, void *);
 void zz_jack_port_connect_callback(jack_port_id_t, jack_port_id_t, int, void *);
 void zz_jack_port_rename_callback(jack_port_id_t, const char *, const char *, void *);
 
+void zz_jack_silent_error_callback(const char *msg);
+
 ]]
 
 local jack = ffi.load("jack")
+jack.jack_set_error_function(ffi.C.zz_jack_silent_error_callback)
 
 local ZZ_JACK_PORTS_MAX  = jack.ZZ_JACK_PORTS_MAX
 

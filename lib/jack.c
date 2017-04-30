@@ -270,3 +270,5 @@ void zz_jack_port_rename_callback(jack_port_id_t port,
              params->event_socket,
              ((zz_cmp_buffer_state*)cmp_ctx->buf)->buffer);
 }
+
+void zz_jack_silent_error_callback(const char *msg) {}
