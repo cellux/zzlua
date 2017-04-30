@@ -1,3 +1,5 @@
+local re = require('re')
+
 local M = {}
 
 local function assert_true(x, err, level)
@@ -43,6 +45,14 @@ local function assert_equals(x, y, name_of_x, level)
 end
 
 M.equals = assert_equals
+
+local function assert_throws(f, pattern)
+   local ok, err = pcall(f)
+   assert(ok==false, sf("%s expected to throw", f))
+   assert(re.match(pattern, err), sf("%s expected to throw an error matching '%s'", f, pattern))
+end
+
+M.throws = assert_throws
 
 local M_mt = {}
 
