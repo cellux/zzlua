@@ -88,13 +88,35 @@ local function Scheduler()
    -- make it public so that people can add their fds for permanent polling
    self.poller = poller
 
-   function self.poll(fd, events)
-      events = events.."1" -- one shot
+   local permanently_polled_fds = {}
+
+   function self.poll_add(fd, events)
+      assert(permanently_polled_fds[fd]==nil)
       local event_id = self.make_event_id()
       poller:add(fd, events, event_id)
-      local rv = self.wait(event_id)
-      poller:del(fd, events, event_id)
-      return rv
+      permanently_polled_fds[fd] = event_id
+   end
+
+   function self.poll_del(fd)
+      assert(permanently_polled_fds[fd])
+      permanently_polled_fds[fd] = nil
+   end
+
+   function self.poll(fd, events)
+      local rcvd_events
+      local event_id = permanently_polled_fds[fd]
+      if event_id then
+         repeat
+            rcvd_events = self.wait(event_id)
+         until poller:match_events(events, rcvd_events)
+      else
+         events = events.."1" -- one shot
+         event_id = self.make_event_id()
+         poller:add(fd, events, event_id)
+         rcvd_events = self.wait(event_id)
+         poller:del(fd, events, event_id)
+      end
+      return rcvd_events
    end
 
    local module_registry = ModuleRegistry(self)
