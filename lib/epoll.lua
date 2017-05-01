@@ -42,6 +42,7 @@ extern int epoll_create (int size);
 extern int epoll_create1 (int flags);
 extern int epoll_ctl (int epfd, int op, int fd, struct epoll_event *event);
 extern int epoll_wait (int epfd, struct epoll_event *events, int maxevents, int timeout);
+
 extern int close (int fd);
 
 ]]
@@ -71,11 +72,15 @@ local function parse_events(events)
    end
 end
 
+function Poller_mt:fd()
+   return self.epfd
+end
+
 function Poller_mt:ctl(op, fd, events, data)
    local epoll_event = ffi.new("struct epoll_event")
    epoll_event.events = events and parse_events(events) or 0
    epoll_event.data.fd = data or 0
-   return util.check_errno("epoll_ctl", ffi.C.epoll_ctl(self.fd, op, fd, epoll_event))
+   return util.check_errno("epoll_ctl", ffi.C.epoll_ctl(self.epfd, op, fd, epoll_event))
 end
 
 function Poller_mt:add(fd, events, data)
@@ -92,7 +97,7 @@ end
 
 function Poller_mt:wait(timeout, process)
    local rv = util.check_errno("epoll_wait",
-                               ffi.C.epoll_wait(self.fd, self.events,
+                               ffi.C.epoll_wait(self.epfd, self.events,
                                                 self.maxevents, timeout))
    if rv > 0 then
       for i = 1,rv do
@@ -103,11 +108,11 @@ function Poller_mt:wait(timeout, process)
 end
 
 function Poller_mt:close()
-   if self.fd >= 0 then
+   if self.epfd >= 0 then
       local rv
-      rv = ffi.C.close(self.fd)
+      rv = ffi.C.close(self.epfd)
       util.check_ok("close", 0, rv)
-      self.fd = -1
+      self.epfd = -1
    end
    return 0
 end
@@ -115,10 +120,10 @@ end
 Poller_mt.__index = Poller_mt
 Poller_mt.__gc = Poller_mt.close
 
-local function Poller(fd, maxevents)
+local function Poller(epfd, maxevents)
    maxevents = maxevents or 64
    local self = {
-      fd = fd,
+      epfd = epfd,
       maxevents = maxevents,
       events = ffi.new("struct epoll_event[?]", maxevents),
    }
@@ -128,8 +133,8 @@ end
 local M = {}
 
 function M.create(maxevents)
-   local fd = util.check_errno("epoll_create", ffi.C.epoll_create(1))
-   return Poller(fd, maxevents)
+   local epfd = util.check_errno("epoll_create", ffi.C.epoll_create(1))
+   return Poller(epfd, maxevents)
 end
 
 M.poller_factory = M.create

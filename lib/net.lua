@@ -543,7 +543,7 @@ function M.qpoll(fd, cb) -- "quittable" poll
    end)
    local running = true
    while running do
-      sched.poll(poller.fd, "r")
+      sched.poll(poller:fd(), "r")
       poller:wait(0, function(events, data)
          if data == fd then
             cb()
