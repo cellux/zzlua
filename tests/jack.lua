@@ -18,7 +18,7 @@ local function open_jack(client_name)
    if not client then
       if bit.band(status, jack.JackServerFailed) ~= 0 then
          print("Jack server not running, skipping test")
-         process.exit(0)
+         process.exit(2)
       else
          error("jack.open() failed")
       end
