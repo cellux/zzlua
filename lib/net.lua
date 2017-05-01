@@ -208,6 +208,16 @@ enum {
 
 local sockaddr_mt = {}
 
+function sockaddr_mt:__tostring()
+   if self.af == ffi.C.AF_LOCAL then
+      return self.address
+   elseif self.af == ffi.C.AF_INET then
+      return sf("%s:%d", self.address, self.port)
+   else
+      ef("Unable to stringify sockaddr with af=%s", self.af)
+   end
+end
+
 function sockaddr_mt:__index(k)
    if k == "address" then
       if self.af == ffi.C.AF_LOCAL then

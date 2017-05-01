@@ -88,10 +88,12 @@ end
 
 local socket_addr = net.sockaddr(net.AF_LOCAL, "/tmp/socket")
 assert.equals(socket_addr.address, "/tmp/socket")
+assert.equals(tostring(socket_addr), "/tmp/socket")
 
 local socket_addr = net.sockaddr(net.AF_INET, "127.0.0.1", 54321)
 assert.equals(socket_addr.address, "127.0.0.1")
 assert.equals(socket_addr.port, 54321)
+assert.equals(tostring(socket_addr), "127.0.0.1:54321")
 
 local socket_addr_1 = net.sockaddr(net.AF_INET, "127.0.0.1", 54321)
 local socket_addr_2 = net.sockaddr(net.AF_INET, "127.0.0.1", 54321)
