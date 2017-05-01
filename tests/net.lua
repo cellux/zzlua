@@ -359,7 +359,7 @@ local function test_listener(Listener, socket_type)
       local listener = Listener {
          address = server_host,
          port = server_port,
-         acceptor = function(stream)
+         server = function(stream)
             assert.equals(stream:read(), "ping")
             stream:write("pong")
          end,
