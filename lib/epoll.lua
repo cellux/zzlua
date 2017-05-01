@@ -76,6 +76,11 @@ function Poller_mt:fd()
    return self.epfd
 end
 
+function Poller_mt:match_events(mask, events)
+   mask = parse_events(mask)
+   return bit.band(events, mask) ~= 0
+end
+
 function Poller_mt:ctl(op, fd, events, data)
    local epoll_event = ffi.new("struct epoll_event")
    epoll_event.events = events and parse_events(events) or 0
