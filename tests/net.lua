@@ -348,3 +348,42 @@ s:connect(broadcast_addr)
 assert.type(s:getsockname().port, "number")
 assert(string.match(s:getsockname().address, '^%d+%.%d+%.%d+%.%d+$'))
 s:close()
+
+-- TCPListener, UDPListener
+
+local server_host, server_port = "127.0.0.1", 54321
+local server_addr = net.sockaddr(net.AF_INET, server_host, server_port)
+
+local function test_listener(Listener, socket_type)
+   local function server()
+      local listener = Listener {
+         address = server_host,
+         port = server_port,
+         acceptor = function(stream)
+            assert.equals(stream:read(), "ping")
+            stream:write("pong")
+         end,
+      }
+      listener:start()
+   end
+   local nclients = 10
+   local function client()
+      local client = net.socket(net.PF_INET, socket_type)
+      client:connect(server_addr)
+      client:write("ping")
+      assert.equals(client:read(4), "pong")
+      client:close()
+      nclients = nclients - 1
+      if nclients == 0 then
+         sched.quit()
+      end
+   end
+   sched(server)
+   for i=1,nclients do
+      sched(client)
+   end
+   sched()
+end
+
+test_listener(net.TCPListener, net.SOCK_STREAM)
+test_listener(net.UDPListener, net.SOCK_DGRAM)

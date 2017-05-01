@@ -367,12 +367,21 @@ function Socket_mt:connect(sockaddr)
    end
 end
 
-function Socket_mt:read(size)
+function Socket_mt:read(count)
+   -- count==nil: read any number of bytes (including none)
+   -- count==0: read until read() returns 0
+   -- count==N: read exactly N bytes (do not return until we got it)
    local data = ""
-   local remaining = size
-   if remaining then
-      assert(type(remaining)=="number" and remaining >= 0)
+   -- set remaining only if we have an exact count of bytes to read
+   local remaining = nil
+   if count then
+      assert(type(count)=="number" and count >= 0)
+      if count > 0 then
+         remaining = count
+      end
    end
+   local read_any = (count == nil)
+   local read_until_eof = (count == 0)
    if #self.readbuf > 0 then
       if remaining then
          if #self.readbuf >= remaining then
@@ -404,13 +413,16 @@ function Socket_mt:read(size)
          sched.poll(self.fd, "r")
       end
       local nbytes = util.check_errno("read", ffi.C.read(self.fd, buf, blocksize))
-      if nbytes == 0 then
-         break
-      else
+      if nbytes > 0 then
          data = data .. ffi.string(buf, nbytes)
+         if remaining then
+            remaining = remaining - nbytes
+         end
+      elseif read_until_eof then
+         break
       end
-      if remaining then
-         remaining = remaining - nbytes
+      if read_any then
+         break
       end
    end
    return data
@@ -538,7 +550,7 @@ function M.socketpair(domain, type, protocol)
    return Socket(fds[0], domain), Socket(fds[1], domain)
 end
 
-function M.qpoll(fd, cb) -- "quittable" poll
+local function qpoll(fd, cb) -- "quittable" poll
    local sp_recv, sp_send = M.socketpair(ffi.C.PF_LOCAL, ffi.C.SOCK_STREAM)
    local poller = epoll.create(2)
    poller:add(sp_recv.fd, "r", sp_recv.fd)
@@ -570,5 +582,94 @@ function M.qpoll(fd, cb) -- "quittable" poll
    poller:close()
    sp_recv:close()
 end
+M.qpoll = qpoll
+
+local TCPListener = util.Class()
+
+function TCPListener:start()
+   assert(sched.running())
+   if not self.sockaddr then
+      if not self.address then
+         ef("TCPListener without address")
+      end
+      if not self.port then
+         ef("TCPListener without port")
+      end
+      self.sockaddr = sockaddr(ffi.C.AF_INET, self.address, self.port)
+   end
+   local socket = M.socket(ffi.C.PF_INET, ffi.C.SOCK_STREAM)
+   socket.SO_REUSEADDR = true
+   socket:bind(self.sockaddr)
+   socket:listen()
+   qpoll(socket.fd, function()
+      local client = socket:accept()
+      sched(function()
+         self.acceptor(client)
+         client:close()
+      end)
+   end)
+   socket:close()
+end
+
+M.TCPListener = TCPListener
+
+local UDPListener = util.Class()
+
+function UDPListener:start()
+   assert(sched.running())
+   if not self.sockaddr then
+      if not self.address then
+         ef("UDPListener without address")
+      end
+      if not self.port then
+         ef("UDPListener without port")
+      end
+      self.sockaddr = sockaddr(ffi.C.AF_INET, self.address, self.port)
+   end
+   local socket = M.socket(ffi.C.PF_INET, ffi.C.SOCK_DGRAM)
+   socket.SO_REUSEADDR = true
+   socket:bind(self.sockaddr)
+   sched.poll_add(socket.fd, "rw")
+   local clients = {}
+   qpoll(socket.fd, function()
+      local data, peer_addr = socket:recvfrom()
+      local client_id = tostring(peer_addr)
+      repeat
+         if not clients[client_id] then
+            local ss, sc = M.socketpair(ffi.C.PF_LOCAL, ffi.C.SOCK_STREAM)
+            local client = {
+               ss = ss,
+               sc = sc,
+               mtime = sched.now,
+               active = true,
+            }
+            sched.poll_add(ss.fd, "rw")
+            sched(function()
+               self.acceptor(sc)
+               client.active = false
+               sc:close()
+            end)
+            sched(function()
+               while client.active do
+                  local data = ss:read()
+                  socket:sendto(data, peer_addr)
+               end
+               sched.poll_del(ss.fd)
+               ss:close()
+            end)
+            clients[client_id] = client
+         end
+         if (sched.now - clients[client_id].mtime) > 3600 then
+            clients[client_id].active = false
+            clients[client_id] = nil
+         end
+      until clients[client_id] and clients[client_id].active
+      clients[client_id].ss:write(data)
+   end)
+   sched.poll_del(socket.fd)
+   socket:close()
+end
+
+M.UDPListener = UDPListener
 
 return setmetatable(M, { __index = ffi.C })

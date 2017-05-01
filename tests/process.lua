@@ -57,7 +57,8 @@ if pid == 0 then
    process.exit()
 else
    sc:close()
-   assert.equals(sp:read(), "hello\nworld\n")
+   -- read(0) means read until EOF
+   assert.equals(sp:read(0), "hello\nworld\n")
    sp:close()
    assert.equals(process.waitpid(pid), pid)
 end
