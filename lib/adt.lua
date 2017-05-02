@@ -50,35 +50,8 @@ function List_mt:__index(pos)
    end
 end
 
-function List_mt:iterkeys()
-   local index = 0
-   local function next()
-      if index >= self:size() then
-         return nil
-      else
-         local rv = index
-         index = index + 1
-         return rv
-      end
-   end
-   return next
-end
-
-function List_mt:itervalues()
-   local index = 0
-   local function next()
-      if index >= self:size() then
-         return nil
-      else
-         local rv = self[index]
-         index = index + 1
-         return rv
-      end
-   end
-   return next
-end
-
-function List_mt:iteritems()
+function List_mt:iteritems(selector)
+   selector = selector or function(k,v) return k,v end
    local index = 0
    local function next()
       if index >= self:size() then
@@ -86,10 +59,18 @@ function List_mt:iteritems()
       else
          local k,v = index, self[index]
          index = index + 1
-         return k,v
+         return selector(k,v)
       end
    end
    return next
+end
+
+function List_mt:iterkeys()
+   return self:iteritems(function(k,v) return k end)
+end
+
+function List_mt:itervalues()
+   return self:iteritems(function(k,v) return v end)
 end
 
 function M.List()
