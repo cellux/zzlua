@@ -1,4 +1,5 @@
 local adt = require('adt')
+local ffi = require('ffi')
 local assert = require('assert')
 
 local l = adt.List()
@@ -80,3 +81,17 @@ assert.equals(l[3], "item 6")
 assert.equals(l[4], "item 7")
 assert.equals(l[5], "item 8")
 assert.equals(l[6], "item 9")
+
+-- List:remove() finds cdata objects
+
+local l = adt.List()
+local item1 = ffi.new("uint8_t[16]")
+local item2 = ffi.new("uint8_t[16]")
+local item3 = ffi.new("uint8_t[16]")
+l:push(item1)
+l:push(item2)
+l:push(item3)
+l:remove(item1)
+l:remove(item2)
+l:remove(item3)
+assert(l:empty())

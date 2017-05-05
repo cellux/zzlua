@@ -1,4 +1,5 @@
 local adt = require('adt')
+local ffi = require('ffi')
 local assert = require('assert')
 
 local s = adt.Set()
@@ -36,3 +37,17 @@ for i in s:iteritems() do
    items[i] = true
 end
 assert.equals(items, {[10]=true, ["abc"]=true, [t]=true})
+
+-- Set:remove() finds cdata objects
+
+local s = adt.Set()
+local item1 = ffi.new("uint8_t[16]")
+local item2 = ffi.new("uint8_t[16]")
+local item3 = ffi.new("uint8_t[16]")
+s:push(item1)
+s:push(item2)
+s:push(item3)
+s:remove(item1)
+s:remove(item2)
+s:remove(item3)
+assert(s:empty())
