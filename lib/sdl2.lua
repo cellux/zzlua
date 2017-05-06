@@ -2255,7 +2255,7 @@ function M.OpenAudioDevice(opts)
       silence = obtained.silence,
       size = obtained.size,
    }
-   return setmetatable(self, AudioDevice_mt)
+   return setmetatable(self, AudioDevice_mt), obtained
 end
 
 function M.GetModState()
