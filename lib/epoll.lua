@@ -81,23 +81,23 @@ function Poller_mt:match_events(mask, events)
    return bit.band(events, mask) ~= 0
 end
 
-function Poller_mt:ctl(op, fd, events, data)
+function Poller_mt:ctl(op, fd, events, userdata)
    local epoll_event = ffi.new("struct epoll_event")
    epoll_event.events = events and parse_events(events) or 0
-   epoll_event.data.fd = data or 0
+   epoll_event.data.fd = userdata or 0
    return util.check_errno("epoll_ctl", ffi.C.epoll_ctl(self.epfd, op, fd, epoll_event))
 end
 
-function Poller_mt:add(fd, events, data)
-   return self:ctl(ffi.C.EPOLL_CTL_ADD, fd, events, data)
+function Poller_mt:add(fd, events, userdata)
+   return self:ctl(ffi.C.EPOLL_CTL_ADD, fd, events, userdata)
 end
 
-function Poller_mt:mod(fd, events, data)
-   return self:ctl(ffi.C.EPOLL_CTL_MOD, fd, events, data)
+function Poller_mt:mod(fd, events, userdata)
+   return self:ctl(ffi.C.EPOLL_CTL_MOD, fd, events, userdata)
 end
 
-function Poller_mt:del(fd, events, data)
-   return self:ctl(ffi.C.EPOLL_CTL_DEL, fd, events, data)
+function Poller_mt:del(fd, events, userdata)
+   return self:ctl(ffi.C.EPOLL_CTL_DEL, fd, events, userdata)
 end
 
 function Poller_mt:wait(timeout, process)
@@ -107,7 +107,9 @@ function Poller_mt:wait(timeout, process)
    if rv > 0 then
       for i = 1,rv do
          local event = self.events[i-1]
-         process(event.events, event.data.fd)
+         local events = event.events
+         local userdata = event.data.fd
+         process(events, userdata)
       end
    end
 end

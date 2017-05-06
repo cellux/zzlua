@@ -216,15 +216,15 @@ local function Scheduler()
 
       module_registry:invoke('tick')
 
-      local function handle_poll_event(events, event_id)
-         if event_id == event_sub_id then
+      local function handle_poll_event(events, userdata)
+         if userdata == event_sub_id then
             local event = nn.recv(event_sub)
             local unpacked = msgpack.unpack(event)
             assert(type(unpacked) == "table")
             assert(#unpacked == 2, "event shall be a table of two elements, but it is "..inspect(unpacked))
             event_queue:push(unpacked)
          else
-            event_queue:push({event_id, events})
+            event_queue:push({userdata, events})
          end
       end
 
