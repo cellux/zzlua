@@ -40,6 +40,25 @@ assert.equals(util.round(f[0]), 4)
 f[0] = -3.64
 assert.equals(util.round(f[0]), -4)
 
+-- align_*
+
+assert.equals(util.align_down(43, 16), 32)
+assert.equals(util.align_up(43, 16), 48)
+
+-- next_power_of_2
+
+assert.equals(util.next_power_of_2(0), 1)
+assert.equals(util.next_power_of_2(1), 1)
+assert.equals(util.next_power_of_2(2), 2)
+assert.equals(util.next_power_of_2(3), 4)
+assert.equals(util.next_power_of_2(4), 4)
+assert.equals(util.next_power_of_2(5), 8)
+assert.equals(util.next_power_of_2(7), 8)
+assert.equals(util.next_power_of_2(8), 8)
+assert.equals(util.next_power_of_2(9), 16)
+assert.equals(util.next_power_of_2(10000), 16384)
+assert.equals(util.next_power_of_2(1000000), 1048576)
+
 -- accumulator
 
 local accum = util.Accumulator()

@@ -1,4 +1,5 @@
 local adt = require('adt')
+local bit = require('bit')
 local errno = require('errno')
 
 local M = {}
@@ -17,6 +18,16 @@ end
 
 function M.align_up(x, alignment)
    return x + (alignment - (x % alignment)) % alignment
+end
+
+function M.next_power_of_2(x)
+   local rv = 1
+   x = x - 1
+   while x > 0 do
+      x = bit.rshift(x, 1)
+      rv = bit.lshift(rv, 1)
+   end
+   return rv
 end
 
 function M.check_ok(funcname, okvalue, rv)
