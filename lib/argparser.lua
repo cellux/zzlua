@@ -112,6 +112,7 @@ local function ArgParser(command_name, command_description)
    end
 
    function self:parse(values)
+      values = values or _G.arg
       local args = {}
       local rest = {}
       -- set flags to their default value
