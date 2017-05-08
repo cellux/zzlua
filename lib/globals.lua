@@ -19,6 +19,8 @@ typedef long int __off_t;
 typedef long int __blksize_t;
 typedef long int __blkcnt_t;
 
+typedef __off_t off_t; /* TODO: this is not correct */
+
 void *malloc (size_t size);
 void free (void *ptr);
 

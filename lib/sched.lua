@@ -1,6 +1,7 @@
 local ffi = require('ffi')
 local adt = require('adt')
 local time = require('time')
+local mm = require('mm')
 local nn = require('nanomsg')
 local msgpack = require('msgpack')
 local inspect = require('inspect')
@@ -64,8 +65,26 @@ M.time = get_current_time
 -- less than sched.precision
 M.precision = 0.001 -- seconds
 
+M.block_pool_arena_size = 2^16
+
 local function Scheduler()
    local self = {}
+
+   local block_pool = mm.BlockPool(M.block_pool_arena_size)
+
+   function self.get_block(size)
+      local ptr_type = "void*"
+      if type(size) == "string" then
+         ptr_type = size.."*"
+         size = ffi.sizeof(size)
+      end
+      local ptr, block_size = block_pool:get(size)
+      return ffi.cast(ptr_type, ptr), block_size
+   end
+
+   function self.ret_block(ptr, block_size)
+      block_pool:ret(ptr, block_size)
+   end
 
    local next_event_id = -1
 

@@ -4,8 +4,6 @@
 #include <dirent.h>
 #include <assert.h>
 
-#include "msgpack.h"
-
 enum {
   ZZ_ASYNC_FS_LSEEK,
   ZZ_ASYNC_FS_READ,
@@ -15,44 +13,39 @@ enum {
   ZZ_ASYNC_FS_LSTAT
 };
 
-void zz_async_fs_lseek(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
+struct zz_async_fs_lseek_request {
   int fd;
   off_t offset;
   int whence;
-  assert(zz_cmp_read_int(request, &fd));
-  assert(zz_cmp_read_ssize_t(request, (ssize_t*) &offset));
-  assert(zz_cmp_read_int(request, &whence));
-  off_t rv = lseek(fd, offset, whence);
-  assert(zz_cmp_write_size_t(reply, rv));
+  off_t rv;
+};
+
+void zz_async_fs_lseek(struct zz_async_fs_lseek_request *req) {
+  req->rv = lseek(req->fd, req->offset, req->whence);
 }
 
-void zz_async_fs_read(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
+struct zz_async_fs_read_write_request {
   int fd;
   void *buf;
   size_t count;
-  assert(zz_cmp_read_int(request, &fd));
-  assert(zz_cmp_read_ptr(request, (void**) &buf));
-  assert(zz_cmp_read_size_t(request, &count));
-  ssize_t rv = read(fd, buf, count);
-  assert(zz_cmp_write_ssize_t(reply, rv));
+  ssize_t nbytes;
+};
+
+void zz_async_fs_read(struct zz_async_fs_read_write_request *req) {
+  req->nbytes = read(req->fd, req->buf, req->count);
 }
 
-void zz_async_fs_write(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
-  int fd;
-  void *buf;
-  size_t n;
-  assert(zz_cmp_read_int(request, &fd));
-  assert(zz_cmp_read_ptr(request, (void**) &buf));
-  assert(zz_cmp_read_size_t(request, &n));
-  ssize_t rv = write(fd, buf, n);
-  assert(zz_cmp_write_ssize_t(reply, rv));
+void zz_async_fs_write(struct zz_async_fs_read_write_request *req) {
+  req->nbytes = write(req->fd, req->buf, req->count);
 }
 
-void zz_async_fs_close(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
+struct zz_async_fs_close_request {
   int fd;
-  assert(zz_cmp_read_int(request, &fd));
-  int rv = close(fd);
-  assert(cmp_write_sint(reply, rv));
+  int rv;
+};
+
+void zz_async_fs_close(struct zz_async_fs_close_request *req) {
+  req->rv = close(req->fd);
 }
 
 struct stat * zz_fs_Stat_new() {
@@ -80,12 +73,12 @@ void zz_fs_Stat_free(struct stat * buf) {
   free(buf);
 }
 
-int zz_fs_stat(const char *pathname, struct stat *buf) {
-  return stat(pathname, buf);
+int zz_fs_stat(const char *path, struct stat *buf) {
+  return stat(path, buf);
 }
 
-int zz_fs_lstat(const char *pathname, struct stat *buf) {
-  return lstat(pathname, buf);
+int zz_fs_lstat(const char *path, struct stat *buf) {
+  return lstat(path, buf);
 }
 
 char * zz_fs_dirent_name(struct dirent *entry) {
@@ -111,22 +104,18 @@ const char * zz_fs_type(__mode_t mode) {
     return NULL;
 }
 
-void zz_async_fs_stat(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
-  char *pathname;
+struct zz_async_fs_stat_request {
+  char *path;
   struct stat *buf;
-  assert(zz_cmp_read_ptr(request, (void**) &pathname));
-  assert(zz_cmp_read_ptr(request, (void**) &buf));
-  int rv = stat(pathname, buf);
-  assert(cmp_write_sint(reply, rv));
+  int rv;
+};
+
+void zz_async_fs_stat(struct zz_async_fs_stat_request *req) {
+  req->rv = stat(req->path, req->buf);
 }
 
-void zz_async_fs_lstat(cmp_ctx_t *request, cmp_ctx_t *reply, int nargs) {
-  char *pathname;
-  struct stat *buf;
-  assert(zz_cmp_read_ptr(request, (void**) &pathname));
-  assert(zz_cmp_read_ptr(request, (void**) &buf));
-  int rv = lstat(pathname, buf);
-  assert(cmp_write_sint(reply, rv));
+void zz_async_fs_lstat(struct zz_async_fs_stat_request *req) {
+  req->rv = lstat(req->path, req->buf);
 }
 
 void *zz_async_fs_handlers[] = {
