@@ -77,10 +77,10 @@ void *zz_async_worker_thread(void *arg) {
   uint64_t trigger;
 
   struct pollfd pollfds[1];
+  pollfds[0].fd = info->request_fd;
+  pollfds[0].events = POLLIN;
 
   while (1) {
-    pollfds[0].fd = info->request_fd;
-    pollfds[0].events = POLLIN;
     int status = poll(pollfds, 1, -1);
     if (status != 1) {
       fprintf(stderr, "poll() failed: status=%d\n", status);
