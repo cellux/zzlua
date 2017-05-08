@@ -57,20 +57,21 @@ void *zz_async_worker_thread(void *arg) {
    * registered in this way. Worker threads can be asked to execute
    * any handler provided by a registered worker.
    *
-   * To make a request, the Lua side fills out the selected worker's
-   * zz_async_worker_info structure with the worker_id, the handler_id
-   * and a pointer to a structure describing the request (the layout
-   * varies by request type). When these have been set, the Lua side
-   * writes to the worker's request_fd - this wakes up the thread which
-   * then looks up the desired handler and passes request_data to it.
+   * To make a request, the Lua side fills out the selected worker
+   * thread's zz_async_worker_info structure with the worker_id,
+   * handler_id and a pointer to a structure describing the request
+   * (the layout of which varies by request type). The Lua side then
+   * writes to the worker thread's request_fd - this wakes up the
+   * thread which then looks up the desired handler and passes
+   * request_data to it.
    *
    * Before the request handler completes, it should store any return
-   * values in the request_data structure. Then the worker thread
-   * writes to response_fd which is being polled on the Lua side in
-   * the scheduler event loop. The scheduler wakes up the coroutine
-   * which is waiting for the completion of the async request, this
-   * coroutine then returns to the Lua call which initiated the async
-   * request in the first place.
+   * values in the request_data structure. The worker thread writes to
+   * response_fd which is being polled on the Lua side in the
+   * scheduler event loop. The scheduler wakes up the coroutine which
+   * is waiting for the completion of the async request. Finally the
+   * coroutine returns to the Lua call which initiated the async
+   * request.
    */
 
   uint64_t trigger;
@@ -95,18 +96,17 @@ void *zz_async_worker_thread(void *arg) {
       fprintf(stderr, "read(request_fd) failed: trigger=%lld\n", trigger);
       exit(1);
     }
-    /* worker_id is an index to the registered_workers array */
+    /* worker_id is a 1-based index to the registered_workers array */
     int worker_id = info->worker_id;
     /* worker_id == -1 is the exit signal */
     if (worker_id == -1) {
-      write(info->response_fd, &trigger, 8);
+      write(info->response_fd, &trigger, 8); /* ack */
       break;
     }
     if (worker_id < 1 || worker_id > registered_worker_count) {
       fprintf(stderr, "invalid async request: worker_id is out of range (registered_worker_count=%d, worker_id=%d)\n", registered_worker_count, worker_id);
       exit(1);
     }
-    /* worker_id is 1-based */
     struct zz_async_worker *worker = &registered_workers[worker_id-1];
     /* handler id identifies the handler within the selected worker */
     int handler_id = info->handler_id;
@@ -116,8 +116,8 @@ void *zz_async_worker_thread(void *arg) {
       exit(1);
     }
     zz_async_handler handler = worker->handlers[handler_id];
-    handler(info->request_data);
-    write(info->response_fd, &trigger, 8);
+    handler(info->request_data); /* process request */
+    write(info->response_fd, &trigger, 8); /* signal completion */
   }
   return NULL;
 }
