@@ -2283,7 +2283,6 @@ local function SDL2Module(sched)
    local tmp_event = ffi.new("SDL_Event")
    function self.tick()
       -- poll for SDL events and convert them to scheduler events
-      sdl.SDL_PumpEvents()
       while sdl.SDL_PollEvent(tmp_event) == 1 do
          local evdata = ffi.new("SDL_Event", tmp_event) -- clone it
          local evtype = sdl_event_types[evdata.type]
