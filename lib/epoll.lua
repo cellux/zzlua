@@ -1,6 +1,7 @@
 local ffi = require('ffi')
 local bit = require('bit')
 local util = require('util')
+local errno = require('errno')
 
 ffi.cdef [[
 enum EPOLL_EVENTS {
@@ -101,9 +102,23 @@ function Poller_mt:del(fd, events, userdata)
 end
 
 function Poller_mt:wait(timeout, process)
-   local rv = util.check_errno("epoll_wait",
-                               ffi.C.epoll_wait(self.epfd, self.events,
-                                                self.maxevents, timeout))
+   local rv
+   while true do
+      rv = ffi.C.epoll_wait(self.epfd,
+                            self.events,
+                            self.maxevents,
+                            timeout)
+      if rv >= 0 then
+         break
+      elseif rv == -1 then
+         local errnum = errno.errno()
+         if errnum ~= ffi.C.EINTR then
+            ef("epoll_wait() failed: %s", errno.strerror(errnum))
+         end
+      else
+         ef("epoll_wait() failed: invalid return value: %d", rv)
+      end
+   end
    if rv > 0 then
       for i = 1,rv do
          local event = self.events[i-1]
