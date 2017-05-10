@@ -42,7 +42,7 @@ struct epoll_event {
 extern int epoll_create (int size);
 extern int epoll_create1 (int flags);
 extern int epoll_ctl (int epfd, int op, int fd, struct epoll_event *event);
-extern int epoll_wait (int epfd, struct epoll_event *events, int maxevents, int timeout);
+extern int epoll_wait (int epfd, struct epoll_event *events, int max_events, int timeout);
 
 extern int close (int fd);
 
@@ -50,7 +50,7 @@ extern int close (int fd);
 
 local Poller_mt = {}
 
-local event_values = {
+local event_markers = {
    ["r"] = ffi.C.EPOLLIN,
    ["w"] = ffi.C.EPOLLOUT,
    ["1"] = ffi.C.EPOLLONESHOT,
@@ -61,9 +61,9 @@ local function parse_events(events)
       local rv = 0
       for i=1,#events do
          local e = events:sub(i,i)
-         local ev = event_values[e]
+         local ev = event_markers[e]
          if not ev then
-            ef("unknown event code: '%s' in '%s'", e, events)
+            ef("unknown event marker: '%s' in '%s'", e, events)
          end
          rv = bit.bor(rv, ev)
       end
@@ -105,8 +105,8 @@ function Poller_mt:wait(timeout, process)
    local rv
    while true do
       rv = ffi.C.epoll_wait(self.epfd,
-                            self.events,
-                            self.maxevents,
+                            self.epoll_events,
+                            self.max_events,
                             timeout)
       if rv >= 0 then
          break
@@ -121,9 +121,9 @@ function Poller_mt:wait(timeout, process)
    end
    if rv > 0 then
       for i = 1,rv do
-         local event = self.events[i-1]
-         local events = event.events
-         local userdata = event.data.fd
+         local epoll_event = self.epoll_events[i-1]
+         local events = epoll_event.events
+         local userdata = epoll_event.data.fd
          process(events, userdata)
       end
    end
@@ -142,21 +142,21 @@ end
 Poller_mt.__index = Poller_mt
 Poller_mt.__gc = Poller_mt.close
 
-local function Poller(epfd, maxevents)
-   maxevents = maxevents or 64
+local function Poller(epfd, max_events)
+   max_events = max_events or 64
    local self = {
       epfd = epfd,
-      maxevents = maxevents,
-      events = ffi.new("struct epoll_event[?]", maxevents),
+      max_events = max_events,
+      epoll_events = ffi.new("struct epoll_event[?]", max_events),
    }
    return setmetatable(self, Poller_mt)
 end
 
 local M = {}
 
-function M.create(maxevents)
+function M.create(max_events)
    local epfd = util.check_errno("epoll_create", ffi.C.epoll_create(1))
-   return Poller(epfd, maxevents)
+   return Poller(epfd, max_events)
 end
 
 M.poller_factory = M.create
