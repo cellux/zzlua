@@ -24,6 +24,19 @@ typedef __off_t off_t; /* TODO: this is not correct */
 void *malloc (size_t size);
 void free (void *ptr);
 
+ssize_t read (int FILEDES, void *BUFFER, size_t SIZE);
+ssize_t write (int FILEDES, const void *BUFFER, size_t SIZE);
+
+int close (int FILEDES);
+
+enum {
+  EFD_SEMAPHORE = 00000001,
+  EFD_CLOEXEC   = 02000000,
+  EFD_NONBLOCK  = 00004000
+};
+
+int eventfd(unsigned int initval, int flags);
+
 ]]
 
 -- global definitions

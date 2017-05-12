@@ -8,18 +8,6 @@ local errno = require('errno')
 
 ffi.cdef [[
 
-enum {
-  EFD_SEMAPHORE = 00000001,
-  EFD_CLOEXEC   = 02000000,
-  EFD_NONBLOCK  = 00004000
-};
-
-int eventfd(unsigned int initval, int flags);
-
-ssize_t read (int FILEDES, void *BUFFER, size_t SIZE);
-ssize_t write (int FILEDES, const void *BUFFER, size_t SIZE);
-int close (int FILEDES);
-
 typedef void (*zz_async_handler)(void *request_data);
 
 int zz_async_register_worker(void *handlers[]);

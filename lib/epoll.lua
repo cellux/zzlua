@@ -44,8 +44,6 @@ extern int epoll_create1 (int flags);
 extern int epoll_ctl (int epfd, int op, int fd, struct epoll_event *event);
 extern int epoll_wait (int epfd, struct epoll_event *events, int max_events, int timeout);
 
-extern int close (int fd);
-
 ]]
 
 local Poller_mt = {}
