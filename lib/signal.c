@@ -25,12 +25,12 @@ void *zz_signal_handler_thread(void *arg) {
 
   event_socket = nn_socket(AF_SP, NN_PUB);
   if (event_socket < 0) {
-    fprintf(stderr, "Cannot create event socket in zz_signal_handler_thread(), nn_socket() failed\n");
+    fprintf(stderr, "signal: Cannot create event socket in zz_signal_handler_thread(), nn_socket() failed\n");
     exit(1);
   }
   endpoint_id = nn_connect(event_socket, "inproc://events");
   if (endpoint_id < 0) {
-    fprintf(stderr, "Cannot connect event socket to event queue, nn_connect() failed\n");
+    fprintf(stderr, "signal: Cannot connect event socket to event queue, nn_connect() failed\n");
     exit(1);
   }
 
@@ -39,7 +39,7 @@ void *zz_signal_handler_thread(void *arg) {
   for (;;) {
     signum = sigwaitinfo(&ss, &siginfo);
     if (signum < 0) {
-      fprintf(stderr, "sigwait() failed\n");
+      fprintf(stderr, "signal: sigwait() failed\n");
       exit(1);
     }
     if (signum == SIGALRM) {
@@ -58,11 +58,11 @@ void *zz_signal_handler_thread(void *arg) {
                              cmp_buf.size,
                              0);
     if (bytes_sent != cmp_buf.size) {
-      fprintf(stderr, "nn_send() failed when sending signal event!\n");
+      fprintf(stderr, "signal: nn_send() failed when sending signal event!\n");
     }
   }
   if (nn_close(event_socket) != 0) {
-    fprintf(stderr, "Cannot close event socket, nn_close() failed\n");
+    fprintf(stderr, "signal: Cannot close event socket, nn_close() failed\n");
     exit(1);
   }
   return NULL;

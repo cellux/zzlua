@@ -20,7 +20,7 @@ static int registered_worker_count = 0;
 
 int zz_async_register_worker(void *handlers[]) {
   if (registered_worker_count == MAX_REGISTERED_WORKERS) {
-    fprintf(stderr, "cannot register more workers, %d limit exceeded\n",
+    fprintf(stderr, "async: cannot register more workers, %d limit exceeded\n",
             MAX_REGISTERED_WORKERS);
     exit(1);
   }
@@ -83,17 +83,17 @@ void *zz_async_worker_thread(void *arg) {
   while (1) {
     int status = poll(pollfds, 1, -1);
     if (status != 1) {
-      fprintf(stderr, "poll() failed: status=%d\n", status);
+      fprintf(stderr, "async: poll() failed: status=%d\n", status);
       exit(1);
     }
     trigger = 0;
     int nbytes = read(info->request_fd, &trigger, 8);
     if (nbytes != 8) {
-      fprintf(stderr, "read(request_fd) failed: nbytes=%d\n", nbytes);
+      fprintf(stderr, "async: read(request_fd) failed: nbytes=%d\n", nbytes);
       exit(1);
     }
     if (trigger != 1) {
-      fprintf(stderr, "read(request_fd) failed: trigger=%lld\n", trigger);
+      fprintf(stderr, "async: read(request_fd) failed: trigger=%lld\n", trigger);
       exit(1);
     }
     /* worker_id is a 1-based index to the registered_workers array */
