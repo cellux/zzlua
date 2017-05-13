@@ -1,6 +1,7 @@
 local ffi = require('ffi')
 local bit = require('bit')
 local sched = require('sched')
+local pthread = require('pthread')
 local util = require('util')
 local xlib = require('xlib')
 
@@ -984,8 +985,11 @@ typedef union SDL_Event {
   Uint8 padding[56];
 } SDL_Event;
 
+Uint32 SDL_RegisterEvents (int numevents);
 void SDL_PumpEvents (void);
 int SDL_PollEvent (SDL_Event * event);
+int SDL_WaitEvent (SDL_Event * event);
+int SDL_WaitEventTimeout (SDL_Event * event, int timeout);
 
 /* SDL_rect.h */
 
@@ -2264,32 +2268,110 @@ end
 
 -- scheduler module
 
-local function SDL2Module(sched)
-   local self = { init = M.Init, done = M.Quit }
-   local sdl_event_types = {
-      [sdl.SDL_QUIT]                 = 'sdl.quit',
-      [sdl.SDL_WINDOWEVENT]          = 'sdl.windowevent',
-      [sdl.SDL_SYSWMEVENT]           = 'sdl.syswmevent',
-      [sdl.SDL_KEYDOWN]              = 'sdl.keydown',
-      [sdl.SDL_KEYUP]                = 'sdl.keyup',
-      [sdl.SDL_TEXTINPUT]            = 'sdl.textinput',
-      [sdl.SDL_MOUSEMOTION]          = 'sdl.mousemotion',
-      [sdl.SDL_MOUSEBUTTONDOWN]      = 'sdl.mousebuttondown',
-      [sdl.SDL_MOUSEBUTTONUP]        = 'sdl.mousebuttonup',
-      [sdl.SDL_MOUSEWHEEL]           = 'sdl.mousewheel',
-      [sdl.SDL_DROPFILE]             = 'sdl.dropfile',
-      [sdl.SDL_RENDER_TARGETS_RESET] = 'sdl.render_targets_reset',
-   }
+local sdl_event_types = {
+   [sdl.SDL_QUIT]                 = 'sdl.quit',
+   [sdl.SDL_WINDOWEVENT]          = 'sdl.windowevent',
+   [sdl.SDL_SYSWMEVENT]           = 'sdl.syswmevent',
+   [sdl.SDL_KEYDOWN]              = 'sdl.keydown',
+   [sdl.SDL_KEYUP]                = 'sdl.keyup',
+   [sdl.SDL_TEXTINPUT]            = 'sdl.textinput',
+   [sdl.SDL_MOUSEMOTION]          = 'sdl.mousemotion',
+   [sdl.SDL_MOUSEBUTTONDOWN]      = 'sdl.mousebuttondown',
+   [sdl.SDL_MOUSEBUTTONUP]        = 'sdl.mousebuttonup',
+   [sdl.SDL_MOUSEWHEEL]           = 'sdl.mousewheel',
+   [sdl.SDL_DROPFILE]             = 'sdl.dropfile',
+   [sdl.SDL_RENDER_TARGETS_RESET] = 'sdl.render_targets_reset',
+}
+
+local ZZ_SCHED_FD_POLLIN_EVENT = sdl.SDL_RegisterEvents(1)
+if ZZ_SCHED_FD_POLLIN_EVENT == -1 then
+  ef("SDL_RegisterEvents() failed")
+end
+
+local old_poller_factory = sched.poller_factory
+
+-- how many SDL events to process during a single poll
+local MAX_SDL_EVENTS_PROCESSED = 16
+
+sched.poller_factory = function()
+   local self = old_poller_factory()
+   local old_wait = self.wait
    local tmp_event = ffi.new("SDL_Event")
-   function self.tick()
-      -- poll for SDL events and convert them to scheduler events
-      while sdl.SDL_PollEvent(tmp_event) == 1 do
-         local evdata = ffi.new("SDL_Event", tmp_event) -- clone it
-         local evtype = sdl_event_types[evdata.type]
-         if evtype then
-            sched.emit(evtype, evdata)
+   function self:wait(timeout, process)
+      if timeout < 0 then
+         -- wait indefinitely
+         sdl.SDL_WaitEvent(nil)
+         timeout = 0
+      elseif timeout > 0 then
+         -- wait for `timeout` milliseconds
+         sdl.SDL_WaitEventTimeout(nil, timeout)
+         timeout = 0
+      end
+      if timeout == 0 then
+         -- do not wait
+         local sdl_events_processed = 0
+         while sdl.SDL_PollEvent(tmp_event) == 1 do
+            if tmp_event.type == ZZ_SCHED_FD_POLLIN_EVENT then
+               -- there are events to be read on sched:fd()
+               -- call with timeout=0 as there is no need to wait
+               old_wait(self, 0, process)
+            else
+               local evdata = ffi.new("SDL_Event", tmp_event) -- clone it
+               local evtype = sdl_event_types[evdata.type]
+               if evtype then
+                  sched.emit(evtype, evdata)
+               end
+               sdl_events_processed = sdl_events_processed + 1
+               if sdl_events_processed == MAX_SDL_EVENTS_PROCESSED then
+                  break
+               end
+            end
          end
       end
+   end
+   return self
+end
+
+ffi.cdef [[
+
+struct zz_sdl2_sched_fd_poller {
+  uint32_t sched_fd_pollin_event_type;
+  int sched_fd;
+  int exit_fd;
+};
+
+void *zz_sdl2_sched_fd_poller_thread(void *arg);
+
+]]
+
+local function SDL2Module(sched)
+   local self = {}
+   local poller = ffi.new("struct zz_sdl2_sched_fd_poller")
+   local thread_id = ffi.new("pthread_t[1]")
+   local exit_signal = ffi.new("uint64_t[1]", 1)
+   function self.init()
+      M.Init()
+      poller.sched_fd_pollin_event_type = ZZ_SCHED_FD_POLLIN_EVENT
+      poller.sched_fd = sched.poller:fd()
+      poller.exit_fd = util.check_errno("eventfd", ffi.C.eventfd(0, ffi.C.EFD_NONBLOCK))
+      local rv = ffi.C.pthread_create(thread_id,
+                                      nil,
+                                      ffi.C.zz_sdl2_sched_fd_poller_thread,
+                                      ffi.cast("void*", poller))
+      if rv ~= 0 then
+         error("sdl2: cannot create poller thread: pthread_create() failed")
+      end
+   end
+   function self.done()
+      local nbytes = ffi.C.write(poller.exit_fd, exit_signal, 8)
+      assert(nbytes==8)
+      local retval = ffi.new("void*[1]")
+      local rv = ffi.C.pthread_join(thread_id[0], retval)
+      if rv ~=0 then
+         error("sdl2: cannot join poller thread: pthread_join() failed")
+      end
+      util.check_errno("close", ffi.C.close(poller.exit_fd))
+      M.Quit()
    end
    return self
 end
