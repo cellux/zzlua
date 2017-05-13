@@ -1,6 +1,7 @@
 local ffi = require('ffi')
 local sched = require('sched')
 local util = require('util')
+local errno = require('errno')
 
 ffi.cdef [[
 
@@ -16,18 +17,26 @@ local M = {}
 
 local Trigger_mt = {}
 
-function Trigger_mt:fd()
-   return self.fd
-end
-
 function Trigger_mt:poll()
-   assert(sched.running())
-   sched.poll(self.fd, "r")
    local buf = ffi.new("uint64_t[1]")
-   buf[0] = 0
-   local nbytes = ffi.C.read(self.fd, buf, 8)
-   assert(nbytes==8)
-   assert(buf[0]==1)
+   while true do
+      if sched.running() then
+         sched.poll(self.fd, "r")
+      end
+      buf[0] = 0
+      local nbytes = ffi.C.read(self.fd, buf, 8)
+      if nbytes == 8 then
+         assert(tonumber(buf[0])==1)
+         break
+      elseif nbytes == -1 then
+         local errnum = errno.errno()
+         if errnum ~= ffi.C.EAGAIN then
+            ef("poll() failed: %s", errno.strerror(errnum))
+         end
+      else
+         ef("poll() failed: nbytes=%d, expected 8", nbytes)
+      end
+   end
 end
 
 function Trigger_mt:fire()

@@ -8,10 +8,10 @@ local inspect = require('inspect')
 
 local M = {}
 
-local scheduler_running = false
+local scheduler_state = "off"
 
 function M.running()
-   return scheduler_running
+   return scheduler_state == "loop"
 end
 
 -- must be set to a platform-specific implementation at startup
@@ -104,7 +104,7 @@ local function Scheduler()
 
    local poller = M.poller_factory()
 
-   -- make it public so that people can add their fds for permanent polling
+   -- let users add their fds for permanent polling
    self.poller = poller
 
    local permanently_polled_fds = {}
@@ -412,15 +412,17 @@ local function Scheduler()
          -- enter the event loop, continue scheduling until there is
          -- work to do. when the event loop exits, cleanup and destroy
          -- this Scheduler instance.
-         scheduler_running = true
+         scheduler_state = "init"
          module_registry:invoke('init')
+         scheduler_state = "loop"
          self.loop()
+         scheduler_state = "done"
          module_registry:invoke('done')
          poller:del(event_sub_fd, "r", event_sub_id)
          poller:close()
          nn.close(event_sub)
          scheduler_singleton = nil
-         scheduler_running = false
+         scheduler_state = "off"
          -- after this function returns, self (the current scheduler
          -- instance) will be garbage-collected
       end

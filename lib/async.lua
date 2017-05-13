@@ -2,6 +2,7 @@ local ffi = require('ffi')
 local util = require('util')
 local sched = require('sched')
 local pthread = require('pthread')
+local trigger = require('trigger')
 local inspect = require('inspect')
 local adt = require('adt')
 local errno = require('errno')
@@ -13,11 +14,11 @@ typedef void (*zz_async_handler)(void *request_data);
 int zz_async_register_worker(void *handlers[]);
 
 struct zz_async_worker_info {
-  int request_fd;
+  struct zz_trigger request_trigger;
   int worker_id;
   int handler_id;
   void *request_data;
-  int response_fd;
+  struct zz_trigger response_trigger;
 };
 
 void *zz_async_worker_thread(void *arg);
@@ -42,8 +43,8 @@ local MAX_ACTIVE_THREADS = 16
 
 local thread_pool   = {} -- a list of reservable threads
 
-local reserve_queue = adt.List() -- event ids of coroutines waiting
-                                 -- for a reservable thread
+local reserve_queue = adt.List() -- reservation ids of coroutines
+                                 -- waiting for a reservable thread
 
 local n_active_threads   = 0
 local n_worker_threads   = 0
@@ -51,11 +52,11 @@ local n_worker_threads   = 0
 local function create_worker_thread()
    n_worker_threads = n_worker_threads + 1
    local worker_info = ffi.new("struct zz_async_worker_info")
-   local request_fd = util.check_errno("eventfd", ffi.C.eventfd(0, ffi.C.EFD_NONBLOCK))
-   worker_info.request_fd = request_fd
-   local response_fd = util.check_errno("eventfd", ffi.C.eventfd(0, ffi.C.EFD_NONBLOCK))
-   sched.poll_add(response_fd, "r")
-   worker_info.response_fd = response_fd
+   local request_trigger = trigger()
+   worker_info.request_trigger = request_trigger
+   local response_trigger = trigger()
+   worker_info.response_trigger = response_trigger
+   sched.poll_add(response_trigger.fd, "r")
    local thread_id = ffi.new("pthread_t[1]")
    local rv = ffi.C.pthread_create(thread_id,
                                    nil,
@@ -65,45 +66,23 @@ local function create_worker_thread()
       error("cannot create async worker thread: pthread_create() failed")
    end
    local self = {}
-   local trigger = ffi.new("uint64_t[1]")
-   function self:send_request(worker_id, handler_id, request_data, sync)
+   function self:send_request(worker_id, handler_id, request_data)
       worker_info.worker_id = worker_id
       worker_info.handler_id = handler_id
       worker_info.request_data = request_data
-      trigger[0] = 1
-      local nbytes = ffi.C.write(request_fd, trigger, 8)
-      assert(nbytes==8)
-      while true do
-         if not sync then
-            sched.poll(response_fd, "r")
-         end
-         trigger[0] = 0
-         local nbytes = ffi.C.read(response_fd, trigger, 8)
-         if nbytes == -1 then
-            local errnum = errno.errno()
-            if errnum ~= ffi.C.EAGAIN then
-               ef("poll(response_fd) failed: %s", errno.strerror(errnum))
-            end
-         elseif nbytes ~= 8 then
-            ef("poll(response_fd) failed: read %d bytes, expected 8", nbytes)
-         elseif tonumber(trigger[0]) ~= 1 then
-            ef("poll(response_fd) failed: trigger[0] ~= 1")
-         else
-            -- we got the trigger
-            break
-         end
-      end
+      request_trigger:fire()
+      response_trigger:poll()
    end
    function self:stop()
-      self:send_request(-1, 0, nil, true)
+      self:send_request(-1, 0, nil)
       local retval = ffi.new("void*[1]")
       local rv = ffi.C.pthread_join(thread_id[0], retval)
       if rv ~=0 then
          error("cannot join async worker thread: pthread_join() failed")
       end
-      sched.poll_del(response_fd)
-      util.check_errno("close", ffi.C.close(response_fd))
-      util.check_errno("close", ffi.C.close(request_fd))
+      sched.poll_del(response_trigger.fd)
+      response_trigger:delete()
+      request_trigger:delete()
       n_worker_threads = n_worker_threads - 1
    end
    return self

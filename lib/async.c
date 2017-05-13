@@ -6,6 +6,8 @@
 #include <math.h>
 #include <poll.h>
 
+#include "trigger.h"
+
 typedef void (*zz_async_handler)(void *request_data);
 
 #define MAX_REGISTERED_WORKERS 256
@@ -37,19 +39,19 @@ int zz_async_register_worker(void *handlers[]) {
 }
 
 struct zz_async_worker_info {
-  int request_fd;
+  struct zz_trigger request_trigger;
   int worker_id;
   int handler_id;
   void *request_data;
-  int response_fd;
+  struct zz_trigger response_trigger;
 };
 
 void *zz_async_worker_thread(void *arg) {
   struct zz_async_worker_info *info = (struct zz_async_worker_info*) arg;
 
-  /* When the Lua side wants to execute something which cannot be done
-   * in a non-blocking way (and thus would block the event loop), it
-   * posts it as a request to one of the async worker threads.
+  /* When the Lua side wants to execute something which would block
+   * the event loop, it posts it as a request to one of the async
+   * worker threads.
    *
    * Every module can define its request types in C code and register
    * the corresponding handlers with the async module by calling
@@ -60,47 +62,24 @@ void *zz_async_worker_thread(void *arg) {
    * To make a request, the Lua side fills out the selected worker
    * thread's zz_async_worker_info structure with the worker_id,
    * handler_id and a pointer to a structure describing the request
-   * (the layout of which varies by request type). The Lua side then
-   * writes to the worker thread's request_fd - this wakes up the
-   * thread which then looks up the desired handler and passes
-   * request_data to it.
+   * (the layout varies by request type). The Lua side then fires the
+   * worker thread's request_trigger - this wakes up the thread which
+   * then looks up the desired handler and passes request_data to it.
    *
    * Before the request handler completes, it should store any return
-   * values in the request_data structure. The worker thread writes to
-   * response_fd which is being polled on the Lua side in the
-   * scheduler event loop. The scheduler wakes up the coroutine which
-   * is waiting for the completion of the async request. Finally the
-   * coroutine returns to the Lua call which initiated the async
+   * values in the request_data structure. The worker thread then
+   * fires response_trigger which is being polled on the Lua side in
+   * the coroutine which is waiting for the completion of the async
    * request.
    */
 
-  uint64_t trigger;
-
-  struct pollfd pollfds[1];
-  pollfds[0].fd = info->request_fd;
-  pollfds[0].events = POLLIN;
-
   while (1) {
-    int status = poll(pollfds, 1, -1);
-    if (status != 1) {
-      fprintf(stderr, "async: poll() failed: status=%d\n", status);
-      exit(1);
-    }
-    trigger = 0;
-    int nbytes = read(info->request_fd, &trigger, 8);
-    if (nbytes != 8) {
-      fprintf(stderr, "async: read(request_fd) failed: nbytes=%d\n", nbytes);
-      exit(1);
-    }
-    if (trigger != 1) {
-      fprintf(stderr, "async: read(request_fd) failed: trigger=%lld\n", trigger);
-      exit(1);
-    }
+    zz_trigger_poll(&info->request_trigger);
     /* worker_id is a 1-based index to the registered_workers array */
     int worker_id = info->worker_id;
     /* worker_id == -1 is the exit signal */
     if (worker_id == -1) {
-      write(info->response_fd, &trigger, 8); /* ack */
+      zz_trigger_fire(&info->response_trigger);
       break;
     }
     if (worker_id < 1 || worker_id > registered_worker_count) {
@@ -117,7 +96,7 @@ void *zz_async_worker_thread(void *arg) {
     }
     zz_async_handler handler = worker->handlers[handler_id];
     handler(info->request_data); /* process request */
-    write(info->response_fd, &trigger, 8); /* signal completion */
+    zz_trigger_fire(&info->response_trigger);
   }
   return NULL;
 }
