@@ -2,6 +2,7 @@ local ffi = require('ffi')
 local bit = require('bit')
 local sched = require('sched')
 local pthread = require('pthread')
+local trigger = require('trigger')
 local util = require('util')
 local xlib = require('xlib')
 
@@ -2337,7 +2338,7 @@ ffi.cdef [[
 struct zz_sdl2_sched_fd_poller {
   uint32_t sched_fd_pollin_event_type;
   int sched_fd;
-  int exit_fd;
+  zz_trigger exit_trigger;
 };
 
 void *zz_sdl2_sched_fd_poller_thread(void *arg);
@@ -2348,12 +2349,12 @@ local function SDL2Module(sched)
    local self = {}
    local poller = ffi.new("struct zz_sdl2_sched_fd_poller")
    local thread_id = ffi.new("pthread_t[1]")
-   local exit_signal = ffi.new("uint64_t[1]", 1)
+   local exit_trigger = trigger()
    function self.init()
       M.Init()
       poller.sched_fd_pollin_event_type = ZZ_SCHED_FD_POLLIN_EVENT
       poller.sched_fd = sched.poller:fd()
-      poller.exit_fd = util.check_errno("eventfd", ffi.C.eventfd(0, ffi.C.EFD_NONBLOCK))
+      poller.exit_trigger = exit_trigger
       local rv = ffi.C.pthread_create(thread_id,
                                       nil,
                                       ffi.C.zz_sdl2_sched_fd_poller_thread,
@@ -2363,14 +2364,13 @@ local function SDL2Module(sched)
       end
    end
    function self.done()
-      local nbytes = ffi.C.write(poller.exit_fd, exit_signal, 8)
-      assert(nbytes==8)
+      exit_trigger:fire()
       local retval = ffi.new("void*[1]")
       local rv = ffi.C.pthread_join(thread_id[0], retval)
       if rv ~=0 then
          error("sdl2: cannot join poller thread: pthread_join() failed")
       end
-      util.check_errno("close", ffi.C.close(poller.exit_fd))
+      exit_trigger:delete()
       M.Quit()
    end
    return self
