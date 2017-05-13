@@ -24,6 +24,12 @@ typedef __off_t off_t; /* TODO: this is not correct */
 void *malloc (size_t size);
 void free (void *ptr);
 
+enum {
+  SEEK_SET = 0,
+  SEEK_CUR = 1,
+  SEEK_END = 2
+};
+
 ssize_t read (int FILEDES, void *BUFFER, size_t SIZE);
 ssize_t write (int FILEDES, const void *BUFFER, size_t SIZE);
 

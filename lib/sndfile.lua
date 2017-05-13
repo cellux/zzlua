@@ -1,5 +1,4 @@
 local ffi = require('ffi')
-local fs = require('fs') -- for definition of SEEK_* constants
 
 ffi.cdef [[
 
