@@ -14,11 +14,11 @@ typedef void (*zz_async_handler)(void *request_data);
 int zz_async_register_worker(void *handlers[]);
 
 struct zz_async_worker_info {
-  struct zz_trigger request_trigger;
+  zz_trigger request_trigger;
   int worker_id;
   int handler_id;
   void *request_data;
-  struct zz_trigger response_trigger;
+  zz_trigger response_trigger;
 };
 
 void *zz_async_worker_thread(void *arg);

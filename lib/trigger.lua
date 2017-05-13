@@ -5,11 +5,11 @@ local errno = require('errno')
 
 ffi.cdef [[
 
-struct zz_trigger {
+typedef struct {
   int fd;
-};
+} zz_trigger;
 
-void zz_trigger_fire(struct zz_trigger *t);
+void zz_trigger_fire(zz_trigger *t);
 
 ]]
 
@@ -55,7 +55,7 @@ end
 Trigger_mt.__index = Trigger_mt
 Trigger_mt.__gc = Trigger_mt.delete
 
-local Trigger = ffi.metatype("struct zz_trigger", Trigger_mt)
+local Trigger = ffi.metatype("zz_trigger", Trigger_mt)
 
 function M.Trigger()
    local fd = util.check_errno("eventfd", ffi.C.eventfd(0, ffi.C.EFD_NONBLOCK))

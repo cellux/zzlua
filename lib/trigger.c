@@ -6,7 +6,7 @@
 
 #include "trigger.h"
 
-void zz_trigger_poll(struct zz_trigger *t) {
+void zz_trigger_poll(zz_trigger *t) {
   struct pollfd fds[1];
   fds[0].fd = t->fd;
   fds[0].events = POLLIN;
@@ -27,7 +27,7 @@ void zz_trigger_poll(struct zz_trigger *t) {
   }
 }
 
-void zz_trigger_fire(struct zz_trigger *t) {
+void zz_trigger_fire(zz_trigger *t) {
   uint64_t data = 1;
   int nbytes = write(t->fd, &data, sizeof(uint64_t));
   if (nbytes != 8) {
