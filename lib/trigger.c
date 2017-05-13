@@ -32,6 +32,7 @@ void zz_trigger_poll(zz_trigger *t) {
 }
 
 void zz_trigger_fire(zz_trigger *t) {
+  if (!t->fd) return;
   uint64_t data = 1;
   int nbytes = write(t->fd, &data, sizeof(uint64_t));
   if (nbytes != 8) {
