@@ -7,6 +7,10 @@
 #include "trigger.h"
 
 void zz_trigger_poll(zz_trigger *t) {
+  if (!t->fd) {
+    fprintf(stderr, "zz_trigger_poll(): fd=0\n");
+    exit(1);
+  }
   struct pollfd fds[1];
   fds[0].fd = t->fd;
   fds[0].events = POLLIN;
