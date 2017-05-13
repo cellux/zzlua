@@ -91,6 +91,7 @@ ZZ_LIB_C_OBJ := $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
 # header dependencies
 lib/buffer.o: lib/buffer.h
 lib/msgpack.o: lib/msgpack.h
+lib/trigger.o: lib/trigger.h
 
 main.o: main.c $(LUAJIT_LIB) $(NANOMSG_LIB) $(CMP_OBJ)
 
