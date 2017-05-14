@@ -4,6 +4,8 @@ local sdl = require('sdl2')
 local ui = require('ui')
 local fluid = require('fluidsynth')
 local fs = require('fs')
+local process = require('process')
+local audio = require('audio')
 
 local FONT_SIZE = 11
 local SAMPLE_RATE = 48000
@@ -26,7 +28,8 @@ end
 local function main()
    local sf2_path = arg[1]
    if not fs.exists(sf2_path) then
-      ef("Usage: fluidsynth <sf2-path>")
+      pf("Usage: fluidsynth <sf2-path>")
+      process.exit(0)
    end
 
    local ui = ui {
@@ -64,27 +67,27 @@ local function main()
    local synth = fluid.Synth(settings)
    local sf_id = synth:sfload(sf2_path, true)
    log("successfully loaded %s, id=%d", sf2_path, sf_id)
-      
+
    log("GetCurrentAudioDriver()=%s", sdl.GetCurrentAudioDriver())
    for i=1,sdl.GetNumAudioDevices() do
       log("GetAudioDeviceName(%d)=%s", i, sdl.GetAudioDeviceName(i))
    end
 
-   local dev = sdl.OpenAudioDevice {
+   local engine, spec = audio.Engine {
       freq = SAMPLE_RATE,
-      format = sdl.AUDIO_S16SYS,
       channels = 2,
       samples = 1024,
-      callback = ffi.C.zz_fluidsynth_sdl_audio_callback,
-      userdata = synth.synth
    }
-   log("SDL_OpenAudioDevice(): %d", dev.id)
-   log("  freq=%d", dev.freq)
-   log("  format=%d", dev.format)
-   log("  channels=%d", dev.channels)
-   log("  samples=%d", dev.samples)
-   log("  size=%d", dev.size)
-   
+
+   log("SDL_OpenAudioDevice():")
+   log("  freq=%d", spec.freq)
+   log("  format=%d", spec.format)
+   log("  channels=%d", spec.channels)
+   log("  samples=%d", spec.samples)
+   log("  size=%d", spec.size)
+
+   engine:add(fluid.AudioSource(synth))
+
    log("zsxdcvgbhnjm: notes from current octave")
    log("q2w3er5t6y7u: notes from next octave")
    log("UP: octave up")
@@ -94,8 +97,9 @@ local function main()
    log("BACKSPACE: all notes off")
    log("ESC: quit")
    log()
-   log("unpausing audio device")
-   dev:start()
+
+   log("starting audio engine")
+   engine:start()
    log("now play.")
 
    local octave = 5
@@ -115,10 +119,10 @@ local function main()
 
    local function quit()
       keymapper:disable()
-      log("pausing audio device")
-      dev:stop()
-      log("closing audio device")
-      dev:close()
+      log("stopping audio engine")
+      engine:stop()
+      log("closing audio engine")
+      engine:delete()
       log("cleanup fluidsynth")
       synth:delete()
       settings:delete()

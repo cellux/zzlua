@@ -1,5 +1,6 @@
 local ffi = require('ffi')
 local util = require('util')
+local audio = require('audio')
 
 ffi.cdef [[
 
@@ -115,6 +116,8 @@ int fluid_synth_process(fluid_synth_t* synth, int len,
 
 int delete_fluid_synth(fluid_synth_t* synth);
 
+/* zz_fluidsynth */
+
 struct zz_fluidsynth_settings {
   fluid_settings_t *settings;
 };
@@ -123,7 +126,11 @@ struct zz_fluidsynth_synth {
   fluid_synth_t *synth;
 };
 
-void zz_fluidsynth_sdl_audio_callback(void *userdata, uint8_t *stream, int len);
+struct zz_fluidsynth_audio_source {
+  struct zz_audio_Source src;
+};
+
+int zz_fluidsynth_audio_callback(void *userdata, float *stream, int frames);
 
 ]]
 
@@ -311,6 +318,16 @@ local Synth = ffi.metatype("struct zz_fluidsynth_synth", Synth_mt)
 function M.Synth(settings)
    local synth = fluid.new_fluid_synth(settings.settings)
    return Synth(synth)
+end
+
+function M.AudioSource(synth)
+   local source = audio.Source("struct zz_fluidsynth_audio_source",
+                            ffi.C.zz_fluidsynth_audio_callback,
+                            synth.synth)
+   return {
+      source = source, -- prevent GC
+      src = source.src,
+   }
 end
 
 return M

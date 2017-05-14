@@ -2,6 +2,7 @@ local ffi = require('ffi')
 local sched = require('sched')
 local sdl = require('sdl2')
 local fluid = require('fluidsynth')
+local audio = require('audio')
 local ui = require('ui')
 local fs = require('fs')
 local time = require('time')
@@ -669,17 +670,16 @@ local function main()
    log("loading soundfont: %s", sf2_path)
    local sf_id = synth:sfload(sf2_path, true)
 
-   log("opening audio device")
-   local dev = sdl.OpenAudioDevice {
+   log("creating audio engine")
+   local engine = audio.Engine {
       freq = SAMPLE_RATE,
-      format = sdl.AUDIO_S16SYS,
       channels = 2,
       samples = 1024,
-      callback = ffi.C.zz_fluidsynth_sdl_audio_callback,
-      userdata = synth.synth
    }
-   log("starting audio thread")
-   dev:start()
+   log("adding fluidsynth as an audio source")
+   engine:add(fluid.AudioSource(synth))
+   log("starting audio engine")
+   engine:start()
 
    log("creating keymapper")
    local keymapper = ui:KeyMapper()
@@ -688,10 +688,10 @@ local function main()
    local top_level_keymap = {
       [sdl.SDLK_ESCAPE] = function()
          keymapper:disable()
-         log("stopping audio thread")
-         dev:stop()
-         log("closing audio device")
-         dev:close()
+         log("stopping audio engine")
+         engine:stop()
+         log("deleting audio engine")
+         engine:delete()
          log("deleting synth")
          synth:delete()
          settings:delete()
