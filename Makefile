@@ -89,6 +89,7 @@ ZZ_LIB_C_SRC := $(sort $(shell find lib apps/zzlua/lib -name '*.c'))
 ZZ_LIB_C_OBJ := $(patsubst %.c,%.o,$(ZZ_LIB_C_SRC))
 
 # header dependencies
+lib/audio.o: lib/audio.h
 lib/buffer.o: lib/buffer.h
 lib/msgpack.o: lib/msgpack.h
 lib/trigger.o: lib/trigger.h
