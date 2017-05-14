@@ -1,3 +1,3 @@
-LUAJIT_VER="2.1.0-beta2"
+LUAJIT_VER="2.1.0-beta3"
 NANOMSG_VER="1.0.0"
 CMP_VER="10"
