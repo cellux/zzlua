@@ -3,6 +3,7 @@ local sdl = require('sdl2')
 local util = require('util')
 local sched = require('sched')
 local time = require('time')
+local trigger = require('trigger')
 
 -- preload freetype to ensure it's initialized by the scheduler
 require('freetype')
@@ -44,6 +45,17 @@ function Widget:draw()
    -- draw the widget so that it fills self.rect
 end
 
+function Widget:redraw()
+   -- bubble ourselves up through the parent chain until we find a
+   -- container with selective_redraw = true
+   --
+   -- that container will put this widget into its redraw_list which
+   -- ensures that self:draw() will be called at the next opportunity
+   if self.parent then
+      self.parent:redraw(self)
+   end
+end
+
 M.Widget = Widget
 
 -- Container
@@ -53,6 +65,17 @@ local Container = util.Class(Widget)
 function Container:create(opts)
    local self = Widget(opts)
    self.children = {}
+   if self.selective_redraw then
+      -- redraw_list is the list of descendant widgets which should be
+      -- drawn at the next draw() call
+      self.redraw_list = {}
+      -- if force_draw is true, self:draw() will unconditionally
+      -- draw() all children and then resets force_draw to false
+      --
+      -- we want a complete repaint on the first draw() call, so we
+      -- set this to true
+      self.force_draw = true
+   end
    return self
 end
 
@@ -104,8 +127,27 @@ function Container:layout(layout_rect)
 end
 
 function Container:draw()
-   for _,widget in ipairs(self.children) do
-      widget:draw()
+   if self.selective_redraw and not self.force_draw then
+      for _,widget in ipairs(self.redraw_list) do
+         widget:draw()
+      end
+      self.redraw_list = {}
+   else
+      for _,widget in ipairs(self.children) do
+         widget:draw()
+      end
+      self.force_draw = false
+   end
+end
+
+function Container:redraw(widget)
+   if self.selective_redraw and widget then
+      table.insert(self.redraw_list, widget)
+   end
+   if self.parent then
+      self.parent:redraw(widget or self)
+   elseif self.redraw_trigger then
+      self.redraw_trigger:fire()
    end
 end
 
@@ -180,7 +222,15 @@ local sdl_window_flags = {
 local Window = util.Class(Container)
 
 function Window:create(opts)
-   local self = Container()
+   local self = Container {
+      selective_redraw = opts.selective_redraw
+   }
+
+   if self.selective_redraw then
+      -- with selective_redraw == true, the window render loop blocks
+      -- after each draw operation waiting for the next redraw trigger
+      self.redraw_trigger = trigger()
+   end
 
    local x = opts.x or -1 -- -1 means centered
    local y = opts.y or -1
@@ -350,11 +400,16 @@ function Window.RenderLoop(window, opts)
          measure(function() window:present() end, 'present')
          local dt = now - prev_now
          measure(function() self:update(dt) end, 'update')
-         if frame_time > 0 then
-            local next_frame_start = now + frame_time
-            measure(function() sched.wait(next_frame_start) end, 'sleep')
+         if window.redraw_trigger then
+            -- block until something needs to be redrawn
+            measure(function() window.redraw_trigger:poll() end, 'sleep')
          else
-            measure(function() sched.yield() end, 'sleep')
+            if frame_time > 0 then
+               local next_frame_start = now + frame_time
+               measure(function() sched.wait(next_frame_start) end, 'sleep')
+            else
+               measure(function() sched.yield() end, 'sleep')
+            end
          end
       end
    end
