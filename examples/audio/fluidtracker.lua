@@ -362,15 +362,15 @@ local function Tracker(synth, grid, keymapper, global_env)
          end
       end
 
-      function self:home()
-         if is_key_down(sdl.KMOD_CTRL) then
-            self.top_row = 0
-            self.current_row = self.top_row
-            self.left_track = 1
-            self.current_track = self.left_track
-         else
-            self.current_row = self.top_row
-         end
+      function self:screen_home()
+         self.current_row = self.top_row
+      end
+
+      function self:pattern_home()
+         self.top_row = 0
+         self.current_row = self.top_row
+         self.left_track = 1
+         self.current_track = self.left_track
       end
 
       function self:down(steps)
@@ -387,13 +387,14 @@ local function Tracker(synth, grid, keymapper, global_env)
          self:down(steps)
       end
 
-      function self:end_()
-         if is_key_down(sdl.KMOD_CTRL) then
-            local track = tracks[self.current_track]
-            self.current_row = track:last_event_index()
-         else
-            self.current_row = self.top_row + pattern_area_height - 1
-         end
+      function self:pattern_end()
+         local track = tracks[self.current_track]
+         self.current_row = track:last_event_index()
+         adjust()
+      end
+
+      function self:screen_end()
+         self.current_row = self.top_row + pattern_area_height - 1
          adjust()
       end
 
@@ -563,9 +564,13 @@ local function Tracker(synth, grid, keymapper, global_env)
          p:page_up()
          p:draw()
       end,
-      [sdl.SDLK_HOME] = function()
+      [sdl.SDLK_HOME] = function(sym, mod)
          local p = self:current_pattern()
-         p:home()
+         if mod.ctrl then
+            p:pattern_home()
+         else
+            p:screen_home()
+         end
          p:draw()
       end,
       [sdl.SDLK_DOWN] = function()
@@ -578,9 +583,13 @@ local function Tracker(synth, grid, keymapper, global_env)
          p:page_down()
          p:draw()
       end,
-      [sdl.SDLK_END] = function()
+      [sdl.SDLK_END] = function(sym, mod)
          local p = self:current_pattern()
-         p:end_()
+         if mod.ctrl then
+            p:pattern_end()
+         else
+            p:screen_end()
+         end
          p:draw()
       end,
       [sdl.SDLK_LEFT] = function()
