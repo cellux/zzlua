@@ -26,7 +26,9 @@ function Trigger_mt:poll()
       buf[0] = 0
       local nbytes = ffi.C.read(self.fd, buf, 8)
       if nbytes == 8 then
-         assert(tonumber(buf[0])==1)
+         -- buf[0] stores the number of fires since the last poll
+         local nfires = tonumber(buf[0])
+         assert(nfires > 0)
          break
       elseif nbytes == -1 then
          local errnum = errno.errno()
