@@ -21,6 +21,7 @@ local function Logger(grid)
       else
          grid:scroll_up()
       end
+      grid:redraw()
       sched.yield()
    end
 end
@@ -35,6 +36,7 @@ local function main()
    local ui = ui {
       title = "FluidSynth",
       fullscreen_desktop = true,
+      selective_redraw = true,
    }
 
    local script_path = arg[0]

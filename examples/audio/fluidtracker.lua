@@ -235,6 +235,7 @@ local function Tracker(synth, grid, keymapper, global_env)
             y = y + 1
             row = row + 1
          end
+         grid:redraw()
       end
       function self:del_event(row)
          events[row] = nil
@@ -331,6 +332,7 @@ local function Tracker(synth, grid, keymapper, global_env)
             grid:write(x, 0, sf('%03d', track_index))
             track:draw(x, 1, self.current_track == track_index)
          end
+         grid:redraw()
       end
 
       local function adjust()
@@ -643,6 +645,7 @@ local function main()
    local ui = ui {
       title = "FluidTracker",
       fullscreen_desktop = true,
+      selective_redraw = true,
    }
 
    local font_path = font_path()
