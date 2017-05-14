@@ -391,22 +391,24 @@ local function Scheduler()
       end
    end
 
+   local function to_function(x)
+      if type(x)=="function" then
+         return x
+      elseif getmetatable(x).__call then
+         -- it's a callable object
+         local callable = x
+         return function(...)
+            callable(...)
+         end
+      else
+         ef("sched() expects something callable, got: %s", x)
+      end
+   end
+
    function self.sched(fn, data)
       if fn then
-         -- coerce to function
-         if type(fn) ~= "function" then
-            if getmetatable(fn).__call then
-               -- it's a callable object
-               local callable = fn
-               fn = function(...)
-                  callable(...)
-               end
-            else
-               ef("sched() expects something callable, got: %s", fn)
-            end
-         end
          -- add fn to the list of runnable threads
-         local t = coroutine.create(fn)
+         local t = coroutine.create(to_function(fn))
          runnables:push(Runnable(t, data))
       else
          -- enter the event loop, continue scheduling until there is
@@ -429,7 +431,7 @@ local function Scheduler()
    end
 
    function self.background(fn, data)
-      local t = coroutine.create(fn)
+      local t = coroutine.create(to_function(fn))
       runnables:push(Runnable({t}, data))
    end
 
