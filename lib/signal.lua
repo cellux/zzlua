@@ -117,7 +117,7 @@ local function SignalModule(sched)
       local signum, pid = unpack(data)
       --print(sf("got signal %d from pid %d", signum, pid))
       if signum == M.SIGTERM or signum == M.SIGINT then
-         sched.emit('quit', 0)
+         sched.quit()
       end
    end
 
