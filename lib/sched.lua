@@ -280,7 +280,7 @@ local function Scheduler()
 
       local function process_event(event)
          local evtype, evdata = unpack(event)
-         --print(sf("got event: evtype=%s, evdata=%s", evtype, inspect(evdata)))
+         --pf("got event: evtype=%s, evdata=%s", evtype, inspect(evdata))
          if evtype == 'quit' then
             running = false
             -- after quit, only those threads shall be resumed which
