@@ -2196,7 +2196,7 @@ local audio_status_names = {
 }
 
 function AudioDevice_mt:status()
-   local status = sdl.SDL_GetAudioDeviceStatus(self.dev)
+   local status = tonumber(sdl.SDL_GetAudioDeviceStatus(self.dev))
    return audio_status_names[status]
 end
 
@@ -2248,7 +2248,7 @@ function M.OpenAudioDevice(opts)
    local allowed_changes = opts.allowed_changes or 0
    local dev = sdl.SDL_OpenAudioDevice(device, iscapture, desired, obtained, allowed_changes)
    if dev == 0 then
-      ef("SDL_OpenAudioDevice() failed: %s", sdl.GetError())
+      ef("SDL_OpenAudioDevice() failed: %s", M.GetError())
    end
    local self = {
       dev = dev,
