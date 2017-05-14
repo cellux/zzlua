@@ -6,8 +6,16 @@ function List_mt:push(item)
    table.insert(self._items, item)
 end
 
+function List_mt:pop()
+   return table.remove(self._items)
+end
+
 function List_mt:shift()
    return table.remove(self._items, 1)
+end
+
+function List_mt:unshift(item)
+   table.insert(self._items, 1, item)
 end
 
 function List_mt:index(item)
