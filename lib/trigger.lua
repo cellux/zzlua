@@ -5,6 +5,14 @@ local errno = require('errno')
 
 ffi.cdef [[
 
+enum {
+  EFD_SEMAPHORE = 00000001,
+  EFD_CLOEXEC   = 02000000,
+  EFD_NONBLOCK  = 00004000
+};
+
+int eventfd(unsigned int initval, int flags);
+
 typedef struct {
   int fd;
 } zz_trigger;
