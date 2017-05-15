@@ -1,5 +1,6 @@
 APP ?= zzlua
 
+.PHONY: $(APP)
 $(APP):
 	@./build.sh build $(APP)
 
