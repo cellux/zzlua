@@ -48,6 +48,25 @@ const char * SDL_GetPlatform (void);
 int SDL_GetSystemRAM (void);
 int SDL_GetCPUCount (void);
 
+/* SDL_atomic.h */
+
+typedef int SDL_SpinLock;
+
+void SDL_AtomicLock(SDL_SpinLock *lock);
+SDL_bool SDL_AtomicTryLock(SDL_SpinLock *lock);
+void SDL_AtomicUnlock(SDL_SpinLock *lock);
+
+/* SDL_mutex.h */
+
+struct SDL_mutex;
+typedef struct SDL_mutex SDL_mutex;
+
+SDL_mutex * SDL_CreateMutex(void);
+int SDL_LockMutex(SDL_mutex * mutex);
+int SDL_TryLockMutex(SDL_mutex * mutex);
+int SDL_UnlockMutex(SDL_mutex * mutex);
+void SDL_DestroyMutex(SDL_mutex * mutex);
+
 /* SDL.h */
 
 enum {
