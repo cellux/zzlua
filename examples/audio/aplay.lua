@@ -28,19 +28,20 @@ end
 local function play(path)
    pf("Loading audio file: %s", path)
    local buf, sfinfo = sndfile.load(path)
-   local sample = audio.Sample {
+   local player = audio.SamplePlayer {
       buf = buf,
       channels = sfinfo.channels,
       frames = sfinfo.frames,
    }
-   pf("Loaded %d frames, %d channels.", sample.frames, sample.channels)
+   pf("Loaded %d frames, %d channels.", player.frames, player.channels)
    local engine = audio.Engine()
    pf("Playing audio file...")
-   engine:add(sample)
+   engine:add(player)
    engine:start()
-   local end_signal = sample:play()
+   local end_signal = player:play()
    end_signal:poll()
    engine:stop()
+   engine:remove(player)
    engine:delete()
 end
 
