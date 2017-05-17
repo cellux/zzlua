@@ -2236,7 +2236,7 @@ function AudioDevice_mt:lock()
 end
 
 function AudioDevice_mt:unlock()
-   sdl.SDL_LockAudioDevice(self.dev)
+   sdl.SDL_UnlockAudioDevice(self.dev)
 end
 
 function AudioDevice_mt:close()

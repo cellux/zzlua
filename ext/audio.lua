@@ -117,13 +117,17 @@ function Engine_mt:add(source)
    if type(source.start)=="function" then
       source:start()
    end
+   self.dev:lock()
    self.mixer:add(source.src)
+   self.dev:unlock()
 end
 
 function Engine_mt:remove(source)
    assert(type(source)=="table")
    assert(type(source.src)=="cdata")
+   self.dev:lock()
    self.mixer:remove(source.src)
+   self.dev:unlock()
    if type(source.stop)=="function" then
       source:stop()
    end
@@ -131,7 +135,9 @@ function Engine_mt:remove(source)
 end
 
 function Engine_mt:remove_all()
+   self.dev:lock()
    self.mixer:remove_all()
+   self.dev:unlock()
    for source in self.sources:iteritems() do
       if type(source.stop)=="function" then
          source:stop()
