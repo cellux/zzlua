@@ -20,6 +20,8 @@ case $GOAL in
   clean)
     # remove binary
     run rm -f $APP
+    # remove assets package
+    run rm -f assets.zip
     # remove object files
     run rm -f main.o
     run find lib ext apps/$APP/lib -name '*.o' -delete
@@ -208,7 +210,36 @@ if [ main.c -nt main.o ]; then
   relink
 fi
 
+# package assets
+
+assets_zip="$PWD/assets.zip"
+
+add_to_zip() {
+  local zip="$1"
+  local dir="$2"
+  if [ -d "$dir" ]; then
+    ( cd "$dir" && zip -r "$zip" . )
+  fi
+}
+
+assets_changed() {
+  local dir="$1"
+  [ -d "$dir" ] && [ -n "$(find "$dir" -newer "$assets_zip")" ]
+}
+
+if [ ! -e "$assets_zip" ] || \
+  assets_changed assets || \
+  assets_changed apps/$APP/assets
+then
+  echo "Packing assets:"
+  rm -f "$assets_zip"
+  add_to_zip "$assets_zip" assets
+  add_to_zip "$assets_zip" apps/$APP/assets
+  relink
+fi
+
 # create app binary
+
 if need_to_relink; then
   run $CC $CFLAGS \
     main.o ${ZZ_LIB_OBJ[@]} ${ZZ_CLIB_OBJ[@]} \
@@ -216,4 +247,7 @@ if need_to_relink; then
     $LUAJIT_LIB $CMP_OBJ $NANOMSG_LIB \
     -Wl,--no-whole-archive \
     $LDFLAGS -o $APP
+  echo -n "Attaching assets: "
+  cat "$assets_zip" >> $APP
+  echo "done."
 fi
