@@ -100,6 +100,7 @@ assert.equals(a, { x=1, y=2 })
 assert.equals(a:f(), 5)
 assert.equals(a:g(), "hello")
 assert.equals(A(), {"undefined"})
+assert.equals(A():f(), 5)
 
 -- inheritance
 
@@ -111,6 +112,8 @@ assert.equals(b:g(), "hello")
 local C = util.Class(B)
 local c = C()
 assert.equals(c:f(), 5)
+
+-- method override
 
 function B:f()
    return 10
@@ -124,10 +127,18 @@ assert.equals(c:f(), 10)
 assert.equals(c:g(), "hello")
 
 -- chain
+--
+-- chaining means replacing the __index metamethod of a table with a
+-- proxy to the original one. the proxy can override any of the keys.
 
 local A = util.Class()
 local a = A { x = 5, y = 6 }
+
+-- chain with function
 a = util.chain(a, function(self, name)
+   -- if the function returns a value which is logically true, it is
+   -- returned as the lookup result, otherwise, the lookup continues
+   -- through the original __index
    return name == "z" and 8
 end)
 assert.equals(a.x, 5)
@@ -135,10 +146,12 @@ assert.equals(a.y, 6)
 assert.equals(a.z, 8)
 assert.equals(a.w, nil)
 
+-- chain with table
 a = util.chain(a, { y = 2, w = 7, z = 4 })
 assert.equals(a.x, 5)
 assert.equals(a.y, 6) -- y is a direct member of a so we get a.y
-assert.equals(a.z, 4) -- z was in an ancestor so it's overridden
+                      -- (__index was not used at all)
+assert.equals(a.z, 4) -- z is in a descendant so it's overridden
 assert.equals(a.w, 7)
 
 -- EventEmitter
