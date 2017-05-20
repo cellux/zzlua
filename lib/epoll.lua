@@ -138,7 +138,6 @@ function Poller_mt:close()
 end
 
 Poller_mt.__index = Poller_mt
-Poller_mt.__gc = Poller_mt.close
 
 local function Poller(epfd, max_events)
    max_events = max_events or 64

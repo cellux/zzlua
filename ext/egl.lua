@@ -302,7 +302,6 @@ function Surface_mt:DestroySurface()
 end
 
 Surface_mt.__index = Surface_mt
-Surface_mt.__gc = Surface_mt.DestroySurface
 
 function Display_mt:CreateWindowSurface(config, win, attrib_list)
    local surface = util.check_bad("eglCreateWindowSurface", nil,
@@ -330,7 +329,6 @@ function Context_mt:DestroyContext()
 end
 
 Context_mt.__index = Context_mt
-Context_mt.__gc = Context_mt.DestroyContext
 
 function Display_mt:CreateContext(config, share_context, attrib_list)
    local ctx = util.check_bad("eglCreateContext", nil,
@@ -353,7 +351,6 @@ function Display_mt:Terminate()
 end
 
 Display_mt.__index = Display_mt
-Display_mt.__gc = Display_mt.Terminate
 
 function M.GetDisplay(display_id)
    display_id = display_id or 0 -- 0: EGL_DEFAULT_DISPLAY

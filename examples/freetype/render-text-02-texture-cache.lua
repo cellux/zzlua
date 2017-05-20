@@ -83,7 +83,7 @@ local function main()
             self.face = nil
          end
       end
-      return setmetatable(self, { __gc = self.delete })
+      return self
    end
 
    local script_path = arg[0]

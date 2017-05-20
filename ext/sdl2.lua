@@ -1944,7 +1944,6 @@ end
 Texture_mt.delete = Texture_mt.DestroyTexture
 
 Texture_mt.__index = Texture_mt
-Texture_mt.__gc = Texture_mt.delete
 
 -- Renderer
 
@@ -2025,7 +2024,6 @@ end
 Renderer_mt.delete = Renderer_mt.DestroyRenderer
 
 Renderer_mt.__index = Renderer_mt
-Renderer_mt.__gc = Renderer_mt.delete
 
 -- Window
 
@@ -2116,7 +2114,6 @@ end
 Context_mt.delete = Context_mt.GL_DeleteContext
 
 Context_mt.__index = Context_mt
-Context_mt.__gc = Context_mt.delete
 
 function Window_mt:GL_CreateContext()
    local ctx = sdl.SDL_GL_CreateContext(self.window)
@@ -2139,7 +2136,6 @@ end
 Window_mt.delete = Window_mt.DestroyWindow
 
 Window_mt.__index = Window_mt
-Window_mt.__gc = Window_mt.delete
 
 function M.CreateWindow(title, x, y, w, h, flags)
    x = x or sdl.SDL_WINDOWPOS_UNDEFINED
@@ -2248,7 +2244,6 @@ end
 AudioDevice_mt.delete = AudioDevice_mt.close
 
 AudioDevice_mt.__index = AudioDevice_mt
-AudioDevice_mt.__gc = AudioDevice_mt.delete
 
 function M.OpenAudioDevice(opts)
    local device = opts.device or nil

@@ -96,7 +96,7 @@ local function Font(ui, opts)
          self.atlas = nil
       end
    end
-   return setmetatable(self, { __gc = self.delete })
+   return self
 end
 
 return Font

@@ -145,7 +145,6 @@ function Mixer_mt:delete()
 end
 
 Mixer_mt.__index = Mixer_mt
-Mixer_mt.__gc = Mixer_mt.delete
 
 local function Mixer()
    local mixer = Source("struct zz_audio_Mixer", ffi.C.zz_audio_Mixer_cb)
@@ -196,7 +195,6 @@ function Engine_mt:delete()
 end
 
 Engine_mt.__index = Engine_mt
-Engine_mt.__gc = Engine_mt.delete
 
 local function Engine(opts)
    opts = opts or {}
@@ -266,7 +264,6 @@ function SamplePlayer_mt:delete()
 end
 
 SamplePlayer_mt.__index = SamplePlayer_mt
-SamplePlayer_mt.__gc = SamplePlayer_mt.delete
 
 function M.SamplePlayer(opts)
    opts = opts or {}

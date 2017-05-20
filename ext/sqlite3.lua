@@ -377,7 +377,6 @@ function Stmt_mt:finalize()
 end
 
 Stmt_mt.__index = Stmt_mt
-Stmt_mt.__gc = Stmt_mt.finalize
 
 local Db_mt = {}
 
@@ -412,7 +411,6 @@ function Db_mt:close()
 end
 
 Db_mt.__index = Db_mt
-Db_mt.__gc = Db_mt.close
 
 local M = {}
 

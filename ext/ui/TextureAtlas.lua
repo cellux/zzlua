@@ -89,7 +89,7 @@ local function TextureAtlas(ui, opts)
          self.texture = nil
       end
    end
-   return setmetatable(self, { __gc = self.delete })
+   return self
 end
 
 return TextureAtlas

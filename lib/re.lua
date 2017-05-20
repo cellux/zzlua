@@ -67,7 +67,7 @@ local function MatchObject(subject, stringcount, ovector)
 end
 
 local pcre_mt = {
-   __gc = function(self)
+   delete = function(self)
       pcre.pcre_free(self.pcre)
       if self.pcre_extra then
          pcre.pcre_free_study(self.pcre_extra)

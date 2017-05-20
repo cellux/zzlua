@@ -527,7 +527,6 @@ Socket_mt.__newindex = function(self, k, v)
 end
 
 Socket_mt.__index = Socket_mt
-Socket_mt.__gc = Socket_mt.close
 
 local M = {}
 

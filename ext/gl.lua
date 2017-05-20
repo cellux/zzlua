@@ -601,10 +601,9 @@ function Shader_mt:DeleteShader()
       self.id = nil
    end
 end
+Shader_mt.delete = Shader_mt.DeleteShader
 
 Shader_mt.__index = Shader_mt
-Shader_mt.__gc = Shader_mt.DeleteShader
-Shader_mt.delete = Shader_mt.DeleteShader
 
 function M.CreateShader(type)
    local id = util.check_bad("glCreateShader", 0, ffi.C.glCreateShader(type))
@@ -686,10 +685,9 @@ function Program_mt:DeleteProgram()
       self.id = nil
    end
 end
+Program_mt.delete = Program_mt.DeleteProgram
 
 Program_mt.__index = Program_mt
-Program_mt.__gc = Program_mt.DeleteProgram
-Program_mt.delete = Program_mt.DeleteProgram
 
 function M.CreateProgram()
    local id = util.check_bad("glCreateProgram", 0, ffi.C.glCreateProgram())
@@ -712,10 +710,9 @@ function VAO_mt:DeleteVertexArray()
       self.id = nil
    end
 end
+VAO_mt.delete = VAO_mt.DeleteVertexArray
 
 VAO_mt.__index = VAO_mt
-VAO_mt.__gc = VAO_mt.DeleteVertexArray
-VAO_mt.delete = VAO_mt.DeleteVertexArray
 
 function M.VAO()
    local arrays = ffi.new("GLuint[1]")
@@ -759,10 +756,9 @@ function VBO_mt:DeleteBuffer()
       self.id = nil
    end
 end
+VBO_mt.delete = VBO_mt.DeleteBuffer
 
 VBO_mt.__index = VBO_mt
-VBO_mt.__gc = VBO_mt.DeleteBuffer
-VBO_mt.delete = VBO_mt.DeleteBuffer
 
 function M.VBO(size, data, usage)
    local buffers = ffi.new("GLuint[1]")
@@ -868,10 +864,9 @@ function Texture_mt:DeleteTexture()
       self.id = nil
    end
 end
+Texture_mt.delete = Texture_mt.DeleteTexture
 
 Texture_mt.__index = Texture_mt
-Texture_mt.__gc = Texture_mt.DeleteTexture
-Texture_mt.delete = Texture_mt.DeleteTexture
 
 function M.Texture()
    local textures = ffi.new("GLuint[1]")
@@ -1119,7 +1114,6 @@ function ResourceManager_mt:delete()
 end
 
 ResourceManager_mt.__index = ResourceManager_mt
-ResourceManager_mt.__gc = ResourceManager_mt.delete
 
 function M.ResourceManager()
    local self = {

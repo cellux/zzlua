@@ -100,7 +100,7 @@ local function main()
             self.texture = nil
          end
       end
-      return setmetatable(self, { __gc = self.delete })
+      return self
    end
 
    local blitter = ui:TextureBlitter()
@@ -173,7 +173,7 @@ local function main()
             self.face = nil
          end
       end
-      return setmetatable(self, { __gc = self.delete })
+      return self
    end
 
    local script_path = arg[0]

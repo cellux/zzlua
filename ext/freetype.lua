@@ -418,7 +418,6 @@ end
 Face_mt.delete = Face_mt.Done_Face
 
 Face_mt.__index = Face_mt
-Face_mt.__gc = Face_mt.Done_Face
 
 function M.New_Face(path, face_index)
    assert_library_loaded()
