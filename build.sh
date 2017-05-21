@@ -227,13 +227,9 @@ assets_changed() {
   [ -d "$dir" ] && [ -n "$(find "$dir" -newer "$assets_zip")" ]
 }
 
-if [ ! -e "$assets_zip" ] || \
-  assets_changed assets || \
-  assets_changed apps/$APP/assets
-then
+if [ ! -e "$assets_zip" ] || assets_changed apps/$APP/assets; then
   echo "Packing assets:"
   rm -f "$assets_zip"
-  add_to_zip "$assets_zip" assets
   add_to_zip "$assets_zip" apps/$APP/assets
   relink
 fi
