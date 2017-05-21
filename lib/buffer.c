@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -9,20 +10,18 @@
 
 void zz_buffer_init(zz_buffer_t *self,
                     uint8_t *data,
-                    uint32_t size,
-                    uint32_t capacity,
-                    int dynamic) {
+                    size_t size,
+                    size_t capacity) {
   self->data = data;
   self->size = size;
   self->capacity = capacity;
-  self->dynamic = dynamic;
 }
 
 zz_buffer_t * zz_buffer_new() {
   return zz_buffer_new_with_capacity(ZZ_BUFFER_DEFAULT_CAPACITY);
 }
 
-zz_buffer_t * zz_buffer_new_with_capacity(uint32_t capacity) {
+zz_buffer_t * zz_buffer_new_with_capacity(size_t capacity) {
   zz_buffer_t *self = malloc(sizeof(zz_buffer_t));
   if (!self) {
     return NULL;
@@ -32,24 +31,34 @@ zz_buffer_t * zz_buffer_new_with_capacity(uint32_t capacity) {
     free(self);
     return NULL;
   }
-  uint32_t size = 0;
-  int dynamic = 1;
-  zz_buffer_init(self, data, size, capacity, dynamic);
+  size_t size = 0;
+  zz_buffer_init(self, data, size, capacity);
   return self;
 }
 
-zz_buffer_t * zz_buffer_new_with_data(void *data, uint32_t size) {
+zz_buffer_t * zz_buffer_new_with_copy(void *data, size_t size) {
   zz_buffer_t *self = zz_buffer_new_with_capacity(size);
-  if (self) {
-    memcpy(self->data, data, size);
-    self->size = size;
-  }
+  memcpy(self->data, data, size);
+  self->size = size;
   return self;
 }
 
-uint32_t zz_buffer_resize(zz_buffer_t *self, uint32_t n) {
-  if (!self->dynamic) return 0;
-  n = nearest_multiple_of(1024, n);
+zz_buffer_t * zz_buffer_new_with_data(void *data, size_t size) {
+  zz_buffer_t *self = malloc(sizeof(zz_buffer_t));
+  if (!self) {
+    return NULL;
+  }
+  /* capacity=0 means we are not responsible for freeing data */
+  zz_buffer_init(self, data, size, 0);
+  return self;
+}
+
+size_t zz_buffer_resize(zz_buffer_t *self, size_t n) {
+  if (self->capacity == 0) {
+    fprintf(stderr, "zz_buffer_resize(): attempt to resize externally owned data\n");
+    exit(1);
+  }
+  n = nearest_multiple_of(ZZ_BUFFER_DEFAULT_CAPACITY, n);
   self->data = realloc(self->data, n);
   if (!self->data) return 0;
   self->capacity = n;
@@ -59,8 +68,8 @@ uint32_t zz_buffer_resize(zz_buffer_t *self, uint32_t n) {
   return self->capacity;
 }
 
-uint32_t zz_buffer_append(zz_buffer_t *self, const void *data, uint32_t size) {
-  uint32_t new_size = self->size + size;
+size_t zz_buffer_append(zz_buffer_t *self, const void *data, size_t size) {
+  size_t new_size = self->size + size;
   if (new_size > self->capacity) {
     if (!zz_buffer_resize(self, new_size)) {
       return 0;
@@ -89,7 +98,8 @@ void zz_buffer_reset(zz_buffer_t *self) {
 }
 
 void zz_buffer_free(zz_buffer_t *self) {
-  if (self->data) {
+  /* capacity=0 means we are not responsible for freeing data */
+  if (self->data && self->capacity) {
     free(self->data);
     self->data = NULL;
   }

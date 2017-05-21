@@ -360,13 +360,13 @@ local M = {}
 function M.pack(obj)
    local ctx = Context()
    ctx:write(obj)
-   return ctx.buf:data()
+   return tostring(ctx.buf)
 end
 
 function M.pack_array(obj)
    local ctx = Context()
    ctx:write_table(obj, "array")
-   return ctx.buf:data()
+   return tostring(ctx.buf)
 end
 
 function M.unpack(data)

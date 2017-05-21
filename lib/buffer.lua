@@ -4,23 +4,22 @@ ffi.cdef [[
 
 typedef struct {
   uint8_t *data;
-  uint32_t size;
-  uint32_t capacity;
-  int dynamic;
+  size_t size;
+  size_t capacity;
 } zz_buffer_t;
 
 void zz_buffer_init(zz_buffer_t *self,
                     uint8_t *data,
-                    uint32_t size,
-                    uint32_t capacity,
-                    int dynamic);
+                    size_t size,
+                    size_t capacity);
 
 zz_buffer_t * zz_buffer_new();
-zz_buffer_t * zz_buffer_new_with_capacity(uint32_t capacity);
-zz_buffer_t * zz_buffer_new_with_data(void *data, uint32_t size);
+zz_buffer_t * zz_buffer_new_with_capacity(size_t capacity);
+zz_buffer_t * zz_buffer_new_with_copy(void *data, size_t size);
+zz_buffer_t * zz_buffer_new_with_data(void *data, size_t size);
 
-uint32_t zz_buffer_resize(zz_buffer_t *self, uint32_t n);
-uint32_t zz_buffer_append(zz_buffer_t *self, const void *data, uint32_t size);
+size_t zz_buffer_resize(zz_buffer_t *self, size_t n);
+size_t zz_buffer_append(zz_buffer_t *self, const void *data, size_t size);
 
 int zz_buffer_equals(zz_buffer_t *self, zz_buffer_t *other);
 
@@ -38,37 +37,56 @@ struct zz_buffer_Buffer_ct {
 
 local Buffer_mt = {}
 
-function Buffer_mt:size()
+function Buffer_mt:ptr()
+   return self.buf.data
+end
+
+function Buffer_mt:size(new_size)
+   if new_size then
+      self.buf.size = new_size
+   end
    return self.buf.size
 end
 
-function Buffer_mt:capacity()
+function Buffer_mt:__len()
+   return self:size()
+end
+
+function Buffer_mt:capacity(new_capacity)
+   if new_capacity then
+      ffi.C.zz_buffer_resize(self.buf, new_capacity)
+   end
    return self.buf.capacity
 end
 
-function Buffer_mt:data(index, length)
+function Buffer_mt:str(index, length)
    index = index or 0
    length = length or (self.buf.size - index)
    return ffi.string(self.buf.data+index, length)
 end
 
+function Buffer_mt:__tostring()
+   return self:str()
+end
+
+function Buffer_mt:get(i)
+   return self.buf.data[i]
+end
+
 function Buffer_mt:__index(i)
    if type(i) == "number" then
-      return self:data(i, 1)
+      return self.buf.data[i]
    else
       return rawget(Buffer_mt, i)
    end
 end
 
-function Buffer_mt:__newindex(index, data)
-   assert(type(index)=="number")
-   local data_size = #data
-   assert(index+data_size <= self.buf.size)
-   ffi.copy(self.buf.data+index, data, data_size)
+function Buffer_mt:set(i, value)
+   self.buf.data[i] = value
 end
 
-function Buffer_mt:resize(n)
-   return ffi.C.zz_buffer_resize(self.buf, n)
+function Buffer_mt:__newindex(i, value)
+   self.buf.data[i] = value
 end
 
 function Buffer_mt:append(buf, size)
@@ -77,9 +95,9 @@ end
 
 function Buffer_mt.__eq(buf1, buf2)
    if type(buf1) == "string" then
-      return buf1 == buf2:data()
+      return buf1 == buf2:str()
    elseif type(buf2) == "string" then
-      return buf1:data() == buf2
+      return buf1:str() == buf2
    else
       return ffi.C.zz_buffer_equals(buf1.buf, buf2.buf) ~= 0
    end
@@ -110,28 +128,45 @@ local Buffer = ffi.metatype("struct zz_buffer_Buffer_ct", Buffer_mt)
 
 local M = {}
 
-M.DEFAULT_CAPACITY = 256
+function M.new()
+   return Buffer(ffi.C.zz_buffer_new())
+end
 
-function M.new(data, size)
-   if type(data) == "number" then
-      assert(size==nil)
-      local n = data
-      return Buffer(ffi.C.zz_buffer_new_with_capacity(n))
-   elseif type(data) == "string" then
-      size = size or #data
-      assert(type(size)=="number")
-      return Buffer(ffi.C.zz_buffer_new_with_data(ffi.cast('void*', data), size))
+function M.new_with_capacity(capacity)
+   return Buffer(ffi.C.zz_buffer_new_with_capacity(capacity))
+end
+
+function M.new_with_copy(data, size)
+   return Buffer(ffi.C.zz_buffer_new_with_copy(data, size))
+end
+
+function M.new_with_data(data, size)
+   return Buffer(ffi.C.zz_buffer_new_with_data(data, size))
+end
+
+local function make_buffer(data, size, shared)
+   if data then
+      if type(data)=="number" then
+         return M.new_with_capacity(data)
+      end
+      if ffi.istype(Buffer, data) then
+         size = size or #data
+         data = data:ptr()
+      end
+      if shared then
+         return M.new_with_data(ffi.cast("void*", data), size or #data)
+      else
+         return M.new_with_copy(ffi.cast("void*", data), size or #data)
+      end
    else
-      assert(data==nil)
-      assert(size==nil)
-      return Buffer(ffi.C.zz_buffer_new())
+      return M.new()
    end
 end
 
 local M_mt = {}
 
 function M_mt:__call(...)
-   return M.new(...)
+   return make_buffer(...)
 end
 
 return setmetatable(M, M_mt)
