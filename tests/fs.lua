@@ -20,6 +20,10 @@ local function test_read()
    local contents = fs.readfile('testdata/hello.txt')
    assert(contents=="hello, world!\n")
 
+   -- read a bigger file
+   local contents = fs.readfile('testdata/arborescence.jpg')
+   assert.equals(#contents, 81942)
+
    -- read some bytes
    local f = fs.open('testdata/hello.txt')
    local contents = f:read(5)
@@ -70,7 +74,7 @@ local function test_mkstemp()
    -- temp file should be still there
    assert(fs.exists(path))
    local f = fs.open(path)
-   assert.equals(f:read(), "stuff\n")
+   assert.equals(tostring(f:read()), "stuff\n")
    f:close()
    fs.unlink(path)
    assert(not fs.exists(path))
@@ -240,9 +244,9 @@ local function test()
    test_join()
 end
 
--- sync
-test()
-
 -- async
 sched(test)
 sched()
+
+-- sync
+test()

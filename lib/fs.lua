@@ -2,6 +2,7 @@ local ffi = require('ffi')
 local sched = require('sched')
 local async = require('async')
 local process = require('process')
+local buffer = require('buffer')
 local time = require('time') -- for struct timespec
 local env = require('env')
 local util = require('util')
@@ -106,9 +107,9 @@ void *zz_async_fs_handlers[];
 
 struct zz_async_fs_lseek_request {
   int fd;
-  off_t offset;
+  __off_t offset;
   int whence;
-  off_t rv;
+  __off_t rv;
 };
 
 struct zz_async_fs_read_write_request {
@@ -169,33 +170,36 @@ function File_mt:read(rsize)
       -- read the whole rest of the file
       rsize = self:size() - self:pos()
    end
-   local buf = ffi.new("uint8_t[?]", rsize)
+   local buf = buffer.alloc(rsize)
    local bytes_read
    if sched.running() then
       local req, block_size = sched.get_block("struct zz_async_fs_read_write_request")
       req.fd = self.fd
-      req.buf = buf
+      req.buf = buf:ptr()
       req.count = rsize
       async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_READ, req)
       bytes_read = req.nbytes
       sched.ret_block(req, block_size)
    else
-      bytes_read = ffi.C.read(self.fd, buf, rsize)
+      bytes_read = ffi.C.read(self.fd, buf:ptr(), rsize)
    end
-   return bytes_read > 0 and ffi.string(buf, bytes_read) or nil
+   buf:size(bytes_read)
+   return bytes_read > 0 and buf or nil
 end
 
 function File_mt:write(data)
+   -- wrap data in a buffer (don't copy, don't take ownership)
+   local buf = buffer.wrap(data)
    if sched.running() then
       local req, block_size = sched.get_block("struct zz_async_fs_read_write_request")
       req.fd = self.fd
-      req.buf = ffi.cast("void*", data)
+      req.buf = buf:ptr()
       req.count = #data
       async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_WRITE, req)
       sched.ret_block(req, block_size)
       return req.nbytes
    else
-      return util.check_ok("write", #data, ffi.C.write(self.fd, data, #data))
+      return util.check_ok("write", #data, ffi.C.write(self.fd, buf:ptr(), #data))
    end
 end
 

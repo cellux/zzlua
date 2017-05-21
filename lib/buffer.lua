@@ -94,7 +94,9 @@ function Buffer_mt:append(buf, size)
 end
 
 function Buffer_mt.__eq(buf1, buf2)
-   if type(buf1) == "string" then
+   if not buf1 or not buf2 then
+      return false
+   elseif type(buf1) == "string" then
       return buf1 == buf2:str()
    elseif type(buf2) == "string" then
       return buf1:str() == buf2
@@ -144,12 +146,17 @@ function M.new_with_data(data, size)
    return Buffer(ffi.C.zz_buffer_new_with_data(data, size))
 end
 
+local function is_buffer(x)
+   return ffi.istype(Buffer, x)
+end
+M.is_buffer = is_buffer
+
 local function make_buffer(data, size, shared)
    if data then
       if type(data)=="number" then
          return M.new_with_capacity(data)
       end
-      if ffi.istype(Buffer, data) then
+      if is_buffer(data) then
          size = size or #data
          data = data:ptr()
       end
@@ -161,6 +168,14 @@ local function make_buffer(data, size, shared)
    else
       return M.new()
    end
+end
+
+function M.alloc(size)
+   return M.new_with_capacity(size)
+end
+
+function M.wrap(data, size)
+   return make_buffer(data, size, true)
 end
 
 local M_mt = {}

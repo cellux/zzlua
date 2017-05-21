@@ -213,6 +213,8 @@ function Context_mt:write(o)
    elseif ffi.istype("size_t", o) then
       -- pack pointers by casting them to size_t
       self:write_uint(o)
+   elseif buffer.is_buffer(o) then
+      self:write_bin(o:ptr(), o:size())
    else
       ef("cannot serialize object %s", o)
    end
@@ -278,11 +280,11 @@ end
 
 readers[CMP_TYPE_FIXSTR] = function(ctx, obj)
    local size = obj.as.str_size
-   local buf = ffi.new("uint8_t[?]", size)
-   if not ctx.ctx.read(ctx.ctx, buf, size) then
+   local buf = buffer.alloc(size)
+   if not ctx.ctx.read(ctx.ctx, buf:ptr(), size) then
       error("ctx->read() failed")
    end
-   return ffi.string(buf, size)
+   return ffi.string(buf:ptr(), size)
 end
 readers[CMP_TYPE_STR8] = readers[CMP_TYPE_FIXSTR]
 readers[CMP_TYPE_STR16] = readers[CMP_TYPE_FIXSTR]
@@ -290,11 +292,12 @@ readers[CMP_TYPE_STR32] = readers[CMP_TYPE_FIXSTR]
 
 readers[CMP_TYPE_BIN8] = function(ctx, obj)
    local size = obj.as.bin_size
-   local buf = ffi.new("uint8_t[?]", size)
-   if not ctx.ctx.read(ctx, buf, size) then
+   local buf = buffer.alloc(size)
+   if not ctx.ctx.read(ctx.ctx, buf:ptr(), size) then
       error("ctx->read() failed")
    end
-   return ffi.string(buf, size)
+   buf:size(size)
+   return buf
 end
 readers[CMP_TYPE_BIN16] = readers[CMP_TYPE_BIN8]
 readers[CMP_TYPE_BIN32] = readers[CMP_TYPE_BIN8]
@@ -360,17 +363,17 @@ local M = {}
 function M.pack(obj)
    local ctx = Context()
    ctx:write(obj)
-   return tostring(ctx.buf)
+   return ctx.buf
 end
 
 function M.pack_array(obj)
    local ctx = Context()
    ctx:write_table(obj, "array")
-   return tostring(ctx.buf)
+   return ctx.buf
 end
 
 function M.unpack(data)
-   local buf = buffer(data)
+   local buf = buffer.wrap(data)
    local ctx = Context(buf)
    return ctx:read()
 end

@@ -1,5 +1,6 @@
 local ffi = require('ffi')
 local util = require('util')
+local buffer = require('buffer')
 
 ffi.cdef [[
 
@@ -121,7 +122,7 @@ function M.Digest(digest_type)
       util.check_ok("EVP_DigestFinal_ex", 1, ssl.EVP_DigestFinal_ex(ctx, buf, nil))
       EVP_MD_CTX_free(self.ctx)
       self.ctx = nil
-      return ffi.string(buf, md_size)
+      return buffer(buf, md_size)
    end
    return self
 end

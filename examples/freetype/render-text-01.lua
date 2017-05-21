@@ -15,7 +15,9 @@ local function main()
    }
 
    local script_path = arg[0]
-   local script_contents = fs.readfile(script_path)
+   pf("reading script contents: %s", script_path)
+   local script_contents = tostring(fs.readfile(script_path))
+   pf("reading script contents: done")
    local script_dir = fs.dirname(script_path)
    local ttf_path = fs.join(script_dir, "DejaVuSerif.ttf")
    local face = freetype.Face(ttf_path)

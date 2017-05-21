@@ -177,7 +177,7 @@ local function main()
    end
 
    local script_path = arg[0]
-   local script_contents = fs.readfile(script_path)
+   local script_contents = tostring(fs.readfile(script_path))
    local script_dir = fs.dirname(script_path)
    local ttf_path = fs.join(script_dir, "DejaVuSerif.ttf")
    local font_size = 20 -- initial font size in points

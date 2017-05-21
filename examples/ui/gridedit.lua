@@ -25,7 +25,7 @@ local function main()
    end
    local text = ''
    if fs.exists(file_path) then
-      text = fs.readfile(file_path)
+      text = tostring(fs.readfile(file_path))
    end
 
    local font_size = 12 -- initial font size in points

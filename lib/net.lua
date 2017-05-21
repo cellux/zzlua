@@ -4,6 +4,7 @@ local util = require('util')
 local epoll = require('epoll')
 local sched = require('sched')
 local errno = require('errno')
+local buffer = require('buffer')
 
 ffi.cdef [[
 
@@ -455,18 +456,20 @@ function Socket_mt:readline()
 end
 
 function Socket_mt:write(data)
+   local buf = buffer.wrap(data)
    if sched.running() then
       sched.poll(self.fd, "w")
    end
-   local nbytes = util.check_errno("write", ffi.C.write(self.fd, data, #data))
+   local nbytes = util.check_errno("write", ffi.C.write(self.fd, buf:ptr(), #data))
    return nbytes
 end
 
 function Socket_mt:sendto(data, addr)
+   local buf = buffer.wrap(data)
    if sched.running() then
       sched.poll(self.fd, "w")
    end
-   local rv = util.check_errno("sendto", ffi.C.sendto(self.fd, data, #data, 0, ffi.cast("const struct sockaddr *", addr.addr), addr.addr_size))
+   local rv = util.check_errno("sendto", ffi.C.sendto(self.fd, buf:ptr(), #data, 0, ffi.cast("const struct sockaddr *", addr.addr), addr.addr_size))
    return rv
 end
 

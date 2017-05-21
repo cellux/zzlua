@@ -69,6 +69,10 @@ size_t zz_buffer_resize(zz_buffer_t *self, size_t n) {
 }
 
 size_t zz_buffer_append(zz_buffer_t *self, const void *data, size_t size) {
+  if (self->capacity == 0) {
+    fprintf(stderr, "zz_buffer_append(): attempt to change externally owned data\n");
+    exit(1);
+  }
   size_t new_size = self->size + size;
   if (new_size > self->capacity) {
     if (!zz_buffer_resize(self, new_size)) {
@@ -86,6 +90,10 @@ int zz_buffer_equals(zz_buffer_t *self, zz_buffer_t *other) {
 }
 
 void zz_buffer_fill(zz_buffer_t *self, uint8_t c) {
+  if (self->capacity == 0) {
+    fprintf(stderr, "zz_buffer_fill(): attempt to change externally owned data\n");
+    exit(1);
+  }
   memset(self->data, c, self->size);
 }
 
@@ -99,7 +107,7 @@ void zz_buffer_reset(zz_buffer_t *self) {
 
 void zz_buffer_free(zz_buffer_t *self) {
   /* capacity=0 means we are not responsible for freeing data */
-  if (self->data && self->capacity) {
+  if (self->data != NULL && self->capacity != 0) {
     free(self->data);
     self->data = NULL;
   }

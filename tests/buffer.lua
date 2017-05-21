@@ -11,9 +11,16 @@ assert.equals(#buf, 0) -- #buf is equivalent to buf:size()
 assert.equals(buf:str(), "") -- get contents as a string
 assert.equals(tostring(buf), "") -- same as buf:str()
 
+-- test if an object is a buffer
+assert(buffer.is_buffer(buf))
+
 -- compare with string
 assert(buf=="")
 assert(""==buf)
+
+-- compare with nil
+assert(buf~=nil)
+assert(nil~=buf)
 
 -- compare with another buffer
 assert(buf==buffer())
@@ -84,6 +91,10 @@ assert.equals(#buf3, 3)
 -- `size` defaults to #data
 -- `shared` defaults to false
 local buf3b = buffer(buf3, nil, true)
+assert(buf3b=='zzz')
+
+-- buffer.wrap() is sugar for buffer(data, nil, true)
+buf3b = buffer.wrap(buf3)
 assert(buf3b=='zzz')
 
 -- indexing

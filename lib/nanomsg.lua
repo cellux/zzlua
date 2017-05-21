@@ -1,5 +1,6 @@
 local ffi = require('ffi')
 local bit = require('bit')
+local buffer = require('buffer')
 
 ffi.cdef [[
 int nn_errno (void);
@@ -147,12 +148,10 @@ function M.shutdown(s, how)
    return rv
 end
 
-function M.send(s, buf, len, flags)
-   if type(buf)=="string" and len == nil then
-      len = #buf
-   end
+function M.send(s, data, len, flags)
+   local buf = buffer.wrap(data, len or #data)
    flags = flags or 0
-   local bytes_sent = ffi.C.nn_send(s, buf, len, flags)
+   local bytes_sent = ffi.C.nn_send(s, buf:ptr(), #buf, flags)
    if bytes_sent == -1 then
       ef("nn_send() failed: %s", nn_error())
    end
@@ -172,7 +171,7 @@ function M.recv(s, flags)
          ef("nn_recv() failed: %s", nn_error())
       end
    end
-   local buf = ffi.string(bufptr[0], bytes_received)
+   local buf = buffer(bufptr[0], bytes_received)
    assert(ffi.C.nn_freemsg(bufptr[0])==0)
    return buf
 end
