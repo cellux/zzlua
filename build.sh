@@ -236,7 +236,7 @@ fi
 
 # create app binary
 
-if need_to_relink; then
+if [ ! -e $APP ] || need_to_relink; then
   run $CC $CFLAGS \
     main.o ${ZZ_LIB_OBJ[@]} ${ZZ_CLIB_OBJ[@]} \
     -Wl,--whole-archive \
