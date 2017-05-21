@@ -56,7 +56,7 @@ local function create_worker_thread()
    worker_info.request_trigger = request_trigger
    local response_trigger = trigger()
    worker_info.response_trigger = response_trigger
-   sched.poll_add(response_trigger.fd, "r")
+   sched.poll_add(response_trigger.fd, "re") -- edge-triggered mode
    local thread_id = ffi.new("pthread_t[1]")
    local rv = ffi.C.pthread_create(thread_id,
                                    nil,

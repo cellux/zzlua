@@ -52,6 +52,7 @@ local event_markers = {
    ["r"] = ffi.C.EPOLLIN,
    ["w"] = ffi.C.EPOLLOUT,
    ["1"] = ffi.C.EPOLLONESHOT,
+   ["e"] = ffi.C.EPOLLET,
 }
 
 local function parse_events(events)
