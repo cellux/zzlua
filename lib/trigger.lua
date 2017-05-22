@@ -29,7 +29,7 @@ function Trigger_mt:poll()
    local buf = ffi.new("uint64_t[1]")
    while true do
       if sched.running() then
-         sched.poll(self.fd, "re")
+         sched.poll(self.fd, "r")
       end
       buf[0] = 0
       local nbytes = ffi.C.read(self.fd, buf, 8)

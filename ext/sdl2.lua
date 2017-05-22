@@ -2308,11 +2308,15 @@ local old_poller_factory = sched.poller_factory
 -- how many SDL events to process during a single poll
 local MAX_SDL_EVENTS_PROCESSED = 16
 
+local poll_trigger
+local exit_trigger
+
 sched.poller_factory = function()
    local self = old_poller_factory()
    local old_wait = self.wait
    local tmp_event = ffi.new("SDL_Event")
    function self:wait(timeout, process)
+      poll_trigger:fire()
       if timeout < 0 then
          -- wait indefinitely
          sdl.SDL_WaitEvent(nil)
@@ -2352,6 +2356,7 @@ ffi.cdef [[
 struct zz_sdl2_sched_fd_poller {
   uint32_t sched_fd_pollin_event_type;
   int sched_fd;
+  zz_trigger poll_trigger;
   zz_trigger exit_trigger;
 };
 
@@ -2363,11 +2368,13 @@ local function SDL2Module(sched)
    local self = {}
    local poller = ffi.new("struct zz_sdl2_sched_fd_poller")
    local thread_id = ffi.new("pthread_t[1]")
-   local exit_trigger = trigger()
+   poll_trigger = trigger()
+   exit_trigger = trigger()
    function self.init()
       M.Init()
       poller.sched_fd_pollin_event_type = ZZ_SCHED_FD_POLLIN_EVENT
       poller.sched_fd = sched.poller:fd()
+      poller.poll_trigger = poll_trigger
       poller.exit_trigger = exit_trigger
       local rv = ffi.C.pthread_create(thread_id,
                                       nil,
@@ -2385,6 +2392,7 @@ local function SDL2Module(sched)
          error("sdl2: cannot join poller thread: pthread_join() failed")
       end
       exit_trigger:delete()
+      poll_trigger:delete()
       M.Quit()
    end
    return self
