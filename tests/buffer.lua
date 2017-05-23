@@ -32,6 +32,18 @@ buf:append(", world!")
 assert.equals(#buf, 13)
 assert(buf=="hello, world!")
 
+-- append another buffer
+buf:append(buffer.dup(" insane palace"))
+assert(buf=="hello, world! insane palace")
+-- then resize back
+buf:size(13)
+-- appending again
+buf:append(" nothing special")
+assert(buf=="hello, world! nothing special")
+-- then resize back
+buf:size(13)
+assert(buf=="hello, world!")
+
 -- buffer with an explicit capacity
 local buf2 = buffer.new(5)
 assert.equals(buf2:capacity(), 5)

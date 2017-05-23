@@ -35,6 +35,8 @@ struct zz_buffer_Buffer_ct {
 
 ]]
 
+local is_buffer
+
 local Buffer_mt = {}
 
 function Buffer_mt:ptr()
@@ -90,6 +92,10 @@ function Buffer_mt:__newindex(i, value)
 end
 
 function Buffer_mt:append(buf, size)
+   if is_buffer(buf) then
+      size = size or #buf
+      buf = buf:ptr()
+   end
    return ffi.C.zz_buffer_append(self.buf, ffi.cast("void*", buf), size or #buf)
 end
 
@@ -130,6 +136,11 @@ local Buffer = ffi.metatype("struct zz_buffer_Buffer_ct", Buffer_mt)
 
 local M = {}
 
+is_buffer = function(x)
+   return ffi.istype(Buffer, x)
+end
+M.is_buffer = is_buffer
+
 local function new_with_default_capacity()
    return Buffer(ffi.C.zz_buffer_new())
 end
@@ -145,11 +156,6 @@ end
 local function new_with_data(data, size)
    return Buffer(ffi.C.zz_buffer_new_with_data(data, size))
 end
-
-local function is_buffer(x)
-   return ffi.istype(Buffer, x)
-end
-M.is_buffer = is_buffer
 
 local function make_copy_of(data, size, shared)
    if is_buffer(data) then
