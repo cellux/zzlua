@@ -118,11 +118,11 @@ function M.Digest(digest_type)
    end
    function self:final()
       local md_size = ssl.EVP_MD_size(md)
-      local buf = ffi.new("unsigned char[?]", md_size)
-      util.check_ok("EVP_DigestFinal_ex", 1, ssl.EVP_DigestFinal_ex(ctx, buf, nil))
+      local buf = buffer.new_with_size(md_size)
+      util.check_ok("EVP_DigestFinal_ex", 1, ssl.EVP_DigestFinal_ex(ctx, buf:ptr(), nil))
       EVP_MD_CTX_free(self.ctx)
       self.ctx = nil
-      return buffer(buf, md_size)
+      return buf
    end
    return self
 end

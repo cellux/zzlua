@@ -2,9 +2,8 @@ local buffer = require('buffer')
 local ffi = require('ffi')
 local assert = require('assert')
 
--- a plain buffer() call allocates a buffer
--- with default capacity and zero size
-local buf = buffer()
+-- buffer.new() allocates a buffer with default capacity and zero size
+local buf = buffer.new()
 assert(buf:capacity() > 0)
 assert.equals(buf:size(), 0)
 assert.equals(#buf, 0) -- #buf is equivalent to buf:size()
@@ -23,7 +22,7 @@ assert(buf~=nil)
 assert(nil~=buf)
 
 -- compare with another buffer
-assert(buf==buffer())
+assert(buf==buffer.new())
 
 -- append
 buf:append("hello")
@@ -34,7 +33,7 @@ assert.equals(#buf, 13)
 assert(buf=="hello, world!")
 
 -- buffer with an explicit capacity
-local buf2 = buffer(5)
+local buf2 = buffer.new(5)
 assert.equals(buf2:capacity(), 5)
 assert.equals(#buf2, 0) -- initial size is zero
 assert(buf2=="")
@@ -57,9 +56,16 @@ assert(buf2=="hello, world!\n\n")
 buf2:append(buf2:ptr()+3, 3)
 assert(buf2=="hello, world!\n\nlo,")
 
--- buffer with initial data
+-- buffer with an explicit capacity and size=capacity
+local buf2 = buffer.new_with_size(5)
+assert.equals(buf2:capacity(), 5)
+assert.equals(buf2:size(), 5)
+-- contents are zero-initialized
+assert(buf2=='\x00\x00\x00\x00\x00')
+
+-- buffer.dup() makes a copy of existing data
 local three_spaces = '   '
-local buf3 = buffer(three_spaces)
+local buf3 = buffer.dup(three_spaces)
 assert.equals(#buf3, 3)
 assert.equals(buf3:capacity(), 3)
 assert(buf3=='   ')
@@ -68,8 +74,7 @@ assert(buf3=='   ')
 buf3:fill(0x41)
 assert(buf3=='AAA')
 
--- if a buffer is initialized from existing data, that data is copied
--- by default => three_spaces still has its original value
+-- three_spaces still has its original value
 assert(three_spaces=='   ')
 
 -- clear: fill with zeroes
@@ -86,15 +91,10 @@ buf3:append('zzz')
 assert(buf3=='zzz')
 assert.equals(#buf3, 3)
 
--- buffer with shared data
--- arguments are (data, size, shared)
--- `size` defaults to #data
--- `shared` defaults to false
-local buf3b = buffer(buf3, nil, true)
-assert(buf3b=='zzz')
-
--- buffer.wrap() is sugar for buffer(data, nil, true)
-buf3b = buffer.wrap(buf3)
+-- buffer.wrap() creates a buffer which points to existing data
+--
+-- no copying, no ownership (doesn't deallocate data in the finalizer)
+local buf3b = buffer.wrap(buf3)
 assert(buf3b=='zzz')
 
 -- indexing
@@ -109,13 +109,13 @@ assert(buf3=='zxz')
 -- string - it interferes with the interning logic
 
 -- buffer with initial data of specified size
-local buf4 = buffer('abcdef', 3)
+local buf4 = buffer.dup('abcdef', 3)
 assert.equals(#buf4, 3)
 assert.equals(buf4:capacity(), 3)
 assert(buf4=='abc')
 
 -- change capacity
-local buf5 = buffer()
+local buf5 = buffer.new()
 buf5:capacity(2100)
 -- capacity is rounded up to next multiple of 1024
 assert.equals(buf5:capacity(), 3072)

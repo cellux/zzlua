@@ -130,19 +130,19 @@ local Buffer = ffi.metatype("struct zz_buffer_Buffer_ct", Buffer_mt)
 
 local M = {}
 
-function M.new()
+local function new_with_default_capacity()
    return Buffer(ffi.C.zz_buffer_new())
 end
 
-function M.new_with_capacity(capacity)
+local function new_with_capacity(capacity)
    return Buffer(ffi.C.zz_buffer_new_with_capacity(capacity))
 end
 
-function M.new_with_copy(data, size)
+local function new_with_copy(data, size)
    return Buffer(ffi.C.zz_buffer_new_with_copy(data, size))
 end
 
-function M.new_with_data(data, size)
+local function new_with_data(data, size)
    return Buffer(ffi.C.zz_buffer_new_with_data(data, size))
 end
 
@@ -151,37 +151,38 @@ local function is_buffer(x)
 end
 M.is_buffer = is_buffer
 
-local function make_buffer(data, size, shared)
-   if data then
-      if type(data)=="number" then
-         return M.new_with_capacity(data)
-      end
-      if is_buffer(data) then
-         size = size or #data
-         data = data:ptr()
-      end
-      if shared then
-         return M.new_with_data(ffi.cast("void*", data), size or #data)
-      else
-         return M.new_with_copy(ffi.cast("void*", data), size or #data)
-      end
+local function make_copy_of(data, size, shared)
+   if is_buffer(data) then
+      size = size or #data
+      data = data:ptr()
+   end
+   if shared then
+      return new_with_data(ffi.cast("void*", data), size or #data)
    else
-      return M.new()
+      return new_with_copy(ffi.cast("void*", data), size or #data)
    end
 end
 
-function M.alloc(size)
-   return M.new_with_capacity(size)
+function M.new(size)
+   if size then
+      return new_with_capacity(size)
+   else
+      return new_with_default_capacity()
+   end
+end
+
+function M.new_with_size(size)
+   local buf = new_with_capacity(size)
+   buf:size(size)
+   return buf
+end
+
+function M.dup(data, size)
+   return make_copy_of(data, size, false)
 end
 
 function M.wrap(data, size)
-   return make_buffer(data, size, true)
+   return make_copy_of(data, size, true)
 end
 
-local M_mt = {}
-
-function M_mt:__call(...)
-   return make_buffer(...)
-end
-
-return setmetatable(M, M_mt)
+return M

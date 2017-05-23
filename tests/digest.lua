@@ -15,7 +15,7 @@ local function fibonacci()
 end
 
 local function hexstr(buf)
-   local result = buffer(#buf*2)
+   local result = buffer.new(#buf*2)
    for i=1,#buf do
       result:append(sf("%02x", buf[i-1]))
    end
@@ -39,7 +39,7 @@ local function test_digest(buf, digest_fn, digest_hex)
    assert.equals(hexstr(digest:final()), digest_hex)
 end
 
-assert.equals(hexstr(buffer('abcd')), '61626364')
+assert.equals(hexstr(buffer.dup('abcd')), '61626364')
 
 local data = fs.readfile('testdata/arborescence.jpg')
 

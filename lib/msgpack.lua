@@ -280,7 +280,7 @@ end
 
 readers[CMP_TYPE_FIXSTR] = function(ctx, obj)
    local size = obj.as.str_size
-   local buf = buffer.alloc(size)
+   local buf = buffer.new(size)
    if not ctx.ctx.read(ctx.ctx, buf:ptr(), size) then
       error("ctx->read() failed")
    end
@@ -292,11 +292,10 @@ readers[CMP_TYPE_STR32] = readers[CMP_TYPE_FIXSTR]
 
 readers[CMP_TYPE_BIN8] = function(ctx, obj)
    local size = obj.as.bin_size
-   local buf = buffer.alloc(size)
+   local buf = buffer.new_with_size(size)
    if not ctx.ctx.read(ctx.ctx, buf:ptr(), size) then
       error("ctx->read() failed")
    end
-   buf:size(size)
    return buf
 end
 readers[CMP_TYPE_BIN16] = readers[CMP_TYPE_BIN8]
@@ -343,7 +342,7 @@ end
 Context_mt.__index = Context_mt
 
 local function Context(buf)
-   buf = buf or buffer()
+   buf = buf or buffer.new()
    local self = {
       buf = buf,
       ctx = ffi.new("cmp_ctx_t"),

@@ -170,7 +170,7 @@ function File_mt:read(rsize)
       -- read the whole rest of the file
       rsize = self:size() - self:pos()
    end
-   local buf = buffer.alloc(rsize)
+   local buf = buffer.new(rsize)
    local bytes_read
    if sched.running() then
       local req, block_size = sched.get_block("struct zz_async_fs_read_write_request")
