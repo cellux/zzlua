@@ -183,7 +183,7 @@ function M.new_with_size(size)
    return buf
 end
 
-function M.dup(data, size)
+function M.copy(data, size)
    return make_copy_of(data, size, false)
 end
 

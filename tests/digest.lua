@@ -39,7 +39,7 @@ local function test_digest(buf, digest_fn, digest_hex)
    assert.equals(hexstr(digest:final()), digest_hex)
 end
 
-assert.equals(hexstr(buffer.dup('abcd')), '61626364')
+assert.equals(hexstr(buffer.copy('abcd')), '61626364')
 
 local data = fs.readfile('testdata/arborescence.jpg')
 

@@ -171,7 +171,7 @@ function M.recv(s, flags)
          ef("nn_recv() failed: %s", nn_error())
       end
    end
-   local buf = buffer.dup(bufptr[0], bytes_received)
+   local buf = buffer.copy(bufptr[0], bytes_received)
    assert(ffi.C.nn_freemsg(bufptr[0])==0)
    return buf
 end

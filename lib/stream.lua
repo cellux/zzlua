@@ -29,7 +29,7 @@ function BaseStream:read(n)
       else
          local ptr, block_size = mm.get_block(BUFFER_SIZE)
          local nbytes = self:read1(ptr, block_size)
-         buf = buffer.dup(ptr, nbytes)
+         buf = buffer.copy(ptr, nbytes)
          buf:size(nbytes)
          mm.ret_block(ptr, block_size)
       end
@@ -48,7 +48,7 @@ function BaseStream:read(n)
             else
                ffi.copy(dst, self.read_buffer:ptr(), bytes_left)
                dst = dst + bytes_left
-               self.read_buffer = buffer.dup(self.read_buffer:ptr()+bytes_left, #self.read_buffer-bytes_left)
+               self.read_buffer = buffer.copy(self.read_buffer:ptr()+bytes_left, #self.read_buffer-bytes_left)
                bytes_left = 0
             end
          else
@@ -66,7 +66,7 @@ function BaseStream:read(n)
          local nbytes = self:read1(ptr, block_size)
          total_size = total_size + nbytes
          if nbytes == block_size then
-            table.insert(buffers, buffer.dup(ptr, block_size))
+            table.insert(buffers, buffer.copy(ptr, block_size))
          else
             buf = buffer.new(total_size)
             for i=1,#buffers do
@@ -94,9 +94,9 @@ function BaseStream:read_until(str)
          local next_offset = str_offset + #str
          if next_offset < #buf then
             assert(self.read_buffer==nil)
-            self.read_buffer = buffer.dup(buf:ptr()+next_offset, #buf-next_offset)
+            self.read_buffer = buffer.copy(buf:ptr()+next_offset, #buf-next_offset)
          end
-         return buffer.dup(buf:ptr(), str_offset)
+         return buffer.copy(buf:ptr(), str_offset)
       end
    end
    return buf
@@ -139,7 +139,7 @@ function MemoryStream:eof()
 end
 
 function MemoryStream:write1(ptr, size)
-   table.insert(self.buffers, buffer.dup(ptr, size))
+   table.insert(self.buffers, buffer.copy(ptr, size))
    return size
 end
 
@@ -151,7 +151,7 @@ function MemoryStream:read1(ptr, size)
       local bufsize = #buf
       if bufsize > bytes_left then
          ffi.copy(dst, buf:ptr(), bytes_left)
-         self.buffers[1] = buffer.dup(buf:ptr()+bytes_left, #buf-bytes_left)
+         self.buffers[1] = buffer.copy(buf:ptr()+bytes_left, #buf-bytes_left)
          bytes_left = 0
       elseif bufsize <= bytes_left then
          ffi.copy(dst, buf:ptr(), bufsize)

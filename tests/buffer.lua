@@ -33,7 +33,7 @@ assert.equals(#buf, 13)
 assert(buf=="hello, world!")
 
 -- append another buffer
-buf:append(buffer.dup(" insane palace"))
+buf:append(buffer.copy(" insane palace"))
 assert(buf=="hello, world! insane palace")
 -- then resize back
 buf:size(13)
@@ -75,9 +75,9 @@ assert.equals(buf2:size(), 5)
 -- contents are zero-initialized
 assert(buf2=='\x00\x00\x00\x00\x00')
 
--- buffer.dup() makes a copy of existing data
+-- buffer.copy() makes a copy of existing data
 local three_spaces = '   '
-local buf3 = buffer.dup(three_spaces)
+local buf3 = buffer.copy(three_spaces)
 assert.equals(#buf3, 3)
 assert.equals(buf3:capacity(), 3)
 assert(buf3=='   ')
@@ -121,7 +121,7 @@ assert(buf3=='zxz')
 -- string - it interferes with the interning logic
 
 -- buffer with initial data of specified size
-local buf4 = buffer.dup('abcdef', 3)
+local buf4 = buffer.copy('abcdef', 3)
 assert.equals(#buf4, 3)
 assert.equals(buf4:capacity(), 3)
 assert(buf4=='abc')

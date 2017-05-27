@@ -16,7 +16,7 @@ test_pack_unpack(0)
 test_pack_unpack(123)
 test_pack_unpack(123.25)
 test_pack_unpack("hello, world!")
-test_pack_unpack(buffer.dup("hello, world!"))
+test_pack_unpack(buffer.copy("hello, world!"))
 test_pack_unpack({nil,true,false,0,123,123.25,"hello, world!"})
 test_pack_unpack({[0]=true,[1]=false,[123]={x=123.25,y=-123.5},str="hello, world!"})
 
