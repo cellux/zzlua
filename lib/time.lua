@@ -85,4 +85,4 @@ function M.sleep(seconds)
    end
 end
 
-return M
+return setmetatable(M, { __index = ffi.C })

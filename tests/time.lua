@@ -1,6 +1,9 @@
 local time = require('time')
 local sched = require('sched')
 
+-- clock type ids shall be accessible via the module
+assert(time.CLOCK_MONOTONIC==1)
+
 local function test_sleep()
    local t1 = time.time()
    local sleep_time = 0.1

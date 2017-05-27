@@ -53,7 +53,7 @@ local OFF = {}
 M.OFF = OFF
 
 -- the clock to use by timers
-local sched_clock_id = ffi.C.CLOCK_MONOTONIC_RAW
+local sched_clock_id = time.CLOCK_MONOTONIC_RAW
 
 local function get_current_time()
    return time.time(sched_clock_id)
@@ -63,7 +63,7 @@ M.time = get_current_time
 
 -- after sched.wait(t), math.abs(sched.time()-t) is expected to be
 -- less than sched.precision
-M.precision = 0.001 -- seconds
+M.precision = 0.005 -- seconds
 
 local function Scheduler()
    local self = {}
