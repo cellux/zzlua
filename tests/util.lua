@@ -1,6 +1,7 @@
 local util = require('util')
 local ffi = require('ffi')
 local assert = require('assert')
+local buffer = require('buffer')
 
 -- round
 
@@ -202,3 +203,10 @@ for line in util.lines(text) do
    table.insert(lines, line)
 end
 assert.equals(lines, {"	hello","this","is   ","","good",""})
+
+-- hexstr
+
+assert.equals(util.hexstr(), "")
+assert.equals(util.hexstr("abc"), "616263")
+assert.equals(util.hexstr("\x00\x55\xaa\xff"), "0055aaff")
+assert.equals(util.hexstr(buffer.copy("abc")), "616263")

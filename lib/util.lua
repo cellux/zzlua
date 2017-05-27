@@ -1,6 +1,7 @@
 local adt = require('adt')
 local bit = require('bit')
 local errno = require('errno')
+local buffer = require('buffer')
 
 local M = {}
 
@@ -197,6 +198,18 @@ function M.lines(s)
       return rv
    end
    return next
+end
+
+function M.hexstr(data)
+   if not data then
+      return ""
+   end
+   local buf = buffer.wrap(data)
+   local hex = buffer.new(2*#buf)
+   for i=0,#buf-1 do
+      hex:append(sf("%02x", buf[i]))
+   end
+   return tostring(hex)
 end
 
 return M

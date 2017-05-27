@@ -2,6 +2,7 @@ local digest = require('digest')
 local buffer = require('buffer')
 local assert = require('assert')
 local fs = require('fs')
+local util = require('util')
 
 local function fibonacci()
    local queue = {1,1}
@@ -14,17 +15,9 @@ local function fibonacci()
    return next
 end
 
-local function hexstr(buf)
-   local result = buffer.new(#buf*2)
-   for i=1,#buf do
-      result:append(sf("%02x", buf[i-1]))
-   end
-   return tostring(result)
-end
-
 local function test_digest(buf, digest_fn, digest_hex)
    -- process the whole string at once
-   assert.equals(hexstr(digest_fn(buf)), digest_hex)
+   assert.equals(util.hexstr(digest_fn(buf)), digest_hex)
    -- process data in chunks
    local digest = digest_fn()
    local offset = 0
@@ -36,10 +29,10 @@ local function test_digest(buf, digest_fn, digest_hex)
          break
       end
    end
-   assert.equals(hexstr(digest:final()), digest_hex)
+   assert.equals(util.hexstr(digest:final()), digest_hex)
 end
 
-assert.equals(hexstr(buffer.copy('abcd')), '61626364')
+assert.equals(util.hexstr(buffer.copy('abcd')), '61626364')
 
 local data = fs.readfile('testdata/arborescence.jpg')
 
