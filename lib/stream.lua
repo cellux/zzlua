@@ -27,11 +27,11 @@ function BaseStream:read(n)
          buf = self.read_buffer
          self.read_buffer = nil
       else
-         local ptr, block_size = sched.get_block(BUFFER_SIZE)
+         local ptr, block_size = mm.get_block(BUFFER_SIZE)
          local nbytes = self:read1(ptr, block_size)
          buf = buffer.dup(ptr, nbytes)
          buf:size(nbytes)
-         sched.ret_block(ptr, block_size)
+         mm.ret_block(ptr, block_size)
       end
    elseif n > 0 then
       -- read exactly N bytes or until EOF
@@ -61,7 +61,7 @@ function BaseStream:read(n)
       -- read until EOF
       local buffers = {}
       local total_size = 0
-      local ptr, block_size = sched.get_block(BUFFER_SIZE)
+      local ptr, block_size = mm.get_block(BUFFER_SIZE)
       while not self:eof() do
          local nbytes = self:read1(ptr, block_size)
          total_size = total_size + nbytes
@@ -75,7 +75,7 @@ function BaseStream:read(n)
             buf:append(ptr, nbytes)
          end
       end
-      sched.ret_block(ptr, block_size)
+      mm.ret_block(ptr, block_size)
    end
    return buf
 end

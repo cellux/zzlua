@@ -4,6 +4,8 @@ local util = require('util')
 
 local M = {}
 
+local BLOCK_POOL_ARENA_SIZE = 2^16
+
 local function Arena(arena_size)
    local arena = ffi.new("uint8_t[?]", arena_size)
    local offset = 0
@@ -83,7 +85,7 @@ local function PtrPool(alloc, block_size)
    return self
 end
 
-function M.BlockPool(arena_size)
+local function BlockPool(arena_size)
    local aa = ArenaAllocator(arena_size)
    local ptrpools = {}
    local self = {}
@@ -110,6 +112,24 @@ function M.BlockPool(arena_size)
       return total
    end
    return self
+end
+
+M.BlockPool = BlockPool
+
+local block_pool = BlockPool(BLOCK_POOL_ARENA_SIZE)
+
+function M.get_block(size)
+   local ptr_type = "void*"
+   if type(size) == "string" then
+      ptr_type = size.."*"
+      size = ffi.sizeof(size)
+   end
+   local ptr, block_size = block_pool:get(size)
+   return ffi.cast(ptr_type, ptr), block_size
+end
+
+function M.ret_block(ptr, block_size)
+   block_pool:ret(ptr, block_size)
 end
 
 return M

@@ -3,6 +3,7 @@ local sched = require('sched')
 local async = require('async')
 local process = require('process')
 local buffer = require('buffer')
+local mm = require('mm')
 local time = require('time') -- for struct timespec
 local env = require('env')
 local util = require('util')
@@ -141,12 +142,12 @@ local File_mt = {}
 local function lseek(fd, offset, whence)
    local rv
    if sched.running() then
-      local req, block_size = sched.get_block("struct zz_async_fs_lseek_request")
+      local req, block_size = mm.get_block("struct zz_async_fs_lseek_request")
       req.fd = fd
       req.offset = offset
       req.whence = whence
       async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_LSEEK, req)
-      sched.ret_block(req, block_size)
+      mm.ret_block(req, block_size)
       return req.rv
    else
       rv = ffi.C.lseek(fd, offset, whence)
@@ -173,13 +174,13 @@ function File_mt:read(rsize)
    local buf = buffer.new(rsize)
    local bytes_read
    if sched.running() then
-      local req, block_size = sched.get_block("struct zz_async_fs_read_write_request")
+      local req, block_size = mm.get_block("struct zz_async_fs_read_write_request")
       req.fd = self.fd
       req.buf = buf:ptr()
       req.count = rsize
       async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_READ, req)
       bytes_read = req.nbytes
-      sched.ret_block(req, block_size)
+      mm.ret_block(req, block_size)
    else
       bytes_read = ffi.C.read(self.fd, buf:ptr(), rsize)
    end
@@ -191,12 +192,12 @@ function File_mt:write(data)
    -- wrap data in a buffer (don't copy, don't take ownership)
    local buf = buffer.wrap(data)
    if sched.running() then
-      local req, block_size = sched.get_block("struct zz_async_fs_read_write_request")
+      local req, block_size = mm.get_block("struct zz_async_fs_read_write_request")
       req.fd = self.fd
       req.buf = buf:ptr()
       req.count = #data
       async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_WRITE, req)
-      sched.ret_block(req, block_size)
+      mm.ret_block(req, block_size)
       return req.nbytes
    else
       return util.check_ok("write", #data, ffi.C.write(self.fd, buf:ptr(), #data))
@@ -217,11 +218,11 @@ function File_mt:close()
    if self.fd >= 0 then
       local rv
       if sched.running() then
-         local req, block_size = sched.get_block("struct zz_async_fs_close_request")
+         local req, block_size = mm.get_block("struct zz_async_fs_close_request")
          req.fd = self.fd
          async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_CLOSE, req)
          rv = req.rv
-         sched.ret_block(req, block_size)
+         mm.ret_block(req, block_size)
       else
          rv = ffi.C.close(self.fd)
       end
@@ -282,11 +283,11 @@ local Stat_mt = {}
 
 function Stat_mt:stat(path)
    if sched.running() then
-      local req, block_size = sched.get_block("struct zz_async_fs_stat_request")
+      local req, block_size = mm.get_block("struct zz_async_fs_stat_request")
       req.path = ffi.cast("char*", path)
       req.buf = self.buf
       async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_STAT, req)
-      sched.ret_block(req, block_size)
+      mm.ret_block(req, block_size)
       return req.rv
    else
       return ffi.C.zz_fs_stat(path, self.buf)
@@ -295,11 +296,11 @@ end
 
 function Stat_mt:lstat(path)
    if sched.running() then
-      local req, block_size = sched.get_block("struct zz_async_fs_stat_request")
+      local req, block_size = mm.get_block("struct zz_async_fs_stat_request")
       req.path = ffi.cast("char*", path)
       req.buf = self.buf
       async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_LSTAT, req)
-      sched.ret_block(req, block_size)
+      mm.ret_block(req, block_size)
       return req.rv
    else
       return ffi.C.zz_fs_lstat(path, self.buf)

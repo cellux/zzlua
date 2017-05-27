@@ -1,6 +1,7 @@
 local ffi = require('ffi')
 local async = require('async')
 local sched = require('sched')
+local mm = require('mm')
 local assert = require('assert')
 local inspect = require('inspect')
 
@@ -13,14 +14,14 @@ local actual_replies = {}
 
 local function make_async_echo_requester(delay, payload)
    return function()
-      local request, block_size = sched.get_block("struct zz_async_echo_request")
+      local request, block_size = mm.get_block("struct zz_async_echo_request")
       request.delay = delay
       request.payload = payload
       -- zz_async_echo_worker takes a delay and
       -- returns .payload in .response after delay seconds
       async.request(ASYNC, ffi.C.ZZ_ASYNC_ECHO, request)
       table.insert(actual_replies, request.response)
-      sched.ret_block(request, block_size)
+      mm.ret_block(request, block_size)
    end
 end
 
