@@ -162,3 +162,6 @@ assert.equals(buf5:str(0,10), "AByDEFGHIJ")
 
 -- getting a uint8_t* pointer to buffer data
 assert.equals(ffi.string(buf5:ptr()+7,2), "HI")
+
+-- check that assert.equals works too
+assert.equals(buffer.copy("\x55\xaa\x00\xe0"), "\x55\xaa\x00\xe0")

@@ -1,9 +1,13 @@
 local fs = require('fs')
+local assert = require('assert')
 local time = require('time')
 local sched = require('sched')
-local assert = require('assert')
-local sf = string.format
+local stream = require('stream')
+local util = require('util')
+local digest = require('digest')
+local buffer = require('buffer')
 local re = require('re')
+local mm = require('mm')
 
 local function oct(s)
    return tonumber(s, 8)
@@ -189,6 +193,7 @@ local function test_readdir()
       'bad.symlink',
       'hello.txt',
       'hello.txt.symlink',
+      'www.google.com.txt',
    }
    table.sort(expected_entries)
 
@@ -230,6 +235,103 @@ local function test_join()
    assert.equals(fs.join("abc",".", "def"), "abc/./def")
 end
 
+local function test_stream_read()
+   local f = fs.open("testdata/arborescence.jpg")
+   local s = stream(f)
+   assert(not s:eof())
+
+   -- read(n) reads n bytes
+   assert.equals(s:read(1), "\xff")
+   assert.equals(s:read(2), "\xd8\xff")
+   assert.equals(s:read(4), "\xe0\x00\x10\x4a")
+   assert.equals(s:read(8), "\x46\x49\x46\x00\x01\x01\x01\x00")
+
+   -- read() reads max stream.BUFFER_SIZE bytes
+   assert.equals(type(stream.BUFFER_SIZE), "number")
+   local buf = s:read()
+   assert.equals(#buf, stream.BUFFER_SIZE)
+   assert.equals(util.hexstr(digest.md5(buf)), '97a61975b61aa68588eec3a7db2129d7')
+   assert(not s:eof())
+
+   -- rewind
+   f:seek(0)
+
+   -- read1
+   local ptr, block_size = mm.get_block(16)
+   assert.equals(s:read1(ptr, 1), 1)
+   assert.equals(buffer.wrap(ptr,1), "\xff")
+   assert.equals(s:read1(ptr, 2), 2)
+   assert.equals(buffer.wrap(ptr,2), "\xd8\xff")
+   assert.equals(s:read1(ptr, 4), 4)
+   assert.equals(buffer.wrap(ptr,4), "\xe0\x00\x10\x4a")
+   assert.equals(s:read1(ptr, 8), 8)
+   assert.equals(buffer.wrap(ptr,8), "\x46\x49\x46\x00\x01\x01\x01\x00")
+   mm.ret_block(ptr, block_size)
+
+   -- read_until
+   f:seek(0)
+   assert.equals(s:read_until("\x10\x4a"), "\xff\xd8\xff\xe0\x00")
+   -- f4 59 a9 29: this sequence is at position 81398 in the file
+   local buf = s:read_until("\xf4\x59\xa9\x29")
+   assert.equals(util.hexstr(digest.md5(buf)), '079dc470a97a1cf61aaa09a81204f75e')
+   -- the stream most likely read past 81398
+   -- extra bytes are left in the read buffer
+   assert.equals(f:pos(), 81398+4+#s.read_buffer)
+   local nbytes_remaining = f:size() - (81398+4)
+   assert.equals(#s:read(0), nbytes_remaining)
+   assert(s:eof())
+   f:close()
+
+   -- read(0) reads the whole file (until EOF)
+   local f = fs.open("testdata/arborescence.jpg")
+   local s = stream(f)
+   assert(not s:eof())
+   local buf = s:read(0)
+   assert.equals(util.hexstr(digest.md5(buf)), '58823f6d5e1d154d37d9aa2dbaf27371')
+   assert(s:eof())
+   -- once we get to end of file, a rewind does NOT reset the EOF flag
+   -- (it seems difficult to implement this correctly)
+   f:seek(0)
+   assert(s:eof())
+   f:close()
+
+   -- random read using read() and read(n)
+   local f = fs.open("testdata/arborescence.jpg")
+   local s = stream(f)
+   local buf = buffer.new()
+   while not s:eof() do
+      buf:append(s:read())
+      buf:append(s:read(math.random(1000)))
+   end
+   assert.equals(util.hexstr(digest.md5(buf)), '58823f6d5e1d154d37d9aa2dbaf27371')
+   f:close()
+
+   -- readln
+   local f = fs.open("testdata/www.google.com.txt")
+   local s = stream(f)
+   assert.equals(s:readln(), "HTTP/1.1 302 Found\x0d")
+   assert.equals(s:readln(), "Cache-Control: private\x0d")
+   assert.equals(s:readln(), "Content-Type: text/html; charset=UTF-8\x0d")
+   s:read_until("\x0d\x0a\x0d\x0a")
+   assert.equals(s:readln(), '<HTML><HEAD><meta http-equiv="content-type" content="text/html;charset=utf-8">')
+   f:close()
+end
+
+local function test_stream_write()
+   local fin = fs.open("testdata/arborescence.jpg")
+   local sin = stream(fin)
+   local fout, fout_path = fs.mkstemp("test_stream_write")
+   local sout = stream(fout)
+   while not sin:eof() do
+      sout:write(sin:read())
+      sout:write(sin:read(math.random(1000)))
+   end
+   fout:close()
+   fin:close()
+   assert.equals(fs.readfile("testdata/arborescence.jpg"), fs.readfile(fout_path))
+   fs.unlink(fout_path)
+end
+
 local function test()
    test_read()
    test_seek()
@@ -242,6 +344,8 @@ local function test()
    test_readdir()
    test_basename_dirname()
    test_join()
+   test_stream_read()
+   test_stream_write()
 end
 
 -- async

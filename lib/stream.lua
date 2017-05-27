@@ -1,6 +1,5 @@
 local ffi = require('ffi')
 local util = require('util')
-local sched = require('sched')
 local buffer = require('buffer')
 local mm = require('mm')
 
@@ -15,6 +14,10 @@ function BaseStream:eof()
 end
 
 function BaseStream:read1(ptr, size)
+   ef("to be implemented")
+end
+
+function BaseStream:write1(ptr, size)
    ef("to be implemented")
 end
 
@@ -35,68 +38,73 @@ function BaseStream:read(n)
       end
    elseif n > 0 then
       -- read exactly N bytes or until EOF
-      buf = buffer.new_with_size(n)
-      local dst = buf:ptr()
+      buf = buffer.new(n)
       local bytes_left = n
       while not self:eof() and bytes_left > 0 do
          if self.read_buffer then
             if #self.read_buffer <= bytes_left then
-               ffi.copy(dst, self.read_buffer:ptr(), #self.read_buffer)
-               dst = dst + #self.read_buffer
+               buf:append(self.read_buffer)
                bytes_left = bytes_left - #self.read_buffer
                self.read_buffer = nil
             else
-               ffi.copy(dst, self.read_buffer:ptr(), bytes_left)
-               dst = dst + bytes_left
+               buf:append(self.read_buffer, bytes_left)
                self.read_buffer = buffer.copy(self.read_buffer:ptr()+bytes_left, #self.read_buffer-bytes_left)
                bytes_left = 0
             end
          else
+            local dst = buf:ptr() + n - bytes_left
             local nbytes = self:read1(dst, bytes_left)
-            dst = dst + nbytes
+            buf:size(#buf + nbytes)
             bytes_left = bytes_left - nbytes
          end
       end
    elseif n == 0 then
       -- read until EOF
       local buffers = {}
-      local total_size = 0
+      local nbytes_total = 0
+      if self.read_buffer then
+         table.insert(buffers, self.read_buffer)
+         nbytes_total = nbytes_total + #self.read_buffer
+         self.read_buffer = nil
+      end
       local ptr, block_size = mm.get_block(BUFFER_SIZE)
       while not self:eof() do
          local nbytes = self:read1(ptr, block_size)
-         total_size = total_size + nbytes
-         if nbytes == block_size then
-            table.insert(buffers, buffer.copy(ptr, block_size))
-         else
-            buf = buffer.new(total_size)
-            for i=1,#buffers do
-               buf:append(buffers[i])
-            end
-            buf:append(ptr, nbytes)
-         end
+         assert(nbytes > 0)
+         table.insert(buffers, buffer.copy(ptr, nbytes))
+         nbytes_total = nbytes_total + nbytes
       end
       mm.ret_block(ptr, block_size)
+      buf = buffer.new(nbytes_total)
+      for i=1,#buffers do
+         buf:append(buffers[i])
+      end
    end
-   return buf
+   return buf or buffer.new()
 end
 
 ffi.cdef [[ void * memmem (const void *haystack, size_t haystack_len,
                            const void *needle, size_t needle_len); ]]
 
-function BaseStream:read_until(str)
+function BaseStream:read_until(marker)
    local buf = buffer.new()
+   local start_search_at = 0
    while not self:eof() do
       local chunk = self:read()
-      buf:append(chunk)
-      local p = ffi.cast("uint8_t*", ffi.C.memmem(buf:ptr(), #buf, str, #str))
+      buf:append(chunk) -- buffer automatically grows as needed
+      local search_ptr = buf:ptr() + start_search_at
+      local search_len = #buf - start_search_at
+      local p = ffi.cast("uint8_t*", ffi.C.memmem(search_ptr, search_len, marker, #marker))
       if p ~= nil then
-         local str_offset = p - ffi.cast("uint8_t*", buf:ptr())
-         local next_offset = str_offset + #str
+         local marker_offset = p - buf:ptr()
+         local next_offset = marker_offset + #marker
          if next_offset < #buf then
             assert(self.read_buffer==nil)
             self.read_buffer = buffer.copy(buf:ptr()+next_offset, #buf-next_offset)
          end
-         return buffer.copy(buf:ptr(), str_offset)
+         return buffer.copy(buf:ptr(), marker_offset)
+      else
+         start_search_at = start_search_at + search_len - #marker + 1
       end
    end
    return buf
@@ -104,10 +112,6 @@ end
 
 function BaseStream:readln()
    return self:read_until("\x0a")
-end
-
-function BaseStream:write1(ptr, size)
-   ef("to be implemented")
 end
 
 function BaseStream:write(data)
@@ -153,7 +157,7 @@ function MemoryStream:read1(ptr, size)
          ffi.copy(dst, buf:ptr(), bytes_left)
          self.buffers[1] = buffer.copy(buf:ptr()+bytes_left, #buf-bytes_left)
          bytes_left = 0
-      elseif bufsize <= bytes_left then
+      else
          ffi.copy(dst, buf:ptr(), bufsize)
          dst = dst + bufsize
          bytes_left = bytes_left - bufsize
@@ -166,7 +170,7 @@ end
 local function make_stream(x)
    if not x then
       return MemoryStream()
-   elseif type(x)=="table" and type(x.stream_impl)=="function" then
+   elseif (type(x)=="table" or type(x)=="cdata") and type(x.stream_impl)=="function" then
       local s = BaseStream()
       return x:stream_impl(s)
    else

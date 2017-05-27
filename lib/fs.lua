@@ -166,42 +166,53 @@ function File_mt:size()
    return size
 end
 
+function File_mt:read1(ptr, size)
+   local nbytes = 0
+   if sched.running() then
+      local req, block_size = mm.get_block("struct zz_async_fs_read_write_request")
+      req.fd = self.fd
+      req.buf = ptr
+      req.count = size
+      async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_READ, req)
+      nbytes = req.nbytes
+      mm.ret_block(req, block_size)
+   else
+      nbytes = ffi.C.read(self.fd, ptr, size)
+   end
+   return util.check_errno("read1", nbytes)
+end
+
 function File_mt:read(rsize)
    if not rsize then
       -- read the whole rest of the file
       rsize = self:size() - self:pos()
    end
    local buf = buffer.new(rsize)
-   local bytes_read
+   local bytes_read = self:read1(buf:ptr(), rsize)
+   buf:size(bytes_read)
+   return bytes_read > 0 and buf or nil
+end
+
+function File_mt:write1(ptr, size)
+   local nbytes = 0
    if sched.running() then
       local req, block_size = mm.get_block("struct zz_async_fs_read_write_request")
       req.fd = self.fd
-      req.buf = buf:ptr()
-      req.count = rsize
-      async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_READ, req)
-      bytes_read = req.nbytes
+      req.buf = ptr
+      req.count = size
+      async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_WRITE, req)
       mm.ret_block(req, block_size)
+      nbytes = req.nbytes
    else
-      bytes_read = ffi.C.read(self.fd, buf:ptr(), rsize)
+      nbytes = ffi.C.write(self.fd, ptr, size)
    end
-   buf:size(bytes_read)
-   return bytes_read > 0 and buf or nil
+   return util.check_errno("write1", nbytes)
 end
 
 function File_mt:write(data)
    -- wrap data in a buffer (don't copy, don't take ownership)
    local buf = buffer.wrap(data)
-   if sched.running() then
-      local req, block_size = mm.get_block("struct zz_async_fs_read_write_request")
-      req.fd = self.fd
-      req.buf = buf:ptr()
-      req.count = #data
-      async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_WRITE, req)
-      mm.ret_block(req, block_size)
-      return req.nbytes
-   else
-      return util.check_ok("write", #data, ffi.C.write(self.fd, buf:ptr(), #data))
-   end
+   return util.check_ok("write", #buf, self:write1(buf:ptr(), #buf))
 end
 
 function File_mt:seek(offset, relative)
@@ -230,6 +241,25 @@ function File_mt:close()
       self.fd = -1
    end
    return 0
+end
+
+function File_mt:stream_impl(stream)
+   local f = self
+   local eof = false
+   function stream:eof()
+      return eof and not stream.read_buffer
+   end
+   function stream:read1(ptr, size)
+      local nbytes = f:read1(ptr, size)
+      if nbytes < size then
+         eof = true
+      end
+      return nbytes
+   end
+   function stream:write1(ptr, size)
+      return f:write1(ptr, size)
+   end
+   return stream
 end
 
 File_mt.__index = File_mt
@@ -264,8 +294,8 @@ function M.mkstemp(filename_prefix, tmpdir)
    filename_prefix = filename_prefix or sf("%u", process.getpid())
    tmpdir = tmpdir or env.TMPDIR or '/tmp'
    local template = sf("%s/%s-XXXXXX", tmpdir, filename_prefix)
-   local buf = ffi.new("char[?]", #template+1)
-   ffi.copy(buf, template)
+   local buf = ffi.new("char[?]", #template+1) -- zero-initialized
+   ffi.copy(buf, template) -- \x00 already at the end
    local fd = util.check_errno("mkstemp", ffi.C.mkstemp(buf))
    return File(fd), ffi.string(buf)
 end
