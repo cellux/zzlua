@@ -5,6 +5,7 @@ local epoll = require('epoll')
 local sched = require('sched')
 local errno = require('errno')
 local buffer = require('buffer')
+local trigger = require('trigger')
 
 ffi.cdef [[
 
@@ -335,7 +336,7 @@ function Socket_mt:getpeername()
 end
 
 function Socket_mt:accept()
-   if sched.running() then
+   if sched.ticking() then
       sched.poll(self.fd, "r")
    end
    local client_fd = util.check_errno("accept", ffi.C.accept(self.fd, nil, nil))
@@ -346,7 +347,7 @@ function Socket_mt:connect(sockaddr)
    local rv = ffi.C.connect(self.fd, ffi.cast("struct sockaddr *", sockaddr.addr), sockaddr.addr_size)
    if rv == -1 then
       local errnum = errno.errno()
-      if errnum == ffi.C.EINPROGRESS and sched.running() then
+      if errnum == ffi.C.EINPROGRESS and sched.ticking() then
          sched.poll(self.fd, "w")
          local optval = ffi.new("int[1]")
          local optlen = ffi.new("socklen_t[1]", ffi.sizeof("int"))
@@ -366,6 +367,13 @@ function Socket_mt:connect(sockaddr)
    else
       return 0
    end
+end
+
+function Socket_mt:read1(ptr, size)
+   if sched.ticking() then
+      sched.poll(self.fd, "r")
+   end
+   return util.check_errno("read", ffi.C.read(self.fd, ptr, size))
 end
 
 function Socket_mt:read(count)
@@ -410,7 +418,7 @@ function Socket_mt:read(count)
             blocksize = remaining
          end
       end
-      if sched.running() then
+      if sched.ticking() then
          sched.poll(self.fd, "r")
       end
       local nbytes = util.check_errno("read", ffi.C.read(self.fd, buf, blocksize))
@@ -429,35 +437,16 @@ function Socket_mt:read(count)
    return data
 end
 
-function Socket_mt:readline()
-   local blocksize = 4096
-   local buf = ffi.new("uint8_t[?]", blocksize)
-   while true do
-      if #self.readbuf > 0 then
-         local nlpos = string.find(self.readbuf, "\n", 1, true)
-         if nlpos then
-            local line = string.sub(self.readbuf, 1, nlpos-1)
-            self.readbuf = string.sub(self.readbuf, nlpos+1)
-            return line
-         end
-      end
-      if sched.running() then
-         sched.poll(self.fd, "r")
-      end
-      local nbytes = util.check_errno("read", ffi.C.read(self.fd, buf, blocksize))
-      if nbytes == 0 then
-         -- if self.readbuf is not empty, then the last line of the
-         -- file was not terminated by a new-line character
-         return #self.readbuf > 0 and self.readbuf or nil
-      else
-         self.readbuf = self.readbuf .. ffi.string(buf, nbytes)
-      end
+function Socket_mt:write1(ptr, size)
+   if sched.ticking() then
+      sched.poll(self.fd, "w")
    end
+   return util.check_errno("write", ffi.C.write(self.fd, ptr, size))
 end
 
 function Socket_mt:write(data)
    local buf = buffer.wrap(data)
-   if sched.running() then
+   if sched.ticking() then
       sched.poll(self.fd, "w")
    end
    local nbytes = util.check_errno("write", ffi.C.write(self.fd, buf:ptr(), #data))
@@ -466,7 +455,7 @@ end
 
 function Socket_mt:sendto(data, addr)
    local buf = buffer.wrap(data)
-   if sched.running() then
+   if sched.ticking() then
       sched.poll(self.fd, "w")
    end
    local rv = util.check_errno("sendto", ffi.C.sendto(self.fd, buf:ptr(), #data, 0, ffi.cast("const struct sockaddr *", addr.addr), addr.addr_size))
@@ -483,7 +472,7 @@ function Socket_mt:recvfrom(buf)
    end
    local peer_addr = sockaddr(self.domain)
    local address_len = ffi.new("socklen_t[1]", ffi.sizeof(peer_addr.addr))
-   if sched.running() then
+   if sched.ticking() then
       sched.poll(self.fd, "r")
    end
    local nbytes = util.check_errno("recvfrom", ffi.C.recvfrom(self.fd, buf, bufsize, 0, ffi.cast("struct sockaddr *", peer_addr.addr), address_len))
@@ -504,6 +493,25 @@ function Socket_mt:close()
       self.fd = -1
    end
    return rv
+end
+
+function Socket_mt:stream_impl(stream)
+   local sock = self
+   local eof = false
+   function stream:eof()
+      return eof and not stream.read_buffer
+   end
+   function stream:read1(ptr, size)
+      local nbytes = sock:read1(ptr, size)
+      if nbytes == 0 then
+         eof = true
+      end
+      return nbytes
+   end
+   function stream:write1(ptr, size)
+      return sock:write1(ptr, size)
+   end
+   return stream
 end
 
 Socket_mt.__newindex = function(self, k, v)
@@ -536,7 +544,7 @@ local M = {}
 M.sockaddr = sockaddr
 
 function M.socket(domain, type, protocol)
-   if sched.running() then
+   if sched.ticking() then
       type = bit.bor(type, ffi.C.SOCK_NONBLOCK)
    end
    local fd = util.check_errno("socket", ffi.C.socket(domain, type, protocol or 0))
@@ -544,7 +552,7 @@ function M.socket(domain, type, protocol)
 end
 
 function M.socketpair(domain, type, protocol)
-   if sched.running() then
+   if sched.ticking() then
       type = bit.bor(type, ffi.C.SOCK_NONBLOCK)
    end
    local fds = ffi.new("int[2]")
@@ -553,43 +561,39 @@ function M.socketpair(domain, type, protocol)
 end
 
 local function qpoll(fd, cb) -- "quittable" poll
-   local sp_recv, sp_send = M.socketpair(ffi.C.PF_LOCAL, ffi.C.SOCK_STREAM)
-   local poller = epoll.create(2)
-   poller:add(sp_recv.fd, "r", sp_recv.fd)
+   local exit_trigger = trigger()
+   local poller = epoll.create(1)
+   poller:add(exit_trigger.fd, "r", exit_trigger.fd)
    poller:add(fd, "r", fd)
    sched.on('quit', function()
-      sp_send:write("stop\n")
-      local reply = sp_send:readline()
-      if reply ~= "stopped" then
-         error("invalid reply to stop request")
-      end
-      sp_send:close()
+      exit_trigger:fire()
+      -- exit_trigger will be polled in the next cycle of the event loop
+      -- without this sched.yield() here, the qpoll loop wouldn't exit
+      sched.yield()
    end)
-   local running = true
-   while running do
+   while sched.running() do
       sched.poll(poller:fd(), "r")
       poller:wait(0, function(events, data)
          if data == fd then
             cb()
-         elseif data == sp_recv.fd then
-            sp_recv:write("stopped\n")
-            running = false
+         elseif data == exit_trigger.fd then
+            exit_trigger:read()
          else
             error("invalid fd in epoll event")
          end
       end)
    end
    poller:del(fd, "r", fd)
-   poller:del(sp_recv.fd, "r", sp_recv.fd)
+   poller:del(exit_trigger.fd, "r", exit_trigger.fd)
    poller:close()
-   sp_recv:close()
+   exit_trigger:delete()
 end
 M.qpoll = qpoll
 
 local TCPListener = util.Class()
 
 function TCPListener:start()
-   assert(sched.running())
+   assert(sched.ticking())
    if not self.sockaddr then
       if not self.address then
          ef("TCPListener without address")
@@ -618,7 +622,7 @@ M.TCPListener = TCPListener
 local UDPListener = util.Class()
 
 function UDPListener:start()
-   assert(sched.running())
+   assert(sched.ticking())
    if not self.sockaddr then
       if not self.address then
          ef("UDPListener without address")

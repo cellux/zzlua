@@ -78,7 +78,7 @@ function M.sleep(seconds)
    local sched = require('sched')
    -- required here to avoid circular dependency
    -- between sched and time
-   if sched.running() then
+   if sched.ticking() then
       sched.sleep(seconds)
    else
       M.nanosleep(seconds)

@@ -46,7 +46,7 @@ end
 
 function _G.ef(fmt, ...)
    local msg = string.format(fmt, ...)
-   if sched.running() then
+   if sched.ticking() then
       -- append stack trace of the current thread
       msg = sf("%s%s", msg, debug.traceback("", 2))
    end

@@ -25,28 +25,31 @@ local M = {}
 
 local Trigger_mt = {}
 
+function Trigger_mt:read()
+   local buf = ffi.new("uint64_t[1]", 0)
+   local nbytes = ffi.C.read(self.fd, buf, 8)
+   if nbytes == 8 then
+      -- buf[0] stores the number of fires since the last poll
+      local nfires = tonumber(buf[0])
+      assert(nfires > 0)
+      return nfires
+   elseif nbytes == -1 then
+      local errnum = errno.errno()
+      if errnum ~= ffi.C.EAGAIN then
+         ef("poll() failed: %s", errno.strerror(errnum))
+      end
+      return nil
+   else
+      ef("poll() failed: nbytes=%d, expected 8", nbytes)
+   end
+end
+
 function Trigger_mt:poll()
-   local buf = ffi.new("uint64_t[1]")
-   while true do
-      if sched.running() then
+   repeat
+      if sched.ticking() then
          sched.poll(self.fd, "r")
       end
-      buf[0] = 0
-      local nbytes = ffi.C.read(self.fd, buf, 8)
-      if nbytes == 8 then
-         -- buf[0] stores the number of fires since the last poll
-         local nfires = tonumber(buf[0])
-         assert(nfires > 0)
-         break
-      elseif nbytes == -1 then
-         local errnum = errno.errno()
-         if errnum ~= ffi.C.EAGAIN then
-            ef("poll() failed: %s", errno.strerror(errnum))
-         end
-      else
-         ef("poll() failed: nbytes=%d, expected 8", nbytes)
-      end
-   end
+   until self:read()
 end
 
 function Trigger_mt:fire()

@@ -25,3 +25,7 @@ assert.equals(s:read(2), "he")
 assert.equals(s:read(5), "llo\nw")
 assert.equals(s:read(0), "orld\n")
 assert(s:eof())
+
+-- writeln works with numbers
+s:writeln(1234)
+assert.equals(s:readln(), "1234")

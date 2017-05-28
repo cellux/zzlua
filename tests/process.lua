@@ -25,7 +25,7 @@ else
    -- parent
    sc:close()
    assert(process.getpid() == ppid)
-   local child_pid = tonumber(sp:readline())
+   local child_pid = tonumber(sp:read())
    sp:close()
    assert.equals(child_pid, pid)
    assert.equals(process.waitpid(pid), pid)
@@ -34,12 +34,12 @@ end
 -- the same, using some sugar
 
 local pid, sp = process.fork(function(sc)
-      sc:write(sf("%u\n", process.getpid()))
-      sc:close()
-      assert(process.getpid() ~= ppid)
+   sc:write(sf("%u\n", process.getpid()))
+   sc:close()
+   assert(process.getpid() ~= ppid)
 end)
 assert(process.getpid() == ppid)
-local child_pid = tonumber(sp:readline())
+local child_pid = tonumber(sp:read())
 sp:close()
 assert.equals(child_pid, pid)
 assert.equals(process.waitpid(pid), pid)

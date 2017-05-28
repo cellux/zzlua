@@ -186,7 +186,7 @@ sched(function()
    local n_connected = 0
    for pid,sp in pairs(children) do
       sched(function()
-         assert.equals(sp:readline(), "got ping")
+         assert.equals(sp:read(), "got ping\n")
          n_connected = n_connected + 1
       end)
    end

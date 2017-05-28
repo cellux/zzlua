@@ -3,7 +3,7 @@ local time = require('time')
 local process = require('process')
 local signal = require('signal')
 local assert = require('assert')
-local sf = string.format
+local inspect = require('inspect')
 
 -- "stress-test" scheduler creation and release
 
@@ -101,10 +101,14 @@ sched()
 assert.equals(counter, 5)
 
 -- a 'quit' event terminates the event loop
+--
+-- after a quit event has been posted, sched.running() returns false
+--
+-- this can be used to check whether it's time to exit
 
 local counter = 0
 sched(function()
-         while true do
+         while sched.running() do
             sched.yield()
             counter = counter + 1
             if counter == 10 then
@@ -114,6 +118,22 @@ sched(function()
       end)
 sched()
 assert.equals(counter, 10)
+
+-- ticking: the loop is still going around and around
+-- running: sched.quit() has not been called yet
+
+assert(not sched.running())
+assert(not sched.ticking())
+sched(function()
+  assert(sched.running())
+  assert(sched.ticking())
+  sched.quit()
+  assert(not sched.running())
+  assert(sched.ticking())
+end)
+sched()
+assert(not sched.running())
+assert(not sched.ticking())
 
 -- sched.wait(evtype):
 -- go to sleep, wake up when an event of type `evtype' arrives

@@ -360,7 +360,6 @@ function Window.RenderLoop(window, opts)
    for _,acc_type in ipairs(acc_types) do
       acc[acc_type] = util.Accumulator()
    end
-   local running = false
    local self = {}
    function self:prepare()
    end
@@ -386,8 +385,7 @@ function Window.RenderLoop(window, opts)
    end
    function self:start()
       local now = sched.now
-      running = true
-      while running do
+      while sched.running() do
          local prev_now = now
          now = sched.now
          measure(function() self:prepare() end, 'prepare')
@@ -412,9 +410,6 @@ function Window.RenderLoop(window, opts)
             end
          end
       end
-   end
-   function self:stop()
-      running = false
    end
    function self:print_stats()
       for _,acc_type in ipairs(acc_types) do

@@ -141,7 +141,7 @@ local File_mt = {}
 
 local function lseek(fd, offset, whence)
    local rv
-   if sched.running() then
+   if sched.ticking() then
       local req, block_size = mm.get_block("struct zz_async_fs_lseek_request")
       req.fd = fd
       req.offset = offset
@@ -168,7 +168,7 @@ end
 
 function File_mt:read1(ptr, size)
    local nbytes = 0
-   if sched.running() then
+   if sched.ticking() then
       local req, block_size = mm.get_block("struct zz_async_fs_read_write_request")
       req.fd = self.fd
       req.buf = ptr
@@ -195,7 +195,7 @@ end
 
 function File_mt:write1(ptr, size)
    local nbytes = 0
-   if sched.running() then
+   if sched.ticking() then
       local req, block_size = mm.get_block("struct zz_async_fs_read_write_request")
       req.fd = self.fd
       req.buf = ptr
@@ -228,7 +228,7 @@ end
 function File_mt:close()
    if self.fd >= 0 then
       local rv
-      if sched.running() then
+      if sched.ticking() then
          local req, block_size = mm.get_block("struct zz_async_fs_close_request")
          req.fd = self.fd
          async.request(ASYNC_FS, ffi.C.ZZ_ASYNC_FS_CLOSE, req)
@@ -312,7 +312,7 @@ end
 local Stat_mt = {}
 
 function Stat_mt:stat(path)
-   if sched.running() then
+   if sched.ticking() then
       local req, block_size = mm.get_block("struct zz_async_fs_stat_request")
       req.path = ffi.cast("char*", path)
       req.buf = self.buf
@@ -325,7 +325,7 @@ function Stat_mt:stat(path)
 end
 
 function Stat_mt:lstat(path)
-   if sched.running() then
+   if sched.ticking() then
       local req, block_size = mm.get_block("struct zz_async_fs_stat_request")
       req.path = ffi.cast("char*", path)
       req.buf = self.buf

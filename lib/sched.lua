@@ -10,19 +10,39 @@ local M = {}
 
 local scheduler_state = "off"
 
+-- off -> init -> running -> shutdown -> done -> off
+--
+-- off: there is no scheduler singleton
+-- init: scheduler singleton is initializing
+-- running: scheduler singleton is spinning around in its main loop
+-- shutdown: scheduler singleton is shutting down (got 'quit' event)
+-- done: scheduler singleton is cleaning up
+
 function M.running()
-   return scheduler_state == "loop"
+   return scheduler_state == "running"
 end
 
+function M.ticking()
+   return scheduler_state == "running" or scheduler_state == "shutdown"
+end
+
+-- poller_factory shall be a callable returning an object which
+-- implements the poller protocol (see epoll module for an example)
+--
 -- must be set to a platform-specific implementation at startup
 M.poller_factory = nil
 
 local module_constructors = {}
 
+-- modules register themselves via this function if they want to do
+-- something when the scheduler singleton initializes itself (init),
+-- executes one cycle of its main loop (tick) and cleans up (done)
 function M.register_module(mc)
    table.insert(module_constructors, mc)
 end
 
+-- every scheduler singleton has a module registry which keeps track
+-- of the (module-provided) hooks to be invoked at init/tick/done
 local function ModuleRegistry(scheduler)
    local hooks = {
       init = {},
@@ -30,7 +50,7 @@ local function ModuleRegistry(scheduler)
       done = {},
    }
    for _,mc in ipairs(module_constructors) do
-      local m = mc(scheduler)
+      local m = mc(scheduler) -- returns a map of hooktype -> hookfn
       for k,_ in pairs(hooks) do
          if m[k] then
             table.insert(hooks[k], m[k])
@@ -47,8 +67,10 @@ local function ModuleRegistry(scheduler)
    return self
 end
 
+-- the single global scheduler instance
 local scheduler_singleton
 
+-- a special return value used to detach an event callback
 local OFF = {}
 M.OFF = OFF
 
@@ -65,23 +87,26 @@ M.time = get_current_time
 -- less than sched.precision
 M.precision = 0.005 -- seconds
 
-local function Scheduler()
+local function Scheduler() -- scheduler constructor
    local self = {}
 
+   -- threads may allocate event_ids and wait for them. when the event
+   -- loop gets an event with a particular id, it wakes up the thread
+   -- which is waiting for it
    local next_event_id = -1
 
    function self.make_event_id()
       local rv = next_event_id
       next_event_id = next_event_id - 1
-      -- TODO: find a way to ensure that this never blows up
+      -- TODO: find a way to ensure that this doesn't underflow
       if next_event_id < -(2^31) then
-         error("event id overflow")
+         error("event id underflow")
       end
       return rv
    end
 
    if not M.poller_factory then
-      error("sched.poller_factory is not set")
+      error("sched.poller_factory is unset")
    end
 
    local poller = M.poller_factory()
@@ -134,44 +159,32 @@ local function Scheduler()
 
    local module_registry = ModuleRegistry(self)
 
-   local running = false
-
-   -- runnable threads:
-   -- those which will be resumed in the current tick
+   -- runnable threads are those which can be resumed in the current tick
    local runnables = adt.List()
 
+   -- each runnable consists of a callable (of some sort) and one piece of data
    local function Runnable(r, data)
       return { r = r, data = data }
    end
 
-   -- sleeping threads:
-   -- waiting for their time to come, ordered by wake-up time
+   -- sleeping threads are waiting for their time to come
+   -- the list is ordered by wake-up time
    local sleeping = adt.OrderedList(function(st) return st.time end)
 
    local function SleepingRunnable(r, time)
       return { r = r, time = time }
    end
 
-   -- waiting:
-   -- threads and callback functions waiting for various events
+   -- `waiting` is a registry of runnables which are currently waiting
+   -- for various events
    --
-   -- key: evtype, value: array of runnables and callbacks waiting
+   -- key: evtype, value: array of runnables
    --
-   -- if it's a thread, it will be woken up
-   --
-   -- if it's a function, it will be wrapped into a handler thread
-   -- which will be woken up
-   --
-   -- if it's a thread wrapped in a single-element table, it's a
-   -- background thread (does not keep the event loop alive) ;
-   -- otherwise it's handled in the same way as a plain thread
-   --
-   -- threads are removed once they have been serviced, callback
-   -- functions remain
+   -- a runnable can be a thread, a background thread or a function
    local waiting = {}
    local n_waiting_threads = 0
 
-   local function add_waiting(evtype, r) -- r for runnable
+   local function add_waiting(evtype, r) -- r = runnable
       if not waiting[evtype] then
          waiting[evtype] = adt.List()
       end
@@ -181,7 +194,7 @@ local function Scheduler()
       end
    end
 
-   local function del_waiting(evtype, r) -- r for runnable
+   local function del_waiting(evtype, r) -- r = runnable
       if waiting[evtype] then
          local rs = waiting[evtype]
          local i = rs:index(r)
@@ -197,17 +210,24 @@ local function Scheduler()
       end
    end
 
+   -- use sched.on(evtype, fn) to register an event callback
    self.on = add_waiting
    self.off = del_waiting
 
+   -- one cycle (tick) of the event loop:
+   --
+   -- 1. collects events and pushes them to the event queue
+   -- 2. processes all events in the event queue
+   -- 3. gives all active threads a chance to run (resume)
    local event_queue = adt.List()
 
    -- event_sub: the socket we receive events from
+   -- C threads can use this socket to post events
    local event_sub = nn.socket(nn.AF_SP, nn.SUB)
    nn.setsockopt(event_sub, nn.SUB, nn.SUB_SUBSCRIBE, "")
    nn.bind(event_sub, "inproc://events")
 
-   -- a poller for event_sub (used when we wait for events)
+   -- setup permanent polling for event_sub
    local event_sub_fd = nn.getsockopt(event_sub, 0, nn.RCVFD)
    local event_sub_id = self.make_event_id()
    poller:add(event_sub_fd, "r", event_sub_id)
@@ -218,15 +238,16 @@ local function Scheduler()
       self.now = now
 
       local function wakeup_sleepers(now)
-         -- wake up sleeping threads whose time has come
          while sleeping:size() > 0 and sleeping[0].time <= now do
             local sr = sleeping:shift()
             runnables:push(Runnable(sr.r, nil))
          end
       end
 
+      -- wake up sleeping threads whose time has come
       wakeup_sleepers(now)
 
+      -- let all registered scheduler modules do their `tick`
       module_registry:invoke('tick')
 
       local function handle_poll_event(events, userdata)
@@ -237,6 +258,7 @@ local function Scheduler()
             assert(#unpacked == 2, "event shall be a table of two elements, but it is "..inspect(unpacked))
             event_queue:push(unpacked)
          else
+            -- evtype: userdata, evdata: events
             event_queue:push({userdata, events})
          end
       end
@@ -259,12 +281,13 @@ local function Scheduler()
             end
             -- round to a whole number
             timeout_ms = math.floor(timeout_ms+0.5)
+            -- poller invokes handle_poll_event() for each event
             poller:wait(timeout_ms, handle_poll_event)
          else
             -- there are runnable threads waiting for execution
             -- or the event queue is not empty
             --
-            -- we poll in a non-blocking way
+            -- let's poll in a non-blocking way
             poller:wait(0, handle_poll_event)
          end
       end
@@ -275,27 +298,21 @@ local function Scheduler()
       local function process_event(event)
          local evtype, evdata = unpack(event)
          --pf("got event: evtype=%s, evdata=%s", evtype, inspect(evdata))
-         if evtype == 'quit' then
-            running = false
-            -- after quit, only those threads shall be resumed which
-            -- are waiting for this evtype ('quit')
-            runnables:clear()
-         end
-         -- wake up threads/callbacks waiting for this evtype
-         local rs = waiting[evtype] -- runnables
+         -- wake up runnables waiting for this evtype
+         local rs = waiting[evtype]
          if rs then
             local rs_next = adt.List()
             for r in rs:itervalues() do
                if type(r)=="thread" then
-                  -- threads will be resumed and then forgotten
+                  -- plain thread
                   runnables:push(Runnable(r, evdata))
                   n_waiting_threads = n_waiting_threads - 1
                elseif type(r)=="table" then
-                  -- background threads are resumed and forgotten
+                  -- background thread in r[1]
                   runnables:push(Runnable(r, evdata))
                elseif type(r)=="function" then
-                  -- callback functions are wrapped into a handler
-                  -- thread which is then resumed
+                  -- callback: every event creates a new thread which
+                  -- executes the callback function
                   local function wrapper(evdata)
                      -- remove the callback if it returns sched.OFF
                      -- quit handlers are also automatically removed
@@ -305,7 +322,10 @@ local function Scheduler()
                   end
                   self.sched(wrapper, evdata)
                   -- callbacks keep waiting
-                  rs_next:push(r)
+                  -- (unless they are quit callbacks)
+                  if evtype ~= 'quit' then
+                     rs_next:push(r)
+                  end
                else
                   ef("invalid object in waiting[%s]: %s", evtype, r)
                end
@@ -318,6 +338,7 @@ local function Scheduler()
          end
       end
 
+      -- process the event queue
       while not event_queue:empty() do
          local event = event_queue:shift()
          process_event(event)
@@ -355,14 +376,14 @@ local function Scheduler()
          runnables = runnables_next
       end
 
+      -- give each active thread a chance to run
       resume_runnables()
    end
 
    function self.loop()
-      running = true
-
-      -- running phase
-      while running do
+      -- phase: running
+      scheduler_state = "running"
+      while scheduler_state == "running" do
          tick()
          if runnables:size() == 0
             and sleeping:size() == 0
@@ -370,17 +391,10 @@ local function Scheduler()
                -- all threads exited without anyone calling
                -- sched.quit(), so we have to do it
                self.quit()
-               -- schedule quit callbacks (if any)
-               tick() -- also sets running to false
          end
       end
-
-      -- shutdown phase
-      while waiting['quit'] do
-         -- quit callbacks are automatically removed (via sched.off)
-         -- when they finish. when all quit handlers finish, there
-         -- will be no more threads or callbacks waiting for 'quit',
-         -- so we can shut down the scheduler.
+      -- phase: shutdown
+      while runnables:size() > 0 or waiting['quit'] do
          tick()
       end
    end
@@ -395,7 +409,7 @@ local function Scheduler()
             callable(...)
          end
       else
-         ef("sched() expects something callable, got: %s", x)
+         ef("expected a callable, got: %s", x)
       end
    end
 
@@ -407,10 +421,9 @@ local function Scheduler()
       else
          -- enter the event loop, continue scheduling until there is
          -- work to do. when the event loop exits, cleanup and destroy
-         -- this Scheduler instance.
+         -- this scheduler instance.
          scheduler_state = "init"
          module_registry:invoke('init')
-         scheduler_state = "loop"
          self.loop()
          scheduler_state = "done"
          module_registry:invoke('done')
@@ -419,8 +432,8 @@ local function Scheduler()
          nn.close(event_sub)
          scheduler_singleton = nil
          scheduler_state = "off"
-         -- after this function returns, self (the current scheduler
-         -- instance) will be garbage-collected
+         -- after this function returns, the current scheduler
+         -- instance will be garbage-collected
       end
    end
 
@@ -442,6 +455,7 @@ local function Scheduler()
    end
 
    function self.quit(evdata)
+      scheduler_state = "shutdown"
       self.emit('quit', evdata or 0)
    end
 

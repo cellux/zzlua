@@ -16,7 +16,7 @@ local pid, sp = process.fork(function(sc)
    ffi.C.dup2(sc.fd, 1)
    pf("Hello, %s\n", "world")
 end)
-assert.equals(sp:readline(), "Hello, world")
+assert.equals(sp:read(13), "Hello, world\n")
 sp:close()
 process.waitpid(pid)
 

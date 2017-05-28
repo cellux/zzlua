@@ -111,7 +111,7 @@ function BaseStream:read_until(marker)
 end
 
 function BaseStream:readln()
-   return self:read_until("\x0a")
+   return tostring(self:read_until("\x0a"))
 end
 
 function BaseStream:write(data)
@@ -126,7 +126,7 @@ function BaseStream:write(data)
 end
 
 function BaseStream:writeln(line)
-   self:write(line)
+   self:write(tostring(line))
    self:write("\x0a")
 end
 

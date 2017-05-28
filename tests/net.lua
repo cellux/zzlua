@@ -2,6 +2,7 @@ local net = require('net')
 local assert = require('assert')
 local process = require('process')
 local buffer = require('buffer')
+local stream = require('stream')
 local fs = require('fs')
 local ffi = require('ffi')
 local sched = require('sched')
@@ -58,7 +59,7 @@ if pid == 0 then
    sc:write("world")
    assert.equals(sc:read(), "quit")
    sc:close()
-   process.exit()
+   process.exit(0)
 else
    -- parent
    sc:close()
@@ -77,21 +78,23 @@ local pid = process.fork()
 if pid == 0 then
    -- child
    sp:close()
-   assert.equals(sc:readline(), "hello")
-   sc:write("world\n")
-   assert.equals(sc:readline(), "quit")
+   local s = stream(sc)
+   assert.equals(s:readln(), "hello")
+   s:writeln("world")
+   assert.equals(s:readln(), "quit")
    -- check that plain read() still works
-   assert.equals(sc:read(10), "extra-data")
+   assert.equals(s:read(10), "extra-data")
    sc:close()
    process.exit()
 else
    -- parent
    sc:close()
-   sp:write("hello\n")
+   local s = stream(sp)
+   s:writeln("hello")
    -- sending quit immediately after hello shouldn't confuse the child
-   sp:write("quit\n")
-   assert.equals(sp:readline(), "world")
-   sp:write("extra-data")
+   s:writeln("quit")
+   assert.equals(s:readln(), "world")
+   s:write("extra-data")
    process.waitpid(pid)
    sp:close()
 end
@@ -117,16 +120,18 @@ local socket_path = fs.mktemp("zzlua-test-socket")
 local socket_addr = net.sockaddr(net.AF_LOCAL, socket_path)
 
 local pid, sp = process.fork(function(sc)
-      assert.equals(sc:readline(), "server-ready")
-      function send(msg)
-         local client = net.socket(net.PF_LOCAL, net.SOCK_STREAM)
-         client:connect(socket_addr)
-         client:write(sf("%s\n", msg))
-         assert.equals(client:readline(), msg)
-         client:close()
-      end
-      send("hello, world!")
-      send("quit")
+   assert.equals(sc:read(13), "server-ready\n")
+   function send(msg)
+      local client = net.socket(net.PF_LOCAL, net.SOCK_STREAM)
+      client:connect(socket_addr)
+      local cs = stream(client)
+      cs:writeln(msg)
+      assert.equals(cs:readln(), msg)
+      client:close()
+   end
+   send("hello, world!")
+   send("quit")
+   -- process.fork() will close sc for us
 end)
 
 local server = net.socket(net.PF_LOCAL, net.SOCK_STREAM)
@@ -136,8 +141,9 @@ server:listen()
 sp:write("server-ready\n")
 while true do
    local client = server:accept()
-   local msg = client:readline()
-   client:write(sf("%s\n", msg))
+   local cs = stream(client)
+   local msg = cs:readln()
+   cs:writeln(msg)
    client:close()
    if msg == "quit" then
       break
@@ -151,23 +157,25 @@ if fs.exists(socket_path) then
    fs.unlink(socket_path)
 end
 
--- listen, accept, connect (with TCP sockets) + getsockname, getpeername
+-- listen, accept, connect (with TCP sockets)
+-- getsockname, getpeername
 
 local server_host, server_port = "127.0.0.1", 54321
 local server_addr = net.sockaddr(net.AF_INET, server_host, server_port)
 
 local pid, sp = process.fork(function(sc)
-      assert.equals(sc:readline(), "server-ready")
+      assert.equals(sc:read(13), "server-ready\n")
       function send(msg)
          local client = net.socket(net.PF_INET, net.SOCK_STREAM)
          client:connect(server_addr)
          local client_addr = client:getsockname()
          assert.equals(client_addr.address, "127.0.0.1")
          assert.type(client_addr.port, "number")
-         client:write(sf("%s\n", client_addr.address))
-         client:write(sf("%d\n", client_addr.port))
-         client:write(sf("%s\n", msg))
-         assert.equals(client:readline(), msg)
+         local cs = stream(client)
+         cs:writeln(client_addr.address)
+         cs:writeln(client_addr.port)
+         cs:writeln(msg)
+         assert.equals(cs:readln(), msg)
          client:close()
       end
       send("hello, world!")
@@ -182,13 +190,14 @@ sp:write("server-ready\n")
 while true do
    local client = server:accept()
    local peer_addr = client:getpeername()
-   local peer_address = client:readline()
+   local cs = stream(client)
+   local peer_address = cs:readln()
    assert.equals(peer_address, "127.0.0.1")
    assert.equals(peer_address, peer_addr.address)
-   local peer_port = tonumber(client:readline())
+   local peer_port = tonumber(cs:readln())
    assert.equals(peer_port, peer_addr.port)
-   local msg = client:readline()
-   client:write(sf("%s\n", msg))
+   local msg = cs:readln()
+   cs:writeln(msg)
    client:close()
    if msg == "quit" then
       break
@@ -202,7 +211,7 @@ process.waitpid(pid)
 
 local dst_addr = net.sockaddr(net.AF_INET, "127.0.0.1", 54321)
 local s = net.socket(net.PF_INET, net.SOCK_DGRAM)
-s:sendto("this message should be dropped", dst_addr)
+s:sendto("this message should be dropped to the floor", dst_addr)
 s:close()
 
 -- UDP sockets
@@ -211,7 +220,7 @@ local server_host, server_port = "127.0.0.1", 54321
 local server_addr = net.sockaddr(net.AF_INET, server_host, server_port)
 
 local pid, sp = process.fork(function(sc)
-      assert.equals(sc:readline(), "server-ready")
+      assert.equals(sc:read(13), "server-ready\n")
       function send(msg)
          local client = net.socket(net.PF_INET, net.SOCK_DGRAM)
          client:sendto(msg, server_addr)
@@ -249,7 +258,7 @@ process.waitpid(pid)
 local server_host, server_port = "127.0.0.1", 54321
 local server_addr = net.sockaddr(net.AF_INET, server_host, server_port)
 
-local n_req = 500 -- number of requests to send in one second
+local n_req = 500 -- number of requests to send within a second
 
 local requests = {}
 
@@ -291,10 +300,11 @@ local function server()
       local client = socket:accept()
       sched(function()
             local peer_addr = client:getpeername()
-            local expr = client:readline()
+            local cs = stream(client)
+            local expr = cs:readln()
             local chunk = assert(loadstring("return "..expr))
             local value = tostring(chunk())
-            client:write(sf("%s\n", value))
+            cs:writeln(value)
             client:close()
       end)
    end
@@ -308,8 +318,9 @@ local function client(expr)
    sched.sleep(math.random())
    local client = net.socket(net.PF_INET, net.SOCK_STREAM)
    client:connect(server_addr)
-   client:write(sf("%s\n", expr))
-   local response = client:readline()
+   local cs = stream(client)
+   cs:writeln(expr)
+   local response = cs:readln()
    client:close()
    responses[expr] = response
 end
