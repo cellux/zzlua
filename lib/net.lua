@@ -631,7 +631,7 @@ function UDPListener:start()
    local socket = M.socket(ffi.C.PF_INET, ffi.C.SOCK_DGRAM)
    socket.SO_REUSEADDR = true
    socket:bind(self.sockaddr)
-   sched.poll_add(socket.fd, "rw")
+   sched.poller_add(socket.fd, "rw")
    local clients = {}
    qpoll(socket.fd, function()
       local data, peer_addr = socket:recvfrom()
@@ -645,7 +645,7 @@ function UDPListener:start()
                mtime = sched.now,
                active = true,
             }
-            sched.poll_add(ss.fd, "rw")
+            sched.poller_add(ss.fd, "rw")
             sched(function()
                self.server(sc)
                client.active = false
@@ -656,7 +656,7 @@ function UDPListener:start()
                   local data = ss:read()
                   socket:sendto(data, peer_addr)
                end
-               sched.poll_del(ss.fd)
+               sched.poller_del(ss.fd)
                ss:close()
             end)
             clients[client_id] = client
@@ -668,7 +668,7 @@ function UDPListener:start()
       until clients[client_id] and clients[client_id].active
       clients[client_id].ss:write(data)
    end)
-   sched.poll_del(socket.fd)
+   sched.poller_del(socket.fd)
    socket:close()
 end
 

@@ -86,26 +86,36 @@ local function Scheduler()
 
    local poller = M.poller_factory()
 
-   -- let users add their fds for permanent polling
-   self.poller = poller
+   -- these fds have been permanently added to the poll set (instead of
+   -- adding/removing at every poll as it happens for one-shot polls)
+   local registered_fds = {}
 
-   local permanently_polled_fds = {}
-
-   function self.poll_add(fd, events)
-      assert(permanently_polled_fds[fd]==nil)
+   function self.poller_add(fd, events)
+      assert(registered_fds[fd]==nil)
       local event_id = self.make_event_id()
       poller:add(fd, events, event_id)
-      permanently_polled_fds[fd] = event_id
+      registered_fds[fd] = event_id
    end
 
-   function self.poll_del(fd)
-      assert(permanently_polled_fds[fd])
-      permanently_polled_fds[fd] = nil
+   function self.poller_del(fd)
+      local event_id = registered_fds[fd]
+      assert(event_id)
+      poller:del(fd)
+      registered_fds[fd] = nil
    end
 
+   -- the poller's own fd (which is only provided by epoll on Linux so
+   -- this somewhat limits the range of possible implementations)
+   function self.poller_fd()
+      return poller:fd()
+   end
+
+   -- suspend the calling thread until there is an event on `fd` which
+   -- matches `events`
    function self.poll(fd, events)
+      assert(type(events)=="string")
       local rcvd_events
-      local event_id = permanently_polled_fds[fd]
+      local event_id = registered_fds[fd]
       if event_id then
          repeat
             rcvd_events = self.wait(event_id)
@@ -113,6 +123,8 @@ local function Scheduler()
       else
          events = events.."1" -- one shot
          event_id = self.make_event_id()
+         -- the event_id lets us differentiate between threads which
+         -- are all polling the same file descriptor
          poller:add(fd, events, event_id)
          rcvd_events = self.wait(event_id)
          poller:del(fd, events, event_id)

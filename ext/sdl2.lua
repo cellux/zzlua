@@ -2374,7 +2374,7 @@ local function SDL2Module(sched)
    function self.init()
       M.Init()
       poller.sched_fd_pollin_event_type = ZZ_SCHED_FD_POLLIN_EVENT
-      poller.sched_fd = sched.poller:fd()
+      poller.sched_fd = sched.poller_fd()
       poller.poll_trigger = poll_trigger
       poller.exit_trigger = exit_trigger
       local rv = ffi.C.pthread_create(thread_id,

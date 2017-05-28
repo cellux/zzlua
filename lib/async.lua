@@ -56,7 +56,7 @@ local function create_worker_thread()
    worker_info.request_trigger = request_trigger
    local response_trigger = trigger()
    worker_info.response_trigger = response_trigger
-   sched.poll_add(response_trigger.fd, "r")
+   sched.poller_add(response_trigger.fd, "r")
    local thread_id = ffi.new("pthread_t[1]")
    local rv = ffi.C.pthread_create(thread_id,
                                    nil,
@@ -80,7 +80,7 @@ local function create_worker_thread()
       if rv ~=0 then
          error("cannot join async worker thread: pthread_join() failed")
       end
-      sched.poll_del(response_trigger.fd)
+      sched.poller_del(response_trigger.fd)
       response_trigger:delete()
       request_trigger:delete()
       n_worker_threads = n_worker_threads - 1
