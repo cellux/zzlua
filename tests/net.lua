@@ -5,8 +5,10 @@ local buffer = require('buffer')
 local stream = require('stream')
 local fs = require('fs')
 local ffi = require('ffi')
+local util = require('util')
 local sched = require('sched')
 local epoll = require('epoll')
+local digest = require('digest')
 
 -- open/close
 
@@ -38,16 +40,30 @@ assert.equals(s1:read(5), "world")
 s1:close()
 s2:close()
 
--- socket read/write works with buffers
+-- socket read/write using streams
 local s1, s2 = net.socketpair(net.PF_LOCAL, net.SOCK_STREAM)
 assert(s1 ~= nil)
 assert(s2 ~= nil)
-s1:write(buffer.copy("hello"))
-assert.equals(s2:read(5), "hello")
-s2:write(buffer.copy("world"))
-assert.equals(s1:read(5), "world")
-s1:close()
-s2:close()
+local f = fs.open("testdata/arborescence.jpg")
+local s_f = stream(f)
+sched(function()
+   local s = stream(s1)
+   while not s_f:eof() do
+      s:write(s_f:read())
+   end
+   s1:close() -- otherwise the other side gets stuck in poll
+end)
+local buf = buffer.new()
+sched(function()
+   local s = stream(s2)
+   while not s:eof() do
+      buf:append(s:read())
+   end
+   s2:close()
+end)
+sched()
+f:close()
+assert.equals(util.hexstr(digest.md5(buf)), '58823f6d5e1d154d37d9aa2dbaf27371')
 
 -- IPC using socketpair
 local sp, sc = net.socketpair(net.PF_LOCAL, net.SOCK_STREAM)
