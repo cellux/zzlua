@@ -6,6 +6,7 @@ local net = require('net')
 local env = require('env')
 local adt = require('adt')
 local inspect = require('inspect')
+local process = require('process')
 local time = require('time')
 local util = require('util')
 
@@ -24,12 +25,18 @@ local event_address = sf("tcp://127.0.0.1:%u", broadcast_port)
 
 local cbregistry = nil -- subscriber callbacks
 
-local initialized = false
-
 M.OFF = {}
 
+local initialized = false
+
+function M.setup()
+   if not initialized then
+      sched.wait('broadcast.initialized')
+   end
+end
+
 function M.broadcast(evtype, evdata, dest_addr)
-   M.wait_until_ready()
+   M.setup()
    evdata = evdata or 0
    dest_addr = dest_addr or broadcast_addr
    if type(dest_addr=='string') then
@@ -37,12 +44,13 @@ function M.broadcast(evtype, evdata, dest_addr)
    end
    local msg = msgpack.pack_array({evtype, evdata})
    broadcast_socket:sendto(msg, dest_addr)
-end
-
-function M.wait_until_ready()
-   if not initialized then
-      sched.wait('broadcast.initialized')
-   end
+   -- if the listener is in the current process and someone calls
+   -- broadcast() several times followed by a sched.quit(), the
+   -- listener thread's qpoll may be terminated prematurely
+   --
+   -- to prevent that, we yield after each broadcast() to let the
+   -- listener process the messages
+   sched.yield()
 end
 
 local function listener()
@@ -63,6 +71,7 @@ local function listener()
          assert(type(unpacked) == "table")
          assert(#unpacked == 2, "broadcast message shall be a table of two elements, but it is "..inspect(unpacked))
          local evtype, evdata = unpack(unpacked)
+         --pf("evtype=%s, evdata=[%s]", evtype, evdata)
          nn.send(event_pub, msgpack.pack_array({evtype, evdata, sender_address, sender_port}))
       end)
       nn.close(event_pub)
