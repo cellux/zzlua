@@ -2316,7 +2316,6 @@ sched.poller_factory = function()
    local old_wait = self.wait
    local tmp_event = ffi.new("SDL_Event")
    function self:wait(timeout, process)
-      poll_trigger:fire()
       if timeout < 0 then
          -- wait indefinitely
          sdl.SDL_WaitEvent(nil)
@@ -2334,6 +2333,8 @@ sched.poller_factory = function()
                -- there are events to be read on sched:fd()
                -- call with timeout=0 as there is no need to wait
                old_wait(self, 0, process)
+               -- re-arm poller thread
+               poll_trigger:fire()
             else
                local evdata = ffi.new("SDL_Event", tmp_event) -- clone it
                local evtype = sdl_event_types[evdata.type]
