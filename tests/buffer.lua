@@ -126,6 +126,20 @@ assert.equals(#buf4, 3)
 assert.equals(buf4:capacity(), 3)
 assert(buf4=='abc')
 
+-- buffer.slice(data, offset)
+-- returns a copy of the slice from `offset` to the end
+local buf4 = buffer.slice('abcdef', 2)
+assert.equals(#buf4, 4)
+assert.equals(buf4:capacity(), 4)
+assert(buf4=='cdef')
+
+-- buffer.slice(data, offset, size)
+-- returns a copy of the slice starting at `offset` with length `size`
+local buf4 = buffer.slice('abcdef', 2, 3)
+assert.equals(#buf4, 3)
+assert.equals(buf4:capacity(), 3)
+assert(buf4=='cde')
+
 -- change capacity
 local buf5 = buffer.new()
 buf5:capacity(2100)

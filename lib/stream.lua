@@ -48,7 +48,7 @@ function BaseStream:read(n)
                self.read_buffer = nil
             else
                buf:append(self.read_buffer, bytes_left)
-               self.read_buffer = buffer.copy(self.read_buffer:ptr()+bytes_left, #self.read_buffer-bytes_left)
+               self.read_buffer = buffer.slice(self.read_buffer, bytes_left)
                bytes_left = 0
             end
          else
@@ -100,9 +100,9 @@ function BaseStream:read_until(marker)
          local next_offset = marker_offset + #marker
          if next_offset < #buf then
             assert(self.read_buffer==nil)
-            self.read_buffer = buffer.copy(buf:ptr()+next_offset, #buf-next_offset)
+            self.read_buffer = buffer.slice(buf, next_offset)
          end
-         return buffer.copy(buf:ptr(), marker_offset)
+         return buffer.copy(buf, marker_offset)
       else
          start_search_at = start_search_at + search_len - #marker + 1
       end
@@ -155,7 +155,7 @@ function MemoryStream:read1(ptr, size)
       local bufsize = #buf
       if bufsize > bytes_left then
          ffi.copy(dst, buf:ptr(), bytes_left)
-         self.buffers[1] = buffer.copy(buf:ptr()+bytes_left, #buf-bytes_left)
+         self.buffers[1] = buffer.slice(buf, bytes_left)
          bytes_left = 0
       else
          ffi.copy(dst, buf:ptr(), bufsize)

@@ -157,18 +157,6 @@ local function new_with_data(data, size)
    return Buffer(ffi.C.zz_buffer_new_with_data(data, size))
 end
 
-local function make_copy_of(data, size, shared)
-   if is_buffer(data) then
-      size = size or #data
-      data = data:ptr()
-   end
-   if shared then
-      return new_with_data(ffi.cast("void*", data), size or #data)
-   else
-      return new_with_copy(ffi.cast("void*", data), size or #data)
-   end
-end
-
 function M.new(size)
    if size then
       return new_with_capacity(size)
@@ -184,11 +172,29 @@ function M.new_with_size(size)
 end
 
 function M.copy(data, size)
-   return make_copy_of(data, size, false)
+   size = size or #data
+   if is_buffer(data) then
+      data = data:ptr()
+   end
+   return new_with_copy(ffi.cast("void*", data), size)
+end
+
+function M.slice(data, offset, size)
+   offset = offset or 0
+   size = size or (#data - offset)
+   if is_buffer(data) then
+      data = data:ptr()
+   end
+   data = ffi.cast("uint8_t*", data) + offset
+   return new_with_copy(ffi.cast("void*", data), size)
 end
 
 function M.wrap(data, size)
-   return make_copy_of(data, size, true)
+   size = size or #data
+   if is_buffer(data) then
+      data = data:ptr()
+   end
+   return new_with_data(ffi.cast("void*", data), size)
 end
 
 return M
