@@ -5,7 +5,7 @@ local mm = require('mm')
 
 local M = {}
 
-M.BUFFER_SIZE = 4096
+M.READ_BLOCK_SIZE = 4096
 
 local BaseStream = util.Class()
 
@@ -22,7 +22,7 @@ function BaseStream:write1(ptr, size)
 end
 
 function BaseStream:read(n)
-   local BUFFER_SIZE = M.BUFFER_SIZE
+   local READ_BLOCK_SIZE = M.READ_BLOCK_SIZE
    local buf
    if not n then
       -- read any amount of bytes
@@ -30,7 +30,7 @@ function BaseStream:read(n)
          buf = self.read_buffer
          self.read_buffer = nil
       else
-         local ptr, block_size = mm.get_block(BUFFER_SIZE)
+         local ptr, block_size = mm.get_block(READ_BLOCK_SIZE)
          local nbytes = self:read1(ptr, block_size)
          buf = buffer.copy(ptr, nbytes)
          buf:size(nbytes)
@@ -67,7 +67,7 @@ function BaseStream:read(n)
          nbytes_total = nbytes_total + #self.read_buffer
          self.read_buffer = nil
       end
-      local ptr, block_size = mm.get_block(BUFFER_SIZE)
+      local ptr, block_size = mm.get_block(READ_BLOCK_SIZE)
       while not self:eof() do
          local nbytes = self:read1(ptr, block_size)
          assert(nbytes > 0)

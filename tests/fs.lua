@@ -246,10 +246,10 @@ local function test_stream_read()
    assert.equals(s:read(4), "\xe0\x00\x10\x4a")
    assert.equals(s:read(8), "\x46\x49\x46\x00\x01\x01\x01\x00")
 
-   -- read() reads max stream.BUFFER_SIZE bytes
-   assert.equals(type(stream.BUFFER_SIZE), "number")
+   -- read() reads max stream.READ_BLOCK_SIZE bytes
+   assert.equals(type(stream.READ_BLOCK_SIZE), "number")
    local buf = s:read()
-   assert.equals(#buf, stream.BUFFER_SIZE)
+   assert.equals(#buf, stream.READ_BLOCK_SIZE)
    assert.equals(util.hexstr(digest.md5(buf)), '97a61975b61aa68588eec3a7db2129d7')
    assert(not s:eof())
 
