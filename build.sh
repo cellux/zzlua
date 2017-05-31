@@ -23,7 +23,7 @@ case $GOAL in
     # remove assets package
     run rm -f assets.zip
     # remove object files
-    run rm -f main.o
+    run rm -f main.o main.lo
     run find lib ext apps/$APP/lib -name '*.o' -delete
     run find lib ext apps/$APP/lib -name '*.lo' -delete
     exit 0
@@ -141,7 +141,7 @@ find_libs() {
 ZZ_LIBS="$(find_libs lib)"
 
 # APP_LIBS: the list of app libraries to be built into the binary
-APP_LIBS="main"
+APP_LIBS="app"
 
 # let the app's config script extend/update the variables above
 if [ -e apps/$APP/config.sh ]; then
@@ -165,15 +165,16 @@ need_to_relink() {
   [ $CHANGED -gt 0 ]
 }
 
-for lib_name in $(usorted $ZZ_LIBS $APP_LIBS); do
+for lib_name in $(usorted $ZZ_LIBS $APP_LIBS) main; do
   lib_relpath=${lib_name//.//}.lua
-  if [ -e lib/$lib_relpath ]; then
-    lib_abspath=lib/$lib_relpath
-  elif [ -e ext/$lib_relpath ]; then
-      lib_abspath=ext/$lib_relpath
-  elif [ -e apps/$APP/lib/$lib_relpath ]; then
-    lib_abspath=apps/$APP/lib/$lib_relpath
-  else
+  lib_abspath=
+  for libloc in lib ext apps/$APP/lib .; do
+    if [ -e $libloc/$lib_relpath ]; then
+        lib_abspath=$libloc/$lib_relpath
+        break
+    fi
+  done
+  if [ -z "$lib_abspath" ]; then
     echo "Library not found: $lib_name"
     exit 1
   fi
@@ -204,12 +205,6 @@ for lib_name in $(usorted $ZZ_LIBS $APP_LIBS); do
   fi
 done
 
-# compile C entrypoint
-if [ main.c -nt main.o ]; then
-  run $CC $CFLAGS -c main.c -o main.o
-  relink
-fi
-
 # package assets
 
 assets_zip="$PWD/assets.zip"
@@ -238,7 +233,7 @@ fi
 
 if [ ! -e $APP ] || need_to_relink; then
   run $CC $CFLAGS \
-    main.o ${ZZ_LIB_OBJ[@]} ${ZZ_CLIB_OBJ[@]} \
+    ${ZZ_LIB_OBJ[@]} ${ZZ_CLIB_OBJ[@]} \
     -Wl,--whole-archive \
     $LUAJIT_LIB $CMP_OBJ $NANOMSG_LIB \
     -Wl,--no-whole-archive \

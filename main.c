@@ -122,7 +122,7 @@ static int pmain(lua_State *L)
   /* collect command line arguments into _G.arg */
   set_arg(L, s->argc, s->argv);
   /* to be continued in Lua... */
-  s->status = dolibrary(L, "_main");
+  s->status = dolibrary(L, "main");
   return s->status;
 }
 
