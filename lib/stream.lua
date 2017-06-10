@@ -80,7 +80,7 @@ function BaseStream:read(n)
          buf:append(buffers[i])
       end
    end
-   return buf or buffer.new()
+   return buf
 end
 
 ffi.cdef [[ void * memmem (const void *haystack, size_t haystack_len,
