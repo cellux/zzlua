@@ -14,7 +14,9 @@ run() {
 cd $(dirname ${BASH_SOURCE[0]})
 
 GOAL="${1:-build}"
-APP="${2:-zzmake}"
+APP="${2:-zzlua}"
+
+source config.sh
 
 case $GOAL in
   clean)
@@ -46,9 +48,6 @@ esac
 # default goal: build
 
 CC=gcc
-
-# dependency versions
-source config.sh
 
 # all dependencies are downloaded and extracted into a directory under deps/
 

@@ -1,17 +1,15 @@
-APP ?= zzlua
-
-.PHONY: $(APP)
-$(APP):
-	@./build.sh build $(APP)
+.PHONY: app
+app:
+	@./build.sh build
 
 .PHONY: test
-test: $(APP)
+test: app
 	@./run-tests.sh
 
 .PHONY: clean
 clean:
-	@./build.sh clean $(APP)
+	@./build.sh clean
 
 .PHONY: distclean
 distclean:
-	@./build.sh distclean $(APP)
+	@./build.sh distclean
