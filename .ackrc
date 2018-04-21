@@ -1,7 +1,0 @@
---sort-files
---smart-case
---cc
---lua
---make
---shell
---ignore-dir=deps

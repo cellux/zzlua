@@ -32,7 +32,7 @@ local script_args = {}
 for i=arg_index+1,#arg do
    table.insert(script_args, arg[i])
 end
-arg = script_args -- remove framework-specific options
+arg = script_args -- remove zzlua options
 
 -- save the path of the script to arg[0]
 arg[0] = script_path
